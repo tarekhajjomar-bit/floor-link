@@ -189,6 +189,14 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
 .field input:focus, .field select:focus, .field textarea:focus{
   outline:none; border-color:var(--teal); box-shadow:0 0 0 3px var(--teal-tint); background:var(--surface);
 }
+.oi-input{
+  width:100%; border:1.5px solid var(--line); border-radius:var(--radius-sm); background:var(--paper);
+  padding:10px 12px; font-size:14.5px; color:var(--ink);
+  transition:border-color .16s var(--ease), box-shadow .16s var(--ease), background-color .16s var(--ease);
+}
+.oi-input:focus{
+  outline:none; border-color:var(--teal); box-shadow:0 0 0 3px var(--teal-tint); background:var(--surface);
+}
 .grid-2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
 .chip-row{display:flex; gap:8px; flex-wrap:wrap;}
 .chip{
@@ -438,7 +446,7 @@ en:{
   roleSupervisor:"Supervisor view — submit handovers and browse recent shift history.",
   roleUnknown:"Viewing as guest — sign in to submit or review handovers.",
   shiftDetails:"Shift details", shiftDetailsSub:"Who, where, and when this handover took place.",
-  company:"Company", branch:"Branch / location", branchPh:"e.g. Downtown, Mall Road, Unit 4",
+  company:"Branch", branch:"Branch / location", branchPh:"e.g. Downtown, Mall Road, Unit 4",
   shiftType:"Shift", entryOpening:"Opening", entryHandover:"Handover", entryClosing:"Closing",
   entryTypeLabel:"Entry type", entryTypeSub:"What kind of shift entry is this?",
   supervisorNameLabel:"Supervisor on duty", soloSigLabel:"Supervisor signature", ackSelf:"I confirm the above information is accurate as of this time.",
@@ -475,7 +483,7 @@ en:{
   assignedBranchNote:"Locked to your assigned branch — set from your account.",
   colDepartment:"Department",
   savedToast:"Handover saved.",
-  filterAll:"All companies", filterAllBranch:"All branches", filterAllStatus:"All statuses",
+  filterAll:"All branches", filterAllBranch:"All branches", filterAllStatus:"All statuses",
   today:"Today", last7:"Last 7 days", last30:"Last 30 days", allTime:"All time",
   statPending:"Awaiting sign-off", statIssues:"Issues flagged", statTotal:"Logged",
   noResults:"No handovers match these filters yet.",
@@ -518,7 +526,7 @@ en:{
   orderTitle:"Order request", orderSub:"Does this branch need an order placed? List the items and which supplier they're from.",
   hasOrderLabel:"There's an order to place for this branch",
   itemPh:"Item name", supplierPh:"Company / supplier",
-  addItemBtn:"Add item", removeItemBtn:"Remove",
+  addItemBtn:"Add item", removeItemBtn:"Remove", scanItemBtn:"Scan item barcode", itemAddedToast:"Item added to the order.",
   shortagesTitle:"Stock shortages", shortagesSub:"Any items currently out of stock or running low — separate from the order above.",
   shortagesPh:"List missing or low items…",
   merchSubmit:"Submit report", merchReqError:"Please fill in the merchandiser name, branch, and date before submitting.",
@@ -587,7 +595,7 @@ en:{
   periodWeek:"This week", periodMonth:"This month",
   itemsLoggedLabel:"items logged",
   filterByEmployee:"All employees",
-  expiryFilterCompany:"All companies",
+  expiryFilterCompany:"All branches",
   loggingIn:"Logging in…", signingUp:"Creating account…",
   logoutConfirm:"Log out of this device?",
   bootstrapManagerNote:"No manager account exists yet — you can create the first one here.",
@@ -629,7 +637,7 @@ ar:{
   roleSupervisor:"عرض المشرف — قم بتسليم الوردية واستعرض السجل الأخير.",
   roleUnknown:"عرض كزائر — سجّل الدخول لتسليم الوردية أو مراجعتها.",
   shiftDetails:"تفاصيل الوردية", shiftDetailsSub:"من، أين، ومتى تم تسليم الوردية.",
-  company:"الشركة", branch:"الفرع / الموقع", branchPh:"مثال: وسط البلد، طريق المول، وحدة 4",
+  company:"الفرع", branch:"الفرع / الموقع", branchPh:"مثال: وسط البلد، طريق المول، وحدة 4",
   shiftType:"نوع الوردية", entryOpening:"افتتاح (اوبننج)", entryHandover:"تسليم (هاند اوفر)", entryClosing:"إغلاق (كلوزنج)",
   entryTypeLabel:"نوع العملية", entryTypeSub:"شو نوع عملية الوردية هاي؟",
   supervisorNameLabel:"المشرف المسؤول", soloSigLabel:"توقيع المشرف", ackSelf:"أؤكد أن المعلومات أعلاه دقيقة حتى هذا الوقت.",
@@ -666,7 +674,7 @@ ar:{
   assignedBranchNote:"مقفول على فرعك المسجّل — محدد من حسابك.",
   colDepartment:"القسم",
   savedToast:"تم حفظ التسليم.",
-  filterAll:"كل الشركات", filterAllBranch:"كل الفروع", filterAllStatus:"كل الحالات",
+  filterAll:"كل الفروع", filterAllBranch:"كل الفروع", filterAllStatus:"كل الحالات",
   today:"اليوم", last7:"آخر 7 أيام", last30:"آخر 30 يومًا", allTime:"كل الفترات",
   statPending:"بانتظار التوقيع", statIssues:"مشاكل موسومة", statTotal:"مسجّل",
   noResults:"لا توجد عمليات تسليم مطابقة لهذه الفلاتر.",
@@ -709,7 +717,7 @@ ar:{
   orderTitle:"طلبية", orderSub:"هل هذا الفرع محتاج طلبية؟ اذكر الأصناف ومن أي شركة/مورد.",
   hasOrderLabel:"في طلبية بدها تنعمل لهذا الفرع",
   itemPh:"اسم الصنف", supplierPh:"الشركة / المورد",
-  addItemBtn:"إضافة صنف", removeItemBtn:"حذف",
+  addItemBtn:"إضافة صنف", removeItemBtn:"حذف", scanItemBtn:"مسح باركود الصنف", itemAddedToast:"تمت إضافة الصنف للطلبية.",
   shortagesTitle:"نواقص البضاعة", shortagesSub:"أي أصناف ناقصة حاليًا أو أوشكت تخلص — منفصلة عن الطلبية فوق.",
   shortagesPh:"اذكر الأصناف الناقصة أو الموشكة تخلص…",
   merchSubmit:"إرسال التقرير", merchReqError:"يرجى تعبئة اسم المارشندايزر والفرع والتاريخ قبل الإرسال.",
@@ -778,7 +786,7 @@ ar:{
   periodWeek:"هالأسبوع", periodMonth:"هالشهر",
   itemsLoggedLabel:"منتج مسجّل",
   filterByEmployee:"كل الموظفين",
-  expiryFilterCompany:"كل الشركات",
+  expiryFilterCompany:"كل الفروع",
   loggingIn:"جارِ تسجيل الدخول…", signingUp:"جارِ إنشاء الحساب…",
   logoutConfirm:"تسجيل الخروج من هذا الجهاز؟",
   bootstrapManagerNote:"ما في حساب مدير لسا — تقدر تنشئ أول حساب مدير من هون.",
@@ -1298,7 +1306,6 @@ function renderForm(){
     '<div class="section-title">'+t("shiftDetails")+'</div>' +
     '<div class="section-sub">'+t("shiftDetailsSub")+'</div>' +
     companyField +
-    '<div class="field"><label>'+t("branch")+'</label><input type="text" id="f_branch" placeholder="'+t("branchPh")+'" value="'+esc(f.branch)+'"></div>' +
     '<div class="field"><label>'+t("entryTypeLabel")+'</label><div class="chip-row">'+entryChips+'</div>' +
       '<p class="hint">'+t("entryTypeSub")+'</p></div>' +
     '<div class="grid-2">' +
@@ -1400,7 +1407,6 @@ function wireForm(){
   var f = S.form;
   var fCompanySel = document.getElementById("f_company");
   if(fCompanySel) fCompanySel.onchange = function(){ f.company = this.value; applyBrand(f.company); };
-  document.getElementById("f_branch").oninput = function(){ f.branch = this.value; };
   document.getElementById("f_date").onchange = function(){ f.date = this.value; };
   document.getElementById("f_time").onchange = function(){ f.time = this.value; };
   var inEl = document.getElementById("f_in");
@@ -1513,7 +1519,7 @@ function canvasToUpload(which){
 function submitHandover(){
   var f = S.form;
   var needIncoming = f.entryType === "handover";
-  if(!f.branch.trim() || !f.outgoingName.trim() || (needIncoming && !f.incomingName.trim()) || !f.date){
+  if(!f.outgoingName.trim() || (needIncoming && !f.incomingName.trim()) || !f.date){
     toast(needIncoming ? t("reqError") : t("reqErrorSolo"));
     return;
   }
@@ -1561,7 +1567,7 @@ function submitHandover(){
     });
 
     var doc = {
-      company: f.company, branch: f.branch.trim(),
+      company: f.company,
       entryType: f.entryType, date: f.date, time: f.time,
       outgoingName: f.outgoingName.trim(), incomingName: f.incomingName.trim(),
       incomingUserId: f.incomingUserId || null,
@@ -1670,7 +1676,7 @@ function logCard(l){
   var isSoloLog = entryKey !== "handover";
   var head = '<div class="log-head" data-toggle="'+l.id+'">' +
     '<div class="info">' +
-      '<b>'+esc(l.branch)+' · '+esc(companyName(l.company))+'</b>' +
+      '<b>'+esc(companyName(l.company))+'</b>' +
       '<span>'+shiftLbl+' · '+fmtDate(l.date)+' · '+esc(l.time||"")+'</span>' +
     '</div>' +
     '<div class="log-head-right">'+statusBadge(l.status)+'<span class="log-chevron">'+ICONS.chevron+'</span></div>' +
@@ -1842,9 +1848,9 @@ function renderMerchForm(){
 
   var itemsHtml = f.orderItems.map(function(row, i){
     return '<div class="grid-2" style="margin-bottom:8px;" data-order-row="'+i+'">' +
-      '<input type="text" placeholder="'+t("itemPh")+'" data-order-item="'+i+'" value="'+esc(row.item)+'">' +
+      '<input type="text" class="oi-input" placeholder="'+t("itemPh")+'" data-order-item="'+i+'" value="'+esc(row.item)+'">' +
       '<div style="display:flex; gap:6px;">' +
-        '<input type="text" placeholder="'+t("supplierPh")+'" data-order-supplier="'+i+'" value="'+esc(row.supplier)+'" style="flex:1;">' +
+        '<input type="text" class="oi-input" placeholder="'+t("supplierPh")+'" data-order-supplier="'+i+'" value="'+esc(row.supplier)+'" style="flex:1;">' +
         (f.orderItems.length > 1 ? '<button type="button" class="link-btn" data-order-rm="'+i+'">'+ICONS.close+'</button>' : '') +
       '</div>' +
     '</div>';
@@ -1856,7 +1862,6 @@ function renderMerchForm(){
     '<div class="section-sub">'+t("merchInfoSub")+'</div>' +
     '<div class="field"><label>'+t("merchNameLabel")+'</label><input type="text" value="'+esc(f.merchName)+'" disabled></div>' +
     companyField +
-    '<div class="field"><label>'+t("branch")+'</label><input type="text" id="m_branch" placeholder="'+t("branchPh")+'" value="'+esc(f.branch)+'"></div>' +
     '<div class="grid-2">' +
       '<div class="field"><label>'+t("date")+'</label><input type="date" id="m_date" value="'+esc(f.date)+'"></div>' +
       '<div class="field"><label>'+t("time")+'</label><input type="time" id="m_time" value="'+esc(f.time)+'"></div>' +
@@ -1879,7 +1884,10 @@ function renderMerchForm(){
     '<div class="section-sub">'+t("orderSub")+'</div>' +
     '<label class="ack-row"><input type="checkbox" id="m_hasOrder"'+(f.hasOrder?" checked":"")+'><span>'+t("hasOrderLabel")+'</span></label>' +
     (f.hasOrder ? '<div style="margin-top:12px;">'+itemsHtml+
-      '<button type="button" class="link-btn" id="m_addItem">'+ICONS.plus+' '+t("addItemBtn")+'</button></div>' : '') +
+      '<div class="chip-row" style="margin-top:4px;">' +
+        '<button type="button" class="link-btn" id="m_addItem">'+ICONS.plus+' '+t("addItemBtn")+'</button>' +
+        '<button type="button" class="link-btn" id="m_scanItem">'+ICONS.barcode+' '+t("scanItemBtn")+'</button>' +
+      '</div></div>' : '') +
   '</div>';
 
   html += '<div class="card">' +
@@ -1899,7 +1907,6 @@ function wireMerchForm(){
   var f = S.merchForm;
   var mCompanySel = document.getElementById("m_company");
   if(mCompanySel) mCompanySel.onchange = function(){ f.company = this.value; applyBrand(f.company); };
-  document.getElementById("m_branch").oninput = function(){ f.branch = this.value; };
   document.getElementById("m_date").onchange = function(){ f.date = this.value; };
   document.getElementById("m_time").onchange = function(){ f.time = this.value; };
   document.getElementById("m_displayNotes").oninput = function(){ f.display.notes = this.value; };
@@ -1943,12 +1950,16 @@ function wireMerchForm(){
   if(addItemBtn){
     addItemBtn.onclick = function(){ f.orderItems.push({item:"", supplier:""}); renderMerchForm(); };
   }
+  var scanItemBtn = document.getElementById("m_scanItem");
+  if(scanItemBtn){
+    scanItemBtn.onclick = function(){ openScanner("order"); };
+  }
   document.getElementById("merchForm").onsubmit = function(e){ e.preventDefault(); submitMerchVisit(); };
 }
 
 function submitMerchVisit(){
   var f = S.merchForm;
-  if(!f.merchName.trim() || !f.branch.trim() || !f.date){
+  if(!f.merchName.trim() || !f.date){
     toast(t("merchReqError"));
     return;
   }
@@ -1961,7 +1972,7 @@ function submitMerchVisit(){
   }) : [];
 
   var doc = {
-    merchName: f.merchName.trim(), company: f.company, branch: f.branch.trim(),
+    merchName: f.merchName.trim(), company: f.company,
     date: f.date, time: f.time,
     submittedByUserId: S.currentUser ? S.currentUser.id : null,
     submittedByUsername: S.currentUser ? S.currentUser.username : null,
@@ -2062,7 +2073,7 @@ function merchLogCard(l){
   var dBadge = dstatus === "issue" ? statusBadge("issues") : dstatus === "ok" ? statusBadge("approved") : "";
   var head = '<div class="log-head" data-mtoggle="'+l.id+'">' +
     '<div class="info">' +
-      '<b>'+esc(l.branch)+' · '+esc(companyName(l.company))+'</b>' +
+      '<b>'+esc(companyName(l.company))+'</b>' +
       '<span>'+esc(l.merchName)+' · '+fmtDate(l.date)+' · '+esc(l.time||"")+'</span>' +
     '</div>' +
     '<div class="log-head-right">'+dBadge+'<span class="log-chevron">'+ICONS.chevron+'</span></div>' +
@@ -2574,7 +2585,6 @@ function renderTrackForm(){
   var html = '<div class="card">' +
     '<div class="section-title">'+t("locationDetailsTitle")+'</div>' +
     companyField +
-    '<div class="field"><label>'+t("branch")+'</label><input type="text" id="tc_branch" placeholder="'+t("branchPh")+'" value="'+esc(S.trackContext.branch)+'"></div>' +
   '</div>';
   html += '<div class="card" style="text-align:center; padding:32px 20px;">' +
     '<div class="locked-icon" style="color:var(--teal);">'+ICONS.barcode+'</div>' +
@@ -2585,7 +2595,6 @@ function renderTrackForm(){
   document.getElementById("main").innerHTML = html;
   var tcSel = document.getElementById("tc_company");
   if(tcSel) tcSel.onchange = function(){ S.trackContext.company = this.value; applyBrand(this.value); };
-  document.getElementById("tc_branch").oninput = function(){ S.trackContext.branch = this.value; };
   document.getElementById("openScanBtn2").onclick = openScanner;
 }
 
@@ -2636,7 +2645,7 @@ function renderTrackedDashboard(){
         return '<div class="alert-row">' +
           (l.image ? '<img class="item-thumb" src="'+esc(l.image)+'">' : '<div class="item-thumb"></div>') +
           '<div style="flex:1; min-width:0;"><b style="font-size:13px; display:block;">'+esc(l.productName)+'</b>' +
-          '<span class="hint">'+esc(l.branch)+' · '+esc(l.qty)+'</span></div>' +
+          '<span class="hint">'+esc(companyName(l.company))+' · '+esc(l.qty)+'</span></div>' +
           '<span class="badge '+tag.cls+'">'+tag.label+'</span>' +
         '</div>';
       }).join("");
@@ -2696,7 +2705,7 @@ function trackedItemCard(l){
     (l.image ? '<img class="item-thumb" src="'+esc(l.image)+'">' : '<div class="item-thumb"></div>') +
     '<div class="info" style="flex:1; min-width:0;">' +
       '<b>'+esc(l.productName)+'</b>' +
-      '<span>'+esc(l.branch)+' · '+esc(companyName(l.company))+' · '+esc(l.qty)+'</span>' +
+      '<span>'+esc(companyName(l.company))+' · '+esc(l.qty)+'</span>' +
     '</div>' +
     '<div class="log-head-right"><span class="badge '+tag.cls+'">'+tag.label+'</span><span class="log-chevron">'+ICONS.chevron+'</span></div>' +
   '</div>';
@@ -2785,12 +2794,11 @@ function freshTrackForm(barcode, catalogData){
     qty: "",
     expiryDate: "",
     company: S.trackContext.company,
-    branch: S.trackContext.branch
   };
 }
 
-function openScanner(){
-  S.scanTarget = {stage:"camera", qr:null, barcode:"", foundInCatalog:false};
+function openScanner(purpose){
+  S.scanTarget = {stage:"camera", qr:null, barcode:"", foundInCatalog:false, purpose: purpose || "expiry"};
   renderScanner();
   startCameraScan();
 }
@@ -2844,12 +2852,40 @@ function startCameraScan(){
     function(decodedText){
       if(!S.scanTarget) return;
       stopCameraScan();
-      lookupCatalogAndOpenForm(decodedText);
+      handleScannedBarcode(decodedText);
     },
     function(){ /* per-frame scan miss — ignore */ }
   ).catch(function(){
     if(S.scanTarget){ S.scanTarget.qr = null; S.scanTarget.stage = "denied"; renderScanner(); }
   });
+}
+
+function handleScannedBarcode(barcode){
+  if(S.scanTarget && S.scanTarget.purpose === "order"){
+    addOrderItemFromScan(barcode);
+  } else {
+    lookupCatalogAndOpenForm(barcode);
+  }
+}
+
+function addOrderItemFromScan(barcode){
+  var finish = function(name, supplier){
+    var f = S.merchForm;
+    var emptyIdx = -1;
+    for(var i=0;i<f.orderItems.length;i++){
+      if(!f.orderItems[i].item.trim() && !f.orderItems[i].supplier.trim()){ emptyIdx = i; break; }
+    }
+    var row = {item:name, supplier:supplier || ""};
+    if(emptyIdx !== -1){ f.orderItems[emptyIdx] = row; } else { f.orderItems.push(row); }
+    closeScanner();
+    toast(t("itemAddedToast"));
+    renderMerchForm();
+  };
+  if(!S.db){ finish(barcode, ""); return; }
+  S.db.doc("catalog/"+encodeURIComponent(barcode)).get().then(function(snap){
+    if(snap.exists){ var d = snap.data(); finish(d.name || barcode, d.supplier || ""); }
+    else { finish(barcode, ""); }
+  }).catch(function(){ finish(barcode, ""); });
 }
 
 function lookupCatalogAndOpenForm(barcode){
@@ -2935,7 +2971,7 @@ function wireScanner(){
     document.getElementById("manualBarcodeNextBtn").onclick = function(){
       var val = document.getElementById("manualBarcode").value.trim();
       if(!val) return;
-      lookupCatalogAndOpenForm(val);
+      handleScannedBarcode(val);
     };
   }
   if(stage === "form"){
@@ -2984,7 +3020,7 @@ function submitTrackedProduct(){
     image: tf.image ? tf.image.url : null,
     size: tf.size.trim(), supplier: tf.supplier.trim(),
     qty: tf.qty.toString().trim(), expiryDate: tf.expiryDate,
-    company: tf.company, branch: tf.branch,
+    company: tf.company,
     status: "active",
     createdBy: who, createdAt: nowIso, updatedAt: nowIso,
     history: [{action:"created", qty: tf.qty.toString().trim(), expiryDate: tf.expiryDate, userId: who.userId, username: who.username, fullName: who.fullName, at: nowIso}]
