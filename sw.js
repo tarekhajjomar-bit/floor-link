@@ -2,7 +2,7 @@
 // can load with no connection. It does NOT cache Firestore/Storage data;
 // that's handled by the app's own offline queue (see saveOrQueue in index.html).
 
-const CACHE_NAME = "floorlink-shell-v1";
+const CACHE_NAME = "floorlink-shell-v2";
 const SHELL_FILES = [
   "./",
   "./index.html",
@@ -29,12 +29,19 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
-// Network-first for navigation and the main HTML file (so you always get
-// the latest version when online), falling back to the cached shell when
-// offline. Everything else (fonts, the qr-code library, etc.) is
-// cache-first once fetched, since those never change per-deploy.
+// Only intercept same-origin GET requests (the app shell, fonts, the
+// qr-code library, etc). Everything else — and specifically every POST
+// request, like photo/signature uploads to ImgBB or writes to Firestore —
+// is left completely alone and goes straight to the network, untouched by
+// this service worker. Intercepting cross-origin API calls here caused
+// uploads to fail unpredictably (worse on mobile networks than on stable
+// wifi), because a network hiccup made this worker return an invalid
+// response instead of just letting the real request fail/retry normally.
 self.addEventListener("fetch", (event) => {
   const req = event.request;
+
+  if (req.method !== "GET") return;
+  if (new URL(req.url).origin !== self.location.origin) return;
 
   if (req.mode === "navigate" || req.url.endsWith("index.html")) {
     event.respondWith(
@@ -54,13 +61,13 @@ self.addEventListener("fetch", (event) => {
       if (cached) return cached;
       return fetch(req)
         .then((res) => {
-          if (res.ok && req.method === "GET") {
+          if (res.ok) {
             const copy = res.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
           }
           return res;
         })
-        .catch(() => cached);
+        .catch(() => cached || Response.error());
     })
   );
 });
