@@ -124,6 +124,8 @@ h1,h2,h3,p{margin:0;}
 .pill-btn:active{transform:scale(.95);}
 .pill-btn.active{background:#F5FAF8; color:var(--teal-deep); border-color:transparent;}
 .tabbar{display:flex; gap:4px; margin-top:14px; background:rgba(0,0,0,.16); border-radius:12px; padding:3px;}
+#deptbar{overflow-x:auto; -webkit-overflow-scrolling:touch;}
+#deptbar .tab-btn{flex:none; padding-inline:12px; white-space:nowrap;}
 .tab-btn{
   flex:1; text-align:center; padding:9px 6px; border:none; background:transparent; color:#F5FAF8;
   opacity:.72; border-radius:9px; font-size:13.5px; font-weight:600; cursor:pointer;
@@ -256,6 +258,12 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
 .badge-pending{background:var(--amber-tint); color:var(--amber);}
 .badge-approved{background:var(--green-tint); color:var(--green);}
 .badge-issues{background:var(--red-tint); color:var(--red);}
+.badge-neutral{background:var(--paper); color:var(--ink-soft); border:1px solid var(--line);}
+.item-thumb{width:44px; height:44px; border-radius:10px; object-fit:cover; border:1px solid var(--line); flex:none; background:var(--paper);}
+.alert-row{display:flex; align-items:center; gap:10px; padding:9px 0; border-top:1px solid var(--line-soft);}
+.alert-row:first-child{border-top:none;}
+.compliance-row{display:flex; justify-content:space-between; align-items:center; padding:7px 0; border-top:1px solid var(--line-soft); font-size:13px;}
+.compliance-row:first-child{border-top:none;}
 .badge::before{content:""; width:6px; height:6px; border-radius:50%; background:currentColor;}
 
 .filters{display:flex; gap:8px; overflow-x:auto; padding-bottom:2px; margin-bottom:12px;}
@@ -388,6 +396,7 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
     <button class="tab-btn active" id="deptHandoverBtn" type="button"></button>
     <button class="tab-btn" id="deptMerchBtn" type="button"></button>
     <button class="tab-btn" id="deptAccountsBtn" type="button" style="display:none;"></button>
+    <button class="tab-btn" id="deptExpiryBtn" type="button" style="display:none;"></button>
   </div>
   <div class="tabbar" id="subtabbar">
     <button class="tab-btn active" id="tabForm" type="button"></button>
@@ -533,6 +542,44 @@ en:{
   authErrWrongPw:"Incorrect password.",
   authErrDisabled:"This account has been disabled. Contact your manager.",
   authErrGeneric:"Something went wrong — please try again.",
+  authErrPermission:"The database rejected the request (permission-denied). This almost always means the Firestore security rules haven't been published yet — go to Firebase Console → Firestore Database → Rules, paste the rules from firestore.rules, and click Publish.",
+  authErrOffline:"Couldn't reach the database. Check your internet connection, and make sure the Firebase config values in index.html are correct.",
+
+  deptExpiryLabel:"Expiry Control",
+  locationDetailsTitle:"Location",
+  scanIntroSub:"Scan a barcode to log a new batch for expiry tracking.",
+  expiryTabNew:"New Product", expiryTabItems:"Items",
+  scanProductBtn:"Scan barcode", enterBarcodeManualBtn:"Enter barcode manually",
+  productFoundInCatalog:"Found in catalog — details filled in automatically.",
+  productNotInCatalog:"New barcode — enter the details once and they'll be remembered next time.",
+  productNameLabel:"Product name", productNamePh:"Product name",
+  productImageLabel:"Product photo (optional)",
+  productSizeLabel:"Size / unit", productSizePh:"e.g. 1kg, 500ml, box of 12",
+  productSupplierLabel:"Supplier", productSupplierPh:"Supplier name",
+  trackQtyLabel:"Quantity (pieces with this expiry date)", trackQtyPh:"Quantity",
+  trackExpiryLabel:"Expiry date",
+  saveProductBtn:"Save product", scanNextBtn:"Scan next product",
+  productSavedToast:"Product saved and tracked.",
+  productReqError:"Please scan or enter a barcode, and fill in the product name, quantity, and expiry date.",
+  itemsEmptyState:"No tracked products yet.",
+  daysLeftLabel:"days left", expiredTag:"Expired", expiresTodayTag:"Expires today", dayLeftLabel:"day left",
+  scannedByLabel:"Logged by", atLabel:"at",
+  historyTitle:"History", historyCreated:"Created", historyQtyUpdate:"Quantity updated to", historyDeleted:"Deleted",
+  updateQtyBtn:"Update quantity", newQtyPh:"New quantity",
+  deleteProductBtn:"Delete product", deleteProductConfirmTitle:"Delete this tracked product?",
+  deleteProductConfirmSub:"It will be removed from the list, but the full history stays on record permanently for the manager.",
+  deletedByLabel:"Deleted by",
+  thresholdsTitle:"Alert thresholds (days before expiry)",
+  thresholdsSub:"Comma-separated day counts, e.g. 7,3,1 — items crossing any of these get flagged below.",
+  saveThresholdsBtn:"Save",
+  alertsTitle:"Expiring soon",
+  noAlertsNow:"Nothing crossing an alert threshold right now.",
+  complianceTitle:"Logging activity by employee",
+  complianceSub:"How many products each person has logged.",
+  periodWeek:"This week", periodMonth:"This month",
+  itemsLoggedLabel:"items logged",
+  filterByEmployee:"All employees",
+  expiryFilterCompany:"All companies",
   loggingIn:"Logging in…", signingUp:"Creating account…",
   logoutConfirm:"Log out of this device?",
   bootstrapManagerNote:"No manager account exists yet — you can create the first one here.",
@@ -678,6 +725,44 @@ ar:{
   authErrWrongPw:"كلمة المرور غير صحيحة.",
   authErrDisabled:"هذا الحساب معطّل. تواصل مع المدير.",
   authErrGeneric:"صار في خطأ — حاول مرة أخرى.",
+  authErrPermission:"قاعدة البيانات رفضت الطلب (permission-denied). هاد يعني غالبًا إن صلاحيات Firestore لسا ما انحطت. روح لـ Firebase Console → Firestore Database → Rules، ألصق محتوى ملف firestore.rules، ودوس Publish.",
+  authErrOffline:"ما قدرنا نوصل لقاعدة البيانات. تأكد من الاتصال بالإنترنت، وإن قيم Firebase بملف index.html صحيحة.",
+
+  deptExpiryLabel:"التحكم بالصلاحية",
+  locationDetailsTitle:"الموقع",
+  scanIntroSub:"امسح باركود لتسجيل دفعة جديدة للتتبع.",
+  expiryTabNew:"تسجيل منتج", expiryTabItems:"المنتجات",
+  scanProductBtn:"مسح باركود", enterBarcodeManualBtn:"إدخال الباركود يدويًا",
+  productFoundInCatalog:"موجود بالكتالوج — تعبّت التفاصيل أوتوماتيكيًا.",
+  productNotInCatalog:"باركود جديد — أدخل التفاصيل مرة وحدة وبتتذكرها المرة الجاية.",
+  productNameLabel:"اسم المنتج", productNamePh:"اسم المنتج",
+  productImageLabel:"صورة المنتج (اختياري)",
+  productSizeLabel:"الحجم / الوحدة", productSizePh:"مثلاً: ١ كغ، ٥٠٠ مل، علبة ١٢ حبة",
+  productSupplierLabel:"المورد", productSupplierPh:"اسم المورد",
+  trackQtyLabel:"الكمية (عدد القطع بنفس تاريخ الصلاحية)", trackQtyPh:"الكمية",
+  trackExpiryLabel:"تاريخ الصلاحية",
+  saveProductBtn:"حفظ المنتج", scanNextBtn:"مسح منتج تاني",
+  productSavedToast:"تم حفظ المنتج وتسجيله للتتبع.",
+  productReqError:"يرجى مسح أو إدخال باركود، وتعبئة اسم المنتج والكمية وتاريخ الصلاحية.",
+  itemsEmptyState:"ما في منتجات متتبَّعة لسا.",
+  daysLeftLabel:"يوم متبقي", expiredTag:"منتهي", expiresTodayTag:"ينتهي اليوم", dayLeftLabel:"يوم واحد متبقي",
+  scannedByLabel:"سجّله", atLabel:"الساعة",
+  historyTitle:"السجل", historyCreated:"تم التسجيل", historyQtyUpdate:"تم تحديث الكمية إلى", historyDeleted:"تم الحذف",
+  updateQtyBtn:"تحديث الكمية", newQtyPh:"الكمية الجديدة",
+  deleteProductBtn:"حذف المنتج", deleteProductConfirmTitle:"حذف هذا المنتج المتتبَّع؟",
+  deleteProductConfirmSub:"رح ينشال من الليستة، بس كامل السجل بضل محفوظ بشكل دائم للمدير.",
+  deletedByLabel:"حذفه",
+  thresholdsTitle:"حدود التنبيه (أيام قبل الانتهاء)",
+  thresholdsSub:"أعداد أيام مفصولة بفاصلة، مثلاً 7,3,1 — أي منتج بيوصل لأحد هالحدود بيتعلّم تحت.",
+  saveThresholdsBtn:"حفظ",
+  alertsTitle:"قرّبت تخلص صلاحيتها",
+  noAlertsNow:"ما في شي وصل لحد التنبيه حاليًا.",
+  complianceTitle:"نشاط التسجيل حسب الموظف",
+  complianceSub:"كم منتج سجّل كل شخص.",
+  periodWeek:"هالأسبوع", periodMonth:"هالشهر",
+  itemsLoggedLabel:"منتج مسجّل",
+  filterByEmployee:"كل الموظفين",
+  expiryFilterCompany:"كل الشركات",
   loggingIn:"جارِ تسجيل الدخول…", signingUp:"جارِ إنشاء الحساب…",
   logoutConfirm:"تسجيل الخروج من هذا الجهاز؟",
   bootstrapManagerNote:"ما في حساب مدير لسا — تقدر تنشئ أول حساب مدير من هون.",
@@ -764,7 +849,17 @@ var S = {
   expiryForm: null,
   scanTarget: null,
   deleteTarget: null,
-  pendingQueue: []
+  pendingQueue: [],
+  trackForm: null,
+  trackedItems: [],
+  trackedItemsLoaded: false,
+  trackExpanded: {},
+  trackFilters: {company:"", employee:""},
+  trackContext: null,
+  catalogLookup: null,
+  thresholds: [7,3,1],
+  thresholdsLoaded: false,
+  thresholdsInput: "7,3,1"
 };
 
 function freshForm(){
@@ -813,6 +908,7 @@ function freshMerchForm(){
   };
 }
 S.merchForm = freshMerchForm();
+S.trackContext = {company: COMPANIES[0].id, branch:""};
 
 function t(k){ return STR[S.lang][k] || k; }
 
@@ -836,21 +932,26 @@ function updateDeptSwitch(){
   var h = document.getElementById("deptHandoverBtn");
   var m = document.getElementById("deptMerchBtn");
   var a = document.getElementById("deptAccountsBtn");
+  var x = document.getElementById("deptExpiryBtn");
   if(!S.currentUser) return;
   var role = S.currentUser.role;
   var canHandover = role === "manager" || role === "supervisor";
   var canMerch = role === "manager" || role === "merchandiser";
   var canAccounts = role === "manager";
+  var canExpiry = true;
   h.style.display = canHandover ? "" : "none";
   m.style.display = canMerch ? "" : "none";
   a.style.display = canAccounts ? "" : "none";
+  x.style.display = canExpiry ? "" : "none";
   h.textContent = t("deptHandoverLabel");
   m.textContent = t("deptMerchLabel");
   a.textContent = t("deptAccountsLabel");
+  x.textContent = t("deptExpiryLabel");
   h.classList.toggle("active", S.appMode === "handover");
   m.classList.toggle("active", S.appMode === "merch");
   a.classList.toggle("active", S.appMode === "accounts");
-  var visibleCount = (canHandover?1:0)+(canMerch?1:0)+(canAccounts?1:0);
+  x.classList.toggle("active", S.appMode === "expiry");
+  var visibleCount = (canHandover?1:0)+(canMerch?1:0)+(canAccounts?1:0)+(canExpiry?1:0);
   document.getElementById("deptbar").style.display = visibleCount > 1 ? "" : "none";
   var tf = document.getElementById("tabForm");
   var td = document.getElementById("tabDash");
@@ -860,6 +961,7 @@ function updateDeptSwitch(){
   } else {
     sub.style.display = "";
     if(S.appMode === "merch"){ tf.textContent = t("merchTabNew"); td.textContent = isManagerUser() ? t("merchTabLog") : t("myVisitsTab"); }
+    else if(S.appMode === "expiry"){ tf.textContent = t("expiryTabNew"); td.textContent = t("expiryTabItems"); }
     else { tf.textContent = t("tabForm"); td.textContent = isManagerUser() ? t("tabDash") : t("myShiftsTab"); }
   }
 }
@@ -1715,7 +1817,6 @@ function renderMerchForm(){
       '<div class="field"><label>'+t("date")+'</label><input type="date" id="m_date" value="'+esc(f.date)+'"></div>' +
       '<div class="field"><label>'+t("time")+'</label><input type="time" id="m_time" value="'+esc(f.time)+'"></div>' +
     '</div>' +
-    '<button type="button" class="btn btn-secondary" id="openScanBtn">'+ICONS.barcode+' '+t("scanBarcodeBtn")+'</button>' +
   '</div>';
 
   html += '<div class="card">' +
@@ -1759,7 +1860,6 @@ function wireMerchForm(){
   document.getElementById("m_displayNotes").oninput = function(){ f.display.notes = this.value; };
   document.getElementById("m_shortages").oninput = function(){ f.shortages = this.value; };
   document.getElementById("m_hasOrder").onchange = function(){ f.hasOrder = this.checked; renderMerchForm(); };
-  document.getElementById("openScanBtn").onclick = openScanner;
 
   Array.prototype.forEach.call(document.querySelectorAll("[data-mdisplay-status]"), function(btn){
     btn.onclick = function(){
@@ -1879,16 +1979,6 @@ function filteredMerchLogs(){
   });
 }
 
-function filteredExpiryItems(){
-  var cutoff = merchRangeCutoff();
-  return S.expiryItems.filter(function(l){
-    if(!isManagerUser() && (!S.currentUser || l.submittedByUserId !== S.currentUser.id)) return false;
-    if(S.merchFilters.company && l.company !== S.merchFilters.company) return false;
-    if(cutoff && new Date(l.createdAt) < cutoff) return false;
-    return true;
-  });
-}
-
 function renderMerchDashboard(){
   var companyOpts = '<option value="">'+t("filterAll")+'</option>' + COMPANIES.map(function(c){
     return '<option value="'+c.id+'"'+(S.merchFilters.company===c.id?" selected":"")+'>'+esc(S.lang==="ar"?c.ar:c.en)+'</option>';
@@ -1917,28 +2007,8 @@ function renderMerchDashboard(){
     list.forEach(function(l){ html += merchLogCard(l); });
   }
 
-  html += '<div class="section-title" style="margin:18px 0 6px;">'+t("expiryLogTitle")+'</div>';
-  var eList = filteredExpiryItems();
-  if(!S.expiryItemsLoaded){
-    html += '<div class="empty">'+t("loading")+'</div>';
-  } else if(!eList.length){
-    html += '<div class="empty">'+t("expiryLogEmpty")+'</div>';
-  } else {
-    html += '<div class="card">' + eList.map(expiryRow).join("") + '</div>';
-  }
-
   document.getElementById("main").innerHTML = html;
   wireMerchDashboard();
-}
-
-function expiryRow(l){
-  return '<div class="log-cat">' +
-    '<div class="log-cat-head"><b>'+esc(l.productName)+'</b><span class="hint">'+fmtDate(l.expiryDate)+'</span></div>' +
-    '<p class="log-note">'+esc(l.branch)+' · '+esc(companyName(l.company))+(l.qty?' · '+esc(l.qty):'')+'</p>' +
-    (l.notes ? '<p class="log-note">'+esc(l.notes)+'</p>' : '') +
-    '<p class="hint">'+t("visitedBy")+' '+esc(l.merchName)+' · '+fmtDateTime(l.createdAt)+'</p>' +
-    (isManagerUser() ? '<button type="button" class="link-btn" data-delete-expiry="'+l.id+'">'+ICONS.trash+' '+t("deleteEntry")+'</button>' : '') +
-  '</div>';
 }
 
 function merchLogCard(l){
@@ -1989,9 +2059,6 @@ function wireMerchDashboard(){
   Array.prototype.forEach.call(document.querySelectorAll("[data-delete-mlog]"), function(btn){
     btn.onclick = function(){ requestDelete("merch_visits", this.getAttribute("data-delete-mlog")); };
   });
-  Array.prototype.forEach.call(document.querySelectorAll("[data-delete-expiry]"), function(btn){
-    btn.onclick = function(){ requestDelete("product_expiry", this.getAttribute("data-delete-expiry")); };
-  });
 
   Array.prototype.forEach.call(document.querySelectorAll("[data-mtoggle]"), function(el){
     el.onclick = function(){
@@ -2006,6 +2073,14 @@ function wireMerchDashboard(){
 /* ================= AUTH ================= */
 
 function normalizeUsername(u){ return (u||"").trim().toLowerCase(); }
+
+function describeFirebaseError(err){
+  console.error("Firestore error:", err);
+  var code = err && err.code;
+  if(code === "permission-denied"){ return t("authErrPermission"); }
+  if(code === "unavailable" || code === "failed-precondition"){ return t("authErrOffline"); }
+  return t("authErrGeneric");
+}
 
 function hasManagerAccount(){
   return S.users.some(function(u){ return u.role === "manager"; });
@@ -2112,7 +2187,7 @@ function doLogin(){
       routeAfterAuth();
       render();
     });
-  }).catch(function(){ S.authBusy=false; S.authError = t("authErrGeneric"); render(); });
+  }).catch(function(err){ S.authBusy=false; S.authError = describeFirebaseError(err); render(); });
 }
 
 function doSignup(){
@@ -2143,9 +2218,9 @@ function doSignup(){
         try{ localStorage.setItem("sh_session_uid", ref.id); }catch(e){}
         routeAfterAuth();
         render();
-      }).catch(function(){ S.authBusy=false; S.authError = t("authErrGeneric"); render(); });
+      }).catch(function(err){ S.authBusy=false; S.authError = describeFirebaseError(err); render(); });
     });
-  }).catch(function(){ S.authBusy=false; S.authError = t("authErrGeneric"); render(); });
+  }).catch(function(err){ S.authBusy=false; S.authError = describeFirebaseError(err); render(); });
 }
 
 function restoreSession(){
@@ -2306,15 +2381,15 @@ function createAccount(){
         S.accountsError = "";
         toast(t("accountCreated"));
         renderAccounts();
-      }).catch(function(){ S.accountsError = t("authErrGeneric"); renderAccounts(); });
+      }).catch(function(err){ S.accountsError = describeFirebaseError(err); renderAccounts(); });
     });
-  }).catch(function(){ S.accountsError = t("authErrGeneric"); renderAccounts(); });
+  }).catch(function(err){ S.accountsError = describeFirebaseError(err); renderAccounts(); });
 }
 
 /* ================= DELETE CONFIRM ================= */
 
-function requestDelete(collectionName, id){
-  S.deleteTarget = {collection: collectionName, id: id};
+function requestDelete(collectionName, id, soft){
+  S.deleteTarget = {collection: collectionName, id: id, soft: !!soft};
   renderDeleteConfirm();
 }
 function closeDeleteConfirm(){
@@ -2324,11 +2399,12 @@ function closeDeleteConfirm(){
 function renderDeleteConfirm(){
   var host = document.getElementById("modalHost");
   if(!S.deleteTarget){ host.innerHTML=""; return; }
+  var isSoft = S.deleteTarget.soft;
   host.innerHTML = '<div class="modal-overlay" id="delOverlay">' +
     '<div class="modal-sheet">' +
-      '<div class="modal-head"><h2>'+t("deleteConfirmTitle")+'</h2>' +
+      '<div class="modal-head"><h2>'+(isSoft ? t("deleteProductConfirmTitle") : t("deleteConfirmTitle"))+'</h2>' +
         '<button type="button" class="modal-close" id="delCloseBtn">'+ICONS.close+'</button></div>' +
-      '<p class="modal-sub">'+t("deleteConfirmSub")+'</p>' +
+      '<p class="modal-sub">'+(isSoft ? t("deleteProductConfirmSub") : t("deleteConfirmSub"))+'</p>' +
       '<button type="button" class="btn btn-danger" id="delConfirmBtn">'+t("deleteConfirmBtn")+'</button>' +
     '</div>' +
   '</div>';
@@ -2337,32 +2413,287 @@ function renderDeleteConfirm(){
   document.getElementById("delConfirmBtn").onclick = function(){
     var target = S.deleteTarget;
     if(!target || !S.db) return;
-    S.db.doc(target.collection+"/"+target.id).delete().then(function(){
-      closeDeleteConfirm();
-      toast(t("deleted"));
-    }).catch(function(){ toast(t("connError")); });
+    if(target.soft){
+      var user = S.currentUser;
+      var who = {userId: user ? user.id : null, username: user ? user.username : "", fullName: user ? user.fullName : ""};
+      var nowIso = new Date().toISOString();
+      S.db.doc(target.collection+"/"+target.id).update({
+        status: "deleted",
+        deletedInfo: Object.assign({at: nowIso}, who),
+        history: firebase.firestore.FieldValue.arrayUnion({action:"deleted", userId:who.userId, username:who.username, fullName:who.fullName, at: nowIso})
+      }).then(function(){
+        closeDeleteConfirm();
+        toast(t("deleted"));
+      }).catch(function(){ toast(t("connError")); });
+    } else {
+      S.db.doc(target.collection+"/"+target.id).delete().then(function(){
+        closeDeleteConfirm();
+        toast(t("deleted"));
+      }).catch(function(){ toast(t("connError")); });
+    }
   };
 }
 
-/* ================= BARCODE SCANNER / EXPIRY LOG ================= */
+/* ================= EXPIRY CONTROL: dashboard, catalog, alerts ================= */
 
-function freshExpiryForm(barcode){
-  return {barcode: barcode || "", productName:"", expiryDate:"", qty:"", notes:""};
+function computeDaysLeft(expiryDate){
+  var today = new Date(); today.setHours(0,0,0,0);
+  var exp = new Date(expiryDate + "T00:00:00");
+  return Math.round((exp - today) / 86400000);
 }
 
-function subscribeExpiryItems(){
+function daysLeftTag(days){
+  if(days < 0) return {cls:"badge-issues", label:t("expiredTag")};
+  if(days === 0) return {cls:"badge-issues", label:t("expiresTodayTag")};
+  if(days === 1) return {cls:"badge-pending", label:t("dayLeftLabel")};
+  var minThr = S.thresholds.length ? Math.min.apply(null, S.thresholds) : 7;
+  return {cls: days <= minThr ? "badge-pending" : "badge-neutral", label: days + " " + t("daysLeftLabel")};
+}
+
+function subscribeTrackedItems(){
   if(!S.db) return;
-  S.db.collection("product_expiry").orderBy("createdAt","desc").limit(300).onSnapshot(function(snap){
-    S.expiryItems = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data() || {}); });
-    S.expiryItemsLoaded = true;
-    if(S.appMode === "merch" && S.view === "dashboard") renderMerchDashboard();
-  }, function(){
-    S.expiryItemsLoaded = true;
+  S.db.collection("expiry_items").orderBy("expiryDate","asc").limit(500).onSnapshot(function(snap){
+    S.trackedItems = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data() || {}); });
+    S.trackedItemsLoaded = true;
+    if(S.appMode === "expiry" && S.view === "dashboard") renderTrackedDashboard();
+  }, function(){ S.trackedItemsLoaded = true; });
+}
+
+function subscribeThresholds(){
+  if(!S.db) return;
+  S.db.doc("settings/expiry").onSnapshot(function(snap){
+    S.thresholdsLoaded = true;
+    if(snap.exists && Array.isArray(snap.data().days) && snap.data().days.length){
+      S.thresholds = snap.data().days;
+      S.thresholdsInput = S.thresholds.join(",");
+    }
+    if(S.appMode === "expiry" && S.view === "dashboard") renderTrackedDashboard();
+  }, function(){ S.thresholdsLoaded = true; });
+}
+
+function renderTrackForm(){
+  var companyOpts = COMPANIES.map(function(c){
+    return '<option value="'+c.id+'"'+(S.trackContext.company===c.id?" selected":"")+'>'+esc(S.lang==="ar"?c.ar:c.en)+'</option>';
+  }).join("");
+  var html = '<div class="card">' +
+    '<div class="section-title">'+t("locationDetailsTitle")+'</div>' +
+    '<div class="field"><label>'+t("company")+'</label><select id="tc_company">'+companyOpts+'</select></div>' +
+    '<div class="field"><label>'+t("branch")+'</label><input type="text" id="tc_branch" placeholder="'+t("branchPh")+'" value="'+esc(S.trackContext.branch)+'"></div>' +
+  '</div>';
+  html += '<div class="card" style="text-align:center; padding:32px 20px;">' +
+    '<div class="locked-icon" style="color:var(--teal);">'+ICONS.barcode+'</div>' +
+    '<div class="section-title" style="margin-bottom:6px;">'+t("scanProductBtn")+'</div>' +
+    '<p class="section-sub" style="margin-bottom:16px;">'+t("scanIntroSub")+'</p>' +
+    '<button type="button" class="btn btn-primary" id="openScanBtn2" style="width:auto; padding-inline:28px;">'+ICONS.barcode+' '+t("scanProductBtn")+'</button>' +
+  '</div>';
+  document.getElementById("main").innerHTML = html;
+  document.getElementById("tc_company").onchange = function(){ S.trackContext.company = this.value; applyBrand(this.value); };
+  document.getElementById("tc_branch").oninput = function(){ S.trackContext.branch = this.value; };
+  document.getElementById("openScanBtn2").onclick = openScanner;
+}
+
+function filteredTrackedItems(){
+  return S.trackedItems.filter(function(l){
+    if(l.status === "deleted") return false;
+    if(S.trackFilters.company && l.company !== S.trackFilters.company) return false;
+    if(S.trackFilters.employee && (l.createdBy||{}).userId !== S.trackFilters.employee) return false;
+    return true;
   });
 }
 
+function alertItems(){
+  var thr = S.thresholds.slice().sort(function(a,b){return a-b;});
+  var maxThr = thr.length ? thr[thr.length-1] : 7;
+  return filteredTrackedItems().filter(function(l){
+    var d = computeDaysLeft(l.expiryDate);
+    return d <= maxThr;
+  }).sort(function(a,b){ return computeDaysLeft(a.expiryDate) - computeDaysLeft(b.expiryDate); });
+}
+
+function complianceReport(periodDays){
+  var cutoff = new Date(Date.now() - periodDays*86400000);
+  var counts = {};
+  S.trackedItems.forEach(function(l){
+    if(new Date(l.createdAt) < cutoff) return;
+    var by = l.createdBy || {};
+    var key = by.userId || by.username || "?";
+    if(!counts[key]) counts[key] = {name: by.fullName || by.username || "—", count:0};
+    counts[key].count++;
+  });
+  return Object.keys(counts).map(function(k){ return counts[k]; }).sort(function(a,b){ return b.count - a.count; });
+}
+
+function renderTrackedDashboard(){
+  var html = "";
+
+  if(isManagerUser()){
+    var eList = alertItems();
+    html += '<div class="card">' +
+      '<div class="section-title">'+t("alertsTitle")+'</div>';
+    if(!eList.length){
+      html += '<p class="section-sub" style="margin-top:6px;">'+t("noAlertsNow")+'</p>';
+    } else {
+      html += eList.map(function(l){
+        var d = computeDaysLeft(l.expiryDate);
+        var tag = daysLeftTag(d);
+        return '<div class="alert-row">' +
+          (l.image ? '<img class="item-thumb" src="'+esc(l.image)+'">' : '<div class="item-thumb"></div>') +
+          '<div style="flex:1; min-width:0;"><b style="font-size:13px; display:block;">'+esc(l.productName)+'</b>' +
+          '<span class="hint">'+esc(l.branch)+' · '+esc(l.qty)+'</span></div>' +
+          '<span class="badge '+tag.cls+'">'+tag.label+'</span>' +
+        '</div>';
+      }).join("");
+    }
+    html += '</div>';
+
+    html += '<div class="card">' +
+      '<div class="section-title">'+t("thresholdsTitle")+'</div>' +
+      '<div class="section-sub">'+t("thresholdsSub")+'</div>' +
+      '<div class="field"><input type="text" id="thresholdsInput" value="'+esc(S.thresholdsInput)+'"></div>' +
+      '<button type="button" class="btn btn-secondary" id="saveThresholdsBtn" style="width:auto; padding-inline:18px;">'+t("saveThresholdsBtn")+'</button>' +
+    '</div>';
+
+    var compWeek = complianceReport(7);
+    html += '<div class="card">' +
+      '<div class="section-title">'+t("complianceTitle")+'</div>' +
+      '<div class="section-sub">'+t("complianceSub")+' — '+t("periodWeek")+'</div>';
+    if(!compWeek.length){
+      html += '<p class="hint">'+t("itemsEmptyState")+'</p>';
+    } else {
+      html += compWeek.map(function(c){
+        return '<div class="compliance-row"><span>'+esc(c.name)+'</span><b>'+c.count+' '+t("itemsLoggedLabel")+'</b></div>';
+      }).join("");
+    }
+    html += '</div>';
+  }
+
+  var companyOpts = '<option value="">'+t("expiryFilterCompany")+'</option>' + COMPANIES.map(function(c){
+    return '<option value="'+c.id+'"'+(S.trackFilters.company===c.id?" selected":"")+'>'+esc(S.lang==="ar"?c.ar:c.en)+'</option>';
+  }).join("");
+  var employeeOpts = '<option value="">'+t("filterByEmployee")+'</option>' + S.users.map(function(u){
+    return '<option value="'+u.id+'"'+(S.trackFilters.employee===u.id?" selected":"")+'>'+esc(u.fullName)+'</option>';
+  }).join("");
+  html += '<div class="filters">' +
+    '<select id="tfilt_company">'+companyOpts+'</select>' +
+    (isManagerUser() ? '<select id="tfilt_employee">'+employeeOpts+'</select>' : '') +
+  '</div>';
+
+  var list = filteredTrackedItems();
+  if(!S.trackedItemsLoaded){
+    html += '<div class="empty">'+t("loading")+'</div>';
+  } else if(!list.length){
+    html += '<div class="empty">'+t("itemsEmptyState")+'</div>';
+  } else {
+    list.forEach(function(l){ html += trackedItemCard(l); });
+  }
+
+  document.getElementById("main").innerHTML = html;
+  wireTrackedDashboard();
+}
+
+function trackedItemCard(l){
+  var open = !!S.trackExpanded[l.id];
+  var d = computeDaysLeft(l.expiryDate);
+  var tag = daysLeftTag(d);
+  var head = '<div class="log-head" data-ttoggle="'+l.id+'">' +
+    (l.image ? '<img class="item-thumb" src="'+esc(l.image)+'">' : '<div class="item-thumb"></div>') +
+    '<div class="info" style="flex:1; min-width:0;">' +
+      '<b>'+esc(l.productName)+'</b>' +
+      '<span>'+esc(l.branch)+' · '+esc(companyName(l.company))+' · '+esc(l.qty)+'</span>' +
+    '</div>' +
+    '<div class="log-head-right"><span class="badge '+tag.cls+'">'+tag.label+'</span><span class="log-chevron">'+ICONS.chevron+'</span></div>' +
+  '</div>';
+
+  var body = "";
+  if(open){
+    body += '<div class="log-body">';
+    body += '<p class="log-note">'+t("productSizeLabel")+': '+esc(l.size||"—")+' · '+t("productSupplierLabel")+': '+esc(l.supplier||"—")+'</p>';
+    body += '<p class="log-note">'+t("trackExpiryLabel")+': '+fmtDate(l.expiryDate)+'</p>';
+    body += '<p class="hint">'+t("scannedByLabel")+' '+esc((l.createdBy||{}).fullName||"—")+' · '+fmtDateTime(l.createdAt)+'</p>';
+
+    body += '<div class="log-cat"><div class="log-cat-head"><b>'+t("historyTitle")+'</b></div>';
+    (l.history||[]).forEach(function(h){
+      var actionLabel = h.action === "created" ? t("historyCreated") : h.action === "deleted" ? t("historyDeleted") : (t("historyQtyUpdate")+" "+h.qty);
+      body += '<p class="log-note">'+actionLabel+' — '+esc(h.fullName||h.username||"—")+' · '+fmtDateTime(h.at)+'</p>';
+    });
+    body += '</div>';
+
+    body += '<div class="field" style="margin-top:10px;"><input type="text" placeholder="'+t("newQtyPh")+'" id="qty_'+l.id+'"></div>';
+    body += '<button type="button" class="btn btn-secondary" data-update-qty="'+l.id+'">'+t("updateQtyBtn")+'</button>';
+
+    if(isManagerUser()){
+      body += '<button type="button" class="btn btn-danger" data-delete-track="'+l.id+'" style="margin-top:10px;">'+ICONS.trash+' '+t("deleteProductBtn")+'</button>';
+    }
+    body += '</div>';
+  }
+  return '<div class="log-card'+(open?" open":"")+'">'+head+body+'</div>';
+}
+
+function wireTrackedDashboard(){
+  var fc = document.getElementById("tfilt_company");
+  if(fc) fc.onchange = function(){ S.trackFilters.company = this.value; renderTrackedDashboard(); };
+  var fe = document.getElementById("tfilt_employee");
+  if(fe) fe.onchange = function(){ S.trackFilters.employee = this.value; renderTrackedDashboard(); };
+
+  var saveThr = document.getElementById("saveThresholdsBtn");
+  if(saveThr) saveThr.onclick = function(){
+    var raw = document.getElementById("thresholdsInput").value;
+    var nums = raw.split(",").map(function(s){ return parseInt(s.trim(),10); }).filter(function(n){ return !isNaN(n) && n >= 0; });
+    if(!nums.length){ toast(t("productReqError")); return; }
+    S.thresholds = nums;
+    S.thresholdsInput = nums.join(",");
+    if(S.db){
+      S.db.doc("settings/expiry").set({days: nums}, {merge:true}).then(function(){
+        toast(t("accountUpdated"));
+      }).catch(function(){ toast(t("connError")); });
+    }
+  };
+
+  Array.prototype.forEach.call(document.querySelectorAll("[data-ttoggle]"), function(el){
+    el.onclick = function(){
+      var id = this.getAttribute("data-ttoggle");
+      S.trackExpanded[id] = !S.trackExpanded[id];
+      renderTrackedDashboard();
+    };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-update-qty]"), function(btn){
+    btn.onclick = function(){
+      var id = this.getAttribute("data-update-qty");
+      var inp = document.getElementById("qty_"+id);
+      var newQty = inp.value.trim();
+      if(!newQty) return;
+      var user = S.currentUser;
+      var who = {userId: user ? user.id : null, username: user ? user.username : "", fullName: user ? user.fullName : ""};
+      var nowIso = new Date().toISOString();
+      S.db.doc("expiry_items/"+id).update({
+        qty: newQty, updatedAt: nowIso,
+        history: firebase.firestore.FieldValue.arrayUnion({action:"qty_updated", qty:newQty, userId:who.userId, username:who.username, fullName:who.fullName, at:nowIso})
+      }).then(function(){ toast(t("accountUpdated")); }).catch(function(){ toast(t("connError")); });
+    };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-delete-track]"), function(btn){
+    btn.onclick = function(){ requestDelete("expiry_items", this.getAttribute("data-delete-track"), true); };
+  });
+}
+
+
+
+function freshTrackForm(barcode, catalogData){
+  return {
+    barcode: barcode || "",
+    productName: catalogData ? (catalogData.name || "") : "",
+    image: catalogData && catalogData.image ? {id:catalogData.image, url:catalogData.image} : null,
+    size: catalogData ? (catalogData.size || "") : "",
+    supplier: catalogData ? (catalogData.supplier || "") : "",
+    qty: "",
+    expiryDate: "",
+    company: S.trackContext.company,
+    branch: S.trackContext.branch
+  };
+}
+
 function openScanner(){
-  S.scanTarget = {stage:"camera", qr:null, barcode:""};
+  S.scanTarget = {stage:"camera", qr:null, barcode:"", foundInCatalog:false};
   renderScanner();
   startCameraScan();
 }
@@ -2398,15 +2729,28 @@ function startCameraScan(){
     function(decodedText){
       if(!S.scanTarget) return;
       stopCameraScan();
-      S.scanTarget.stage = "form";
-      S.scanTarget.barcode = decodedText;
-      S.expiryForm = freshExpiryForm(decodedText);
-      renderScanner();
+      lookupCatalogAndOpenForm(decodedText);
     },
     function(){ /* per-frame scan miss — ignore */ }
   ).catch(function(){
     if(S.scanTarget){ S.scanTarget.qr = null; S.scanTarget.stage = "denied"; renderScanner(); }
   });
+}
+
+function lookupCatalogAndOpenForm(barcode){
+  S.scanTarget.stage = "loading";
+  S.scanTarget.barcode = barcode;
+  renderScanner();
+  var proceed = function(catalogData, found){
+    S.trackForm = freshTrackForm(barcode, catalogData);
+    S.scanTarget.stage = "form";
+    S.scanTarget.foundInCatalog = found;
+    renderScanner();
+  };
+  if(!S.db){ proceed(null, false); return; }
+  S.db.doc("catalog/"+encodeURIComponent(barcode)).get().then(function(snap){
+    if(snap.exists){ proceed(snap.data(), true); } else { proceed(null, false); }
+  }).catch(function(){ proceed(null, false); });
 }
 
 function renderScanner(){
@@ -2432,19 +2776,30 @@ function renderScanner(){
         '<div class="field"><label>'+t("barcodeLabel")+'</label><input type="text" id="manualBarcode" placeholder="'+t("barcodeManualPh")+'"></div>' +
         '<button type="button" class="btn btn-primary" id="manualBarcodeNextBtn">'+t("scanAnotherBtn")+'</button>' +
       '</div>';
+  } else if(stage === "loading"){
+    html += '<div style="flex:1; display:flex; align-items:center; justify-content:center;"><p style="color:#fff; font-size:13.5px;">'+t("loading")+'</p></div>';
   } else if(stage === "form"){
-    var ef = S.expiryForm;
-    html += '<div style="flex:1;"></div>' +
+    var tf = S.trackForm;
+    var photoHtml = tf.image ?
+      '<div class="photo-thumb" style="width:80px; height:80px;"><img src="'+esc(tf.image.url)+'" alt=""><button class="rm" type="button" id="trackImgRm">'+ICONS.close+'</button></div>' :
+      (S.canWriteAssets ? '<label class="photo-add" style="width:80px; height:80px;">'+ICONS.plus+'<input type="file" accept="image/*" capture="environment" id="trackImgAdd"></label>' : '');
+    html += '<div style="flex:1; overflow-y:auto;">' +
       '<div class="scanner-form">' +
-        '<div class="field"><label>'+t("barcodeLabel")+'</label><input type="text" value="'+esc(ef.barcode)+'" disabled></div>' +
-        '<div class="field"><label>'+t("expiryProductName")+'</label><input type="text" id="ef_name" placeholder="'+t("expiryProductPh")+'" value="'+esc(ef.productName)+'"></div>' +
+        '<p class="hint" style="color:var(--teal); font-weight:600;">'+(S.scanTarget.foundInCatalog ? t("productFoundInCatalog") : t("productNotInCatalog"))+'</p>' +
+        '<div class="field"><label>'+t("barcodeLabel")+'</label><input type="text" value="'+esc(tf.barcode)+'" disabled></div>' +
+        '<div class="field"><label>'+t("productImageLabel")+'</label>' + photoHtml + '</div>' +
+        '<div class="field"><label>'+t("productNameLabel")+'</label><input type="text" id="tf_name" placeholder="'+t("productNamePh")+'" value="'+esc(tf.productName)+'"></div>' +
         '<div class="grid-2">' +
-          '<div class="field"><label>'+t("expiryDateLabel")+'</label><input type="date" id="ef_date" value="'+esc(ef.expiryDate)+'"></div>' +
-          '<div class="field"><label>'+t("expiryQtyLabel")+'</label><input type="text" id="ef_qty" placeholder="'+t("expiryQtyPh")+'" value="'+esc(ef.qty)+'"></div>' +
+          '<div class="field"><label>'+t("productSizeLabel")+'</label><input type="text" id="tf_size" placeholder="'+t("productSizePh")+'" value="'+esc(tf.size)+'"></div>' +
+          '<div class="field"><label>'+t("productSupplierLabel")+'</label><input type="text" id="tf_supplier" placeholder="'+t("productSupplierPh")+'" value="'+esc(tf.supplier)+'"></div>' +
         '</div>' +
-        '<div class="field"><textarea id="ef_notes" placeholder="'+t("expiryNotesPh")+'">'+esc(ef.notes)+'</textarea></div>' +
-        '<button type="button" class="btn btn-primary" id="saveExpiryBtn">'+t("saveExpiryBtn")+'</button>' +
-      '</div>';
+        '<div class="grid-2">' +
+          '<div class="field"><label>'+t("trackQtyLabel")+'</label><input type="text" id="tf_qty" placeholder="'+t("trackQtyPh")+'" value="'+esc(tf.qty)+'"></div>' +
+          '<div class="field"><label>'+t("trackExpiryLabel")+'</label><input type="date" id="tf_expiry" value="'+esc(tf.expiryDate)+'"></div>' +
+        '</div>' +
+        '<button type="button" class="btn btn-primary" id="saveTrackBtn">'+t("saveProductBtn")+'</button>' +
+      '</div>' +
+    '</div>';
   }
   html += '</div>';
   host.innerHTML = html;
@@ -2464,37 +2819,64 @@ function wireScanner(){
   if(stage === "manual"){
     document.getElementById("manualBarcodeNextBtn").onclick = function(){
       var val = document.getElementById("manualBarcode").value.trim();
-      S.scanTarget.barcode = val;
-      S.expiryForm = freshExpiryForm(val);
-      S.scanTarget.stage = "form";
-      renderScanner();
+      if(!val) return;
+      lookupCatalogAndOpenForm(val);
     };
   }
   if(stage === "form"){
-    document.getElementById("ef_name").oninput = function(){ S.expiryForm.productName = this.value; };
-    document.getElementById("ef_date").onchange = function(){ S.expiryForm.expiryDate = this.value; };
-    document.getElementById("ef_qty").oninput = function(){ S.expiryForm.qty = this.value; };
-    document.getElementById("ef_notes").oninput = function(){ S.expiryForm.notes = this.value; };
-    document.getElementById("saveExpiryBtn").onclick = submitExpiryItem;
+    var tf = S.trackForm;
+    document.getElementById("tf_name").oninput = function(){ tf.productName = this.value; };
+    document.getElementById("tf_size").oninput = function(){ tf.size = this.value; };
+    document.getElementById("tf_supplier").oninput = function(){ tf.supplier = this.value; };
+    document.getElementById("tf_qty").oninput = function(){ tf.qty = this.value; };
+    document.getElementById("tf_expiry").onchange = function(){ tf.expiryDate = this.value; };
+    var imgAdd = document.getElementById("trackImgAdd");
+    if(imgAdd) imgAdd.onchange = function(){
+      var file = this.files && this.files[0];
+      if(!file || !S.assets) return;
+      S.assets.upload(file).then(function(res){
+        tf.image = {id:res.id, url:res.url};
+        renderScanner();
+      }).catch(function(){ toast(t("connError")); });
+    };
+    var imgRm = document.getElementById("trackImgRm");
+    if(imgRm) imgRm.onclick = function(){ tf.image = null; renderScanner(); };
+    document.getElementById("saveTrackBtn").onclick = submitTrackedProduct;
   }
 }
 
-function submitExpiryItem(){
-  var ef = S.expiryForm;
-  if(!ef.productName.trim() || !ef.expiryDate){
-    toast(t("expiryReqError"));
+function submitTrackedProduct(){
+  var tf = S.trackForm;
+  if(!tf.barcode || !tf.productName.trim() || !tf.qty.toString().trim() || !tf.expiryDate){
+    toast(t("productReqError"));
     return;
   }
+  var user = S.currentUser;
+  var who = {userId: user ? user.id : null, username: user ? user.username : "", fullName: user ? user.fullName : ""};
+  var nowIso = new Date().toISOString();
+
+  if(S.db){
+    S.db.doc("catalog/"+encodeURIComponent(tf.barcode)).set({
+      barcode: tf.barcode, name: tf.productName.trim(),
+      image: tf.image ? tf.image.url : null,
+      size: tf.size.trim(), supplier: tf.supplier.trim(),
+      updatedAt: nowIso
+    }, {merge:true}).catch(function(){});
+  }
+
   var doc = {
-    barcode: ef.barcode, productName: ef.productName.trim(), expiryDate: ef.expiryDate,
-    qty: ef.qty.trim(), notes: ef.notes.trim(),
-    company: S.merchForm.company, branch: S.merchForm.branch,
-    merchName: S.currentUser ? S.currentUser.fullName : "",
-    submittedByUserId: S.currentUser ? S.currentUser.id : null,
-    createdAt: new Date().toISOString()
+    barcode: tf.barcode, productName: tf.productName.trim(),
+    image: tf.image ? tf.image.url : null,
+    size: tf.size.trim(), supplier: tf.supplier.trim(),
+    qty: tf.qty.toString().trim(), expiryDate: tf.expiryDate,
+    company: tf.company, branch: tf.branch,
+    status: "active",
+    createdBy: who, createdAt: nowIso, updatedAt: nowIso,
+    history: [{action:"created", qty: tf.qty.toString().trim(), expiryDate: tf.expiryDate, userId: who.userId, username: who.username, fullName: who.fullName, at: nowIso}]
   };
-  saveOrQueue("product_expiry", doc, function(queued){
-    toast(queued ? t("offlineSavedToast") : t("expirySaved"));
+
+  saveOrQueue("expiry_items", doc, function(queued){
+    toast(queued ? t("offlineSavedToast") : t("productSavedToast"));
     S.scanTarget.stage = "camera";
     S.scanTarget.barcode = "";
     renderScanner();
@@ -2537,6 +2919,9 @@ function render(){
   } else if(S.appMode === "merch"){
     applyBrand(S.view === "dashboard" ? (S.merchFilters.company || S.merchForm.company) : S.merchForm.company);
     if(S.view === "form") renderMerchForm(); else renderMerchDashboard();
+  } else if(S.appMode === "expiry"){
+    applyBrand(S.view === "dashboard" ? (S.trackFilters.company || S.trackContext.company) : S.trackContext.company);
+    if(S.view === "form") renderTrackForm(); else renderTrackedDashboard();
   } else {
     applyBrand(S.view === "dashboard" ? (S.filters.company || S.form.company) : S.form.company);
     if(S.view === "form") renderForm(); else renderDashboard();
@@ -2559,6 +2944,7 @@ document.getElementById("logoutBtn").onclick = function(){
 document.getElementById("deptHandoverBtn").onclick = function(){ S.appMode = "handover"; S.view = "form"; render(); };
 document.getElementById("deptMerchBtn").onclick = function(){ S.appMode = "merch"; S.view = "form"; render(); };
 document.getElementById("deptAccountsBtn").onclick = function(){ S.appMode = "accounts"; render(); };
+document.getElementById("deptExpiryBtn").onclick = function(){ S.appMode = "expiry"; S.view = "form"; render(); };
 
 function resolvePhotoUrls(doc){
   ["cash","inventory","cleanliness"].forEach(function(k){
@@ -2631,7 +3017,8 @@ function boot(){
     subscribeLogs();
     subscribeMerchLogs();
     subscribeUsers();
-    subscribeExpiryItems();
+    subscribeTrackedItems();
+    subscribeThresholds();
     restoreSession();
     trySyncQueue();
   } else {
