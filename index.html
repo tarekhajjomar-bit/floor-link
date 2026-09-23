@@ -2723,11 +2723,29 @@ function startCameraScan(){
     renderScanner();
     return;
   }
-  var qr = new Html5Qrcode("qrReaderDiv");
+  // Restrict detection to real product barcode formats (instead of also
+  // checking QR/Aztec/PDF417/DataMatrix/etc on every frame) and use the
+  // browser's native hardware-accelerated barcode detector where the
+  // device supports it — both make recognition noticeably faster.
+  var qrConfig = {verbose:false};
+  if(typeof Html5QrcodeSupportedFormats !== "undefined"){
+    qrConfig.formatsToSupport = [
+      Html5QrcodeSupportedFormats.EAN_13,
+      Html5QrcodeSupportedFormats.EAN_8,
+      Html5QrcodeSupportedFormats.UPC_A,
+      Html5QrcodeSupportedFormats.UPC_E,
+      Html5QrcodeSupportedFormats.CODE_128,
+      Html5QrcodeSupportedFormats.CODE_39,
+      Html5QrcodeSupportedFormats.ITF,
+      Html5QrcodeSupportedFormats.QR_CODE
+    ];
+  }
+  qrConfig.experimentalFeatures = {useBarCodeDetectorIfSupported:true};
+  var qr = new Html5Qrcode("qrReaderDiv", qrConfig);
   S.scanTarget.qr = qr;
   qr.start(
     {facingMode:"environment"},
-    {fps:10, qrbox:{width:260, height:160}},
+    {fps:15, qrbox:{width:280, height:140}, disableFlip:true},
     function(decodedText){
       if(!S.scanTarget) return;
       stopCameraScan();
