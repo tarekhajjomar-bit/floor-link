@@ -467,6 +467,9 @@ en:{
   submit:"Submit handover", submitting:"Saving…",
   reqError:"Please fill in branch, both supervisor names, and the date before submitting.",
   reqErrorSolo:"Please fill in branch, the supervisor name, and the date before submitting.",
+  merchDeptLabel:"Department", merchDeptPh:"Select department",
+  authErrDeptRequired:"Please select a department for this merchandiser.",
+  colDepartment:"Department",
   savedToast:"Handover saved.",
   filterAll:"All companies", filterAllBranch:"All branches", filterAllStatus:"All statuses",
   today:"Today", last7:"Last 7 days", last30:"Last 30 days", allTime:"All time",
@@ -651,6 +654,9 @@ ar:{
   submit:"إرسال التسليم", submitting:"جارِ الحفظ…",
   reqError:"يرجى تعبئة الفرع، اسمي المشرفين، والتاريخ قبل الإرسال.",
   reqErrorSolo:"يرجى تعبئة الفرع، اسم المشرف، والتاريخ قبل الإرسال.",
+  merchDeptLabel:"القسم", merchDeptPh:"اختر القسم",
+  authErrDeptRequired:"يرجى اختيار قسم لهذا المارشندايزر.",
+  colDepartment:"القسم",
   savedToast:"تم حفظ التسليم.",
   filterAll:"كل الشركات", filterAllBranch:"كل الفروع", filterAllStatus:"كل الحالات",
   today:"اليوم", last7:"آخر 7 أيام", last30:"آخر 30 يومًا", allTime:"كل الفترات",
@@ -803,7 +809,19 @@ ar:{
 
 var COMPANIES = [
   {id:"shoppies", en:"Shoppies", ar:"شوبيز"},
-  {id:"omar", en:"Omar Al Hajj Omar & Sons", ar:"عمر الحاج عمر وأولاده"}
+  {id:"omar_mina", en:"Omar Al Hajj Omar — Mina Branch", ar:"عمر الحاج عمر — فرع الميناء"},
+  {id:"omar_abrin", en:"Omar Al Hajj Omar — Abrin Branch", ar:"عمر الحاج عمر — فرع عبرين"}
+];
+
+var MERCH_DEPARTMENTS = [
+  {id:"food", en:"Food", ar:"فود"},
+  {id:"nonfood", en:"Non-Food", ar:"نون فود"},
+  {id:"food2", en:"Food 2 & Frozen Fries", ar:"فود ٢ و فرايز"},
+  {id:"juice_chips_fridge", en:"Juice & Chips Fridge", ar:"براد العصير والتشيبس"},
+  {id:"chocolate", en:"Chocolate & Ice Cream", ar:"شوكولا و بوظة"},
+  {id:"chicken_eggs_fridge", en:"Chicken & Eggs Fridge", ar:"براد الدجاج والبيض"},
+  {id:"dairy_cheese_selfservice_fridge", en:"Dairy, Cheese & Self Service Fridge", ar:"براد الألبان والأجبان وسيلف سيرفس"},
+  {id:"bakery_sweets", en:"Bakery & Sweets", ar:"مخبوزات و حلويات"}
 ];
 
 var REQUIRED_PHOTO_KEYS = ["chicken","cheese","olives","eggs","breadSelfService"];
@@ -840,7 +858,7 @@ var S = {
   authView: "login",
   authError: "",
   loginForm: {username:"", password:""},
-  signupForm: {fullName:"", contact:"", username:"", password:"", confirmPassword:"", role:"supervisor"},
+  signupForm: {fullName:"", contact:"", username:"", password:"", confirmPassword:"", role:"supervisor", department:""},
   users: [],
   usersLoaded: false,
   accountsError: "",
@@ -1116,13 +1134,20 @@ function hashPw(pw){
 }
 
 
+function brandKeyFor(companyId){
+  if(companyId === "shoppies") return "shoppies";
+  if(companyId === "omar_mina" || companyId === "omar_abrin") return "omar";
+  return null;
+}
+
 function applyBrand(companyId){
   var mark = document.getElementById("brandMark");
   var watermark = document.getElementById("headerWatermark");
-  if(companyId === "shoppies" || companyId === "omar"){
-    document.documentElement.setAttribute("data-brand", companyId);
-    if(mark) mark.innerHTML = '<img src="'+LOGO_URIS[companyId]+'" alt="">';
-    if(watermark){ watermark.src = LOGO_URIS[companyId]; watermark.style.opacity = ".16"; }
+  var brandKey = brandKeyFor(companyId);
+  if(brandKey){
+    document.documentElement.setAttribute("data-brand", brandKey);
+    if(mark) mark.innerHTML = '<img src="'+LOGO_URIS[brandKey]+'" alt="">';
+    if(watermark){ watermark.src = LOGO_URIS[brandKey]; watermark.style.opacity = ".16"; }
   } else {
     document.documentElement.removeAttribute("data-brand");
     if(mark) mark.innerHTML = '<span>SH</span>';
@@ -2127,6 +2152,10 @@ function renderSignupForm(){
       '<div class="field"><label>'+t("fullNameLabel")+'</label><input type="text" id="a_fullName" placeholder="'+t("fullNamePh")+'" value="'+esc(f.fullName)+'"></div>' +
       '<div class="field"><label>'+t("contactLabel")+'</label><input type="text" id="a_contact" placeholder="'+t("contactPh")+'" value="'+esc(f.contact)+'"></div>' +
       '<div class="field"><label>'+t("roleLabel")+'</label><select id="a_role">'+roleOpts+'</select></div>' +
+      (f.role === "merchandiser" ? '<div class="field"><label>'+t("merchDeptLabel")+'</label><select id="a_dept">' +
+        '<option value="">'+t("merchDeptPh")+'</option>' +
+        MERCH_DEPARTMENTS.map(function(d){ return '<option value="'+d.id+'"'+(f.department===d.id?" selected":"")+'>'+esc(S.lang==="ar"?d.ar:d.en)+'</option>'; }).join("") +
+      '</select></div>' : '') +
       '<div class="field"><label>'+t("usernameLabel")+'</label><input type="text" id="a_username2" autocomplete="username" placeholder="'+t("usernamePh")+'" value="'+esc(f.username)+'"></div>' +
       '<div class="field"><label>'+t("passwordLabel")+'</label><input type="password" id="a_password2" autocomplete="new-password" placeholder="'+t("passwordPh")+'" value="'+esc(f.password)+'"></div>' +
       '<div class="field"><label>'+t("confirmPasswordLabel")+'</label><input type="password" id="a_confirmPw" autocomplete="new-password" value="'+esc(f.confirmPassword)+'"></div>' +
@@ -2145,7 +2174,9 @@ function wireAuthScreen(){
   } else {
     document.getElementById("a_fullName").oninput = function(){ S.signupForm.fullName = this.value; };
     document.getElementById("a_contact").oninput = function(){ S.signupForm.contact = this.value; };
-    document.getElementById("a_role").onchange = function(){ S.signupForm.role = this.value; };
+    document.getElementById("a_role").onchange = function(){ S.signupForm.role = this.value; renderAuthScreen(); };
+    var deptSel = document.getElementById("a_dept");
+    if(deptSel) deptSel.onchange = function(){ S.signupForm.department = this.value; };
     document.getElementById("a_username2").oninput = function(){ S.signupForm.username = this.value; };
     document.getElementById("a_password2").oninput = function(){ S.signupForm.password = this.value; };
     document.getElementById("a_confirmPw").oninput = function(){ S.signupForm.confirmPassword = this.value; };
@@ -2203,6 +2234,7 @@ function doSignup(){
   if(f.password !== f.confirmPassword){ S.authError = t("authErrPwMismatch"); render(); return; }
   var role = f.role;
   if(role === "manager" && hasManagerAccount()){ role = "supervisor"; }
+  if(role === "merchandiser" && !f.department){ S.authError = t("authErrDeptRequired"); render(); return; }
   if(!S.db){ S.authError = t("authErrGeneric"); render(); return; }
   S.authBusy = true; render();
   S.db.collection("users").where("username","==",uname).limit(1).get().then(function(snap){
@@ -2210,7 +2242,7 @@ function doSignup(){
     hashPw(f.password).then(function(h){
       var doc = {
         fullName: f.fullName.trim(), contact: f.contact.trim(), username: uname,
-        passwordHash: h, role: role, disabled:false,
+        passwordHash: h, role: role, department: role === "merchandiser" ? f.department : "", disabled:false,
         createdAt: new Date().toISOString(), lastLoginAt: new Date().toISOString()
       };
       S.db.collection("users").add(doc).then(function(ref){
@@ -2265,7 +2297,7 @@ function subscribeUsers(){
 /* ================= ACCOUNTS ================= */
 
 function freshNewAccountForm(){
-  return {fullName:"", contact:"", username:"", password:"", role:"supervisor"};
+  return {fullName:"", contact:"", username:"", password:"", role:"supervisor", department:""};
 }
 
 function renderAccounts(){
@@ -2287,6 +2319,10 @@ function renderAccounts(){
       '<div class="field"><label>'+t("usernameLabel")+'</label><input type="text" id="na_username" value="'+esc(nf.username)+'"></div>' +
       '<div class="field"><label>'+t("passwordLabel")+'</label><input type="password" id="na_password" value="'+esc(nf.password)+'"></div>' +
       '<div class="field"><label>'+t("roleLabel")+'</label><select id="na_role">'+roleOpts2+'</select></div>' +
+      (nf.role === "merchandiser" ? '<div class="field"><label>'+t("merchDeptLabel")+'</label><select id="na_dept">' +
+        '<option value="">'+t("merchDeptPh")+'</option>' +
+        MERCH_DEPARTMENTS.map(function(d){ return '<option value="'+d.id+'"'+(nf.department===d.id?" selected":"")+'>'+esc(S.lang==="ar"?d.ar:d.en)+'</option>'; }).join("") +
+      '</select></div>' : '') +
       '<div class="chip-row">' +
         '<button type="button" class="btn btn-primary" id="createAcctBtn" style="width:auto; padding-inline:18px;">'+t("createBtn")+'</button>' +
         '<button type="button" class="btn btn-secondary" id="cancelAcctBtn" style="width:auto; padding-inline:18px;">'+t("cancelBtn")+'</button>' +
@@ -2313,6 +2349,11 @@ function roleBadgeLabel(role){
   return role==="manager"?t("roleManagerOpt"):role==="merchandiser"?t("roleMerchandiser"):t("roleSupervisor");
 }
 
+function deptLabel(deptId){
+  var d = MERCH_DEPARTMENTS.filter(function(x){ return x.id === deptId; })[0];
+  return d ? (S.lang==="ar"?d.ar:d.en) : "";
+}
+
 function acctRow(u){
   var roleOpts = ["supervisor","merchandiser","manager"].map(function(r){
     return '<option value="'+r+'"'+(u.role===r?" selected":"")+'>'+roleBadgeLabel(r)+'</option>';
@@ -2323,6 +2364,7 @@ function acctRow(u){
     '<div class="acct-info">' +
       '<b>'+esc(u.fullName)+'</b>' +
       '<span>@'+esc(u.username)+' · '+esc(u.contact||"")+'</span>' +
+      (u.role === "merchandiser" && u.department ? '<span>'+t("colDepartment")+': '+esc(deptLabel(u.department))+'</span>' : '') +
       '<span>'+t("colLastLogin")+': '+lastLogin+'</span>' +
     '</div>' +
     '<div class="acct-actions">' +
@@ -2345,7 +2387,9 @@ function wireAccounts(){
     if(el) el.oninput = function(){ S.newAccountForm[id.replace("na_","")] = this.value; };
   });
   var roleSel = document.getElementById("na_role");
-  if(roleSel) roleSel.onchange = function(){ S.newAccountForm.role = this.value; };
+  if(roleSel) roleSel.onchange = function(){ S.newAccountForm.role = this.value; renderAccounts(); };
+  var deptSel = document.getElementById("na_dept");
+  if(deptSel) deptSel.onchange = function(){ S.newAccountForm.department = this.value; };
   var createBtn = document.getElementById("createAcctBtn");
   if(createBtn) createBtn.onclick = createAccount;
 
@@ -2371,12 +2415,13 @@ function createAccount(){
     S.accountsError = t("authErrRequired"); renderAccounts(); return;
   }
   if(nf.password.length < 4){ S.accountsError = t("authErrPwShort"); renderAccounts(); return; }
+  if(nf.role === "merchandiser" && !nf.department){ S.accountsError = t("authErrDeptRequired"); renderAccounts(); return; }
   S.db.collection("users").where("username","==",uname).limit(1).get().then(function(snap){
     if(!snap.empty){ S.accountsError = t("authErrUserTaken"); renderAccounts(); return; }
     hashPw(nf.password).then(function(h){
       S.db.collection("users").add({
         fullName: nf.fullName.trim(), contact: nf.contact.trim(), username: uname,
-        passwordHash: h, role: nf.role, disabled:false,
+        passwordHash: h, role: nf.role, department: nf.role === "merchandiser" ? nf.department : "", disabled:false,
         createdAt: new Date().toISOString(), lastLoginAt: null
       }).then(function(){
         S.newAccountForm = null;
