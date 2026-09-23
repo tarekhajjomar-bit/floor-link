@@ -2848,7 +2848,7 @@ function startCameraScan(){
   S.scanTarget.qr = qr;
   qr.start(
     {facingMode:"environment"},
-    {fps:15, qrbox:{width:280, height:140}, disableFlip:true},
+    {fps:20, qrbox:{width:300, height:110}, disableFlip:true, aspectRatio:1.7777778},
     function(decodedText){
       if(!S.scanTarget) return;
       stopCameraScan();
@@ -2881,11 +2881,44 @@ function addOrderItemFromScan(barcode){
     toast(t("itemAddedToast"));
     renderMerchForm();
   };
-  if(!S.db){ finish(barcode, ""); return; }
+  var tryOnline = function(){
+    lookupOpenFoodFacts(barcode).then(function(online){
+      if(online){
+        if(S.db){
+          S.db.doc("catalog/"+encodeURIComponent(barcode)).set({
+            barcode: barcode, name: online.name, image: online.image,
+            size: online.size, supplier: online.supplier, updatedAt: new Date().toISOString(),
+            source: "openfoodfacts"
+          }, {merge:true}).catch(function(){});
+        }
+        finish(online.name, online.supplier);
+      } else {
+        finish(barcode, "");
+      }
+    });
+  };
+  if(!S.db){ tryOnline(); return; }
   S.db.doc("catalog/"+encodeURIComponent(barcode)).get().then(function(snap){
     if(snap.exists){ var d = snap.data(); finish(d.name || barcode, d.supplier || ""); }
-    else { finish(barcode, ""); }
-  }).catch(function(){ finish(barcode, ""); });
+    else { tryOnline(); }
+  }).catch(function(){ tryOnline(); });
+}
+
+function lookupOpenFoodFacts(barcode){
+  return fetch("https://world.openfoodfacts.org/api/v2/product/"+encodeURIComponent(barcode)+".json?fields=product_name,image_url,brands,quantity")
+    .then(function(res){ return res.ok ? res.json() : null; })
+    .then(function(json){
+      if(!json || json.status !== 1 || !json.product) return null;
+      var p = json.product;
+      if(!p.product_name) return null;
+      return {
+        name: p.product_name,
+        image: p.image_url || null,
+        supplier: p.brands || "",
+        size: p.quantity || ""
+      };
+    })
+    .catch(function(){ return null; });
 }
 
 function lookupCatalogAndOpenForm(barcode){
@@ -2898,10 +2931,26 @@ function lookupCatalogAndOpenForm(barcode){
     S.scanTarget.foundInCatalog = found;
     renderScanner();
   };
-  if(!S.db){ proceed(null, false); return; }
+  var tryOnlineThenProceed = function(){
+    lookupOpenFoodFacts(barcode).then(function(online){
+      if(online){
+        if(S.db){
+          S.db.doc("catalog/"+encodeURIComponent(barcode)).set({
+            barcode: barcode, name: online.name, image: online.image,
+            size: online.size, supplier: online.supplier, updatedAt: new Date().toISOString(),
+            source: "openfoodfacts"
+          }, {merge:true}).catch(function(){});
+        }
+        proceed(online, true);
+      } else {
+        proceed(null, false);
+      }
+    });
+  };
+  if(!S.db){ tryOnlineThenProceed(); return; }
   S.db.doc("catalog/"+encodeURIComponent(barcode)).get().then(function(snap){
-    if(snap.exists){ proceed(snap.data(), true); } else { proceed(null, false); }
-  }).catch(function(){ proceed(null, false); });
+    if(snap.exists){ proceed(snap.data(), true); } else { tryOnlineThenProceed(); }
+  }).catch(function(){ tryOnlineThenProceed(); });
 }
 
 function renderScanner(){
