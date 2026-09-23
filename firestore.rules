@@ -1,0 +1,26 @@
+// Firestore security rules for Floor Link.
+//
+// Floor Link does its OWN username/password login (stored in the "users"
+// collection, passwords hashed) — it does not use Firebase Authentication.
+// That means Firestore has no idea who's "logged in"; from Firestore's
+// point of view every request is anonymous. These rules simply mirror
+// that: anyone who has your Firebase config (i.e. anyone using the app)
+// can read and write, which matches how the app worked inside Claude too.
+//
+// This is fine for an internal tool on a link you control, but it means
+// someone who inspects your site's source could read this same config
+// and call Firestore directly, bypassing the app's UI. If that risk
+// matters to you, the real fix is to add Firebase Authentication and
+// tighten these rules to check request.auth — that's a follow-up project,
+// not a quick edit.
+//
+// To apply: Firebase Console → Firestore Database → Rules → paste this → Publish.
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}
