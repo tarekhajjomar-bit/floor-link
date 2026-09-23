@@ -466,6 +466,7 @@ en:{
   ackIncoming:"I acknowledge receiving this shift and reviewed the notes above.",
   submit:"Submit handover", submitting:"Saving…",
   reqError:"Please fill in branch, both supervisor names, and the date before submitting.",
+  reqErrorSolo:"Please fill in branch, the supervisor name, and the date before submitting.",
   savedToast:"Handover saved.",
   filterAll:"All companies", filterAllBranch:"All branches", filterAllStatus:"All statuses",
   today:"Today", last7:"Last 7 days", last30:"Last 30 days", allTime:"All time",
@@ -649,6 +650,7 @@ ar:{
   ackIncoming:"أقر باستلام هذه الوردية ومراجعة الملاحظات أعلاه.",
   submit:"إرسال التسليم", submitting:"جارِ الحفظ…",
   reqError:"يرجى تعبئة الفرع، اسمي المشرفين، والتاريخ قبل الإرسال.",
+  reqErrorSolo:"يرجى تعبئة الفرع، اسم المشرف، والتاريخ قبل الإرسال.",
   savedToast:"تم حفظ التسليم.",
   filterAll:"كل الشركات", filterAllBranch:"كل الفروع", filterAllStatus:"كل الحالات",
   today:"اليوم", last7:"آخر 7 أيام", last30:"آخر 30 يومًا", allTime:"كل الفترات",
@@ -1474,7 +1476,7 @@ function submitHandover(){
   var f = S.form;
   var needIncoming = f.entryType === "handover";
   if(!f.branch.trim() || !f.outgoingName.trim() || (needIncoming && !f.incomingName.trim()) || !f.date){
-    toast(t("reqError"));
+    toast(needIncoming ? t("reqError") : t("reqErrorSolo"));
     return;
   }
   var missing = REQUIRED_PHOTO_KEYS.filter(function(k){
@@ -2998,15 +3000,25 @@ function boot(){
         fd.append("image", fileOrBlob);
         var uploadUrl = "https://api.imgbb.com/1/upload?key=" + YOUR_IMGBB_CONFIG.apiKey;
         return fetch(uploadUrl, {method:"POST", body:fd}).then(function(res){
-          if(!res.ok) throw new Error("ImgBB upload failed: " + res.status);
-          return res.json();
-        }).then(function(json){
-          if(!json.success) throw new Error("ImgBB upload failed");
-          var url = (json.data && (json.data.display_url || json.data.url)) || "";
-          return {id: url, url: url};
+          return res.text().then(function(bodyText){
+            var json = null;
+            try{ json = JSON.parse(bodyText); }catch(e){}
+            if(!res.ok || !json || !json.success){
+              var reason = (json && json.error && json.error.message) || bodyText.slice(0,200) || ("HTTP " + res.status);
+              console.error("ImgBB upload failed:", res.status, reason);
+              throw new Error("ImgBB upload failed: " + reason);
+            }
+            var url = (json.data && (json.data.display_url || json.data.url)) || "";
+            return {id: url, url: url};
+          });
+        }).catch(function(err){
+          console.error("ImgBB upload error (network or parsing):", err);
+          throw err;
         });
       }
     };
+  } else {
+    console.warn("ImgBB not configured — YOUR_IMGBB_CONFIG.apiKey is still the placeholder in index.html. Photo/signature upload is disabled.");
   }
 
   S.db = db;
