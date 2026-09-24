@@ -22,6 +22,7 @@
      requires a billing card for it even at zero cost. See SETUP.md. -->
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-compat.js"></script>
 <script>
   var YOUR_FIREBASE_CONFIG = {
     apiKey: "AIzaSyD_lwucPFiMylSs3G0lTYbbn_wcNwwhKg8",
@@ -31,6 +32,7 @@
     messagingSenderId: "1002443478349",
     appId: "1:1002443478349:web:9b103544895158c3775304"
   };
+  var YOUR_FCM_VAPID_KEY = "BPj2g7zg_qMqsIAJkWcKZo2zgv8p4eEDiecsB_I_EuDl8kCTLGCvYTCO939zBF6kkiPw58OeZdGuW4GjvIc_g70";
   var YOUR_IMGBB_CONFIG = {
     apiKey: "65f47cfbdd68220add021626940dd010"
   };
@@ -380,6 +382,15 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
 .sync-banner.is-offline .dot{background:#E17A63;}
 .sync-banner.is-syncing .dot{animation:pulse-dot 1s ease-in-out infinite;}
 @keyframes pulse-dot{ 0%,100%{opacity:1;} 50%{opacity:.35;} }
+.notif-banner{
+  margin-top:10px; display:flex; align-items:center; gap:10px; font-size:12px;
+  background:rgba(0,0,0,.18); color:#F5FAF8; border-radius:9px; padding:9px 12px;
+}
+.notif-banner button{
+  flex:none; border:1px solid rgba(245,250,248,.45); background:#F5FAF8; color:var(--teal-deep);
+  border-radius:999px; padding:6px 12px; font-size:11.5px; font-weight:700; cursor:pointer;
+}
+.notif-banner .x{flex:none; border:none; background:transparent; color:#F5FAF8; opacity:.7; cursor:pointer; padding:2px;}
 </style>
 </head>
 <body>
@@ -400,6 +411,7 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
     </div>
   </div>
   <div class="sync-banner" id="syncBanner" style="display:none;"></div>
+  <div class="notif-banner" id="notifBanner" style="display:none;"></div>
   <div class="tabbar" id="deptbar" style="margin-top:10px;">
     <button class="tab-btn active" id="deptHandoverBtn" type="button"></button>
     <button class="tab-btn" id="deptMerchBtn" type="button"></button>
@@ -478,6 +490,12 @@ en:{
   merchDeptLabel:"Department", merchDeptPh:"Select department",
   authErrDeptRequired:"Please select a department for this merchandiser.",
   authErrCompanyRequired:"Please select which branch this account works at.",
+  notifBannerText:"Turn on notifications to get alerts for handovers, reminders, and expiring products.",
+  notifEnableBtn:"Enable", notifDismissBtn:"Not now",
+  notifEnabledToast:"Notifications enabled.",
+  notifBlockedToast:"Notifications were blocked in your browser settings — you can turn them on from your phone/browser settings if you change your mind.",
+  notifUnsupportedToast:"This browser doesn't support notifications here.",
+  notifIosHint:"On iPhone: notifications only work after you Add to Home Screen — open the installed app icon, not Safari, then try again.",
   merchCompanyLabel:"Branch this account works at",
   merchCompanyPh:"Select branch",
   assignedBranchNote:"Locked to your assigned branch — set from your account.",
@@ -669,6 +687,12 @@ ar:{
   merchDeptLabel:"القسم", merchDeptPh:"اختر القسم",
   authErrDeptRequired:"يرجى اختيار قسم لهذا المارشندايزر.",
   authErrCompanyRequired:"يرجى اختيار الفرع يلي بيشتغل فيه هذا الحساب.",
+  notifBannerText:"فعّل الإشعارات حتى توصلك تنبيهات الهاند أوفر والتذكيرات والمنتجات يلي قربت تخلص.",
+  notifEnableBtn:"تفعيل", notifDismissBtn:"مو هلق",
+  notifEnabledToast:"تم تفعيل الإشعارات.",
+  notifBlockedToast:"الإشعارات محجوبة من إعدادات المتصفح — تقدر تفعّلها من إعدادات تلفونك/متصفحك إذا غيّرت رأيك.",
+  notifUnsupportedToast:"هالمتصفح ما بيدعم الإشعارات هون.",
+  notifIosHint:"على آيفون: الإشعارات بتشتغل بس بعد ما تضيف التطبيق للشاشة الرئيسية — افتحه من الأيقونة المثبّتة مو من Safari، وجرب من جديد.",
   merchCompanyLabel:"الفرع يلي بيشتغل فيه هذا الحساب",
   merchCompanyPh:"اختر الفرع",
   assignedBranchNote:"مقفول على فرعك المسجّل — محدد من حسابك.",
@@ -1122,6 +1146,101 @@ function updateSyncBanner(){
   if(label) parts.push(label);
   if(pending) parts.push(pending + " " + t("pendingSyncLabel"));
   el.innerHTML = '<span class="dot"></span><span>'+esc(parts.join(" · "))+'</span>';
+}
+
+/* ---------- push notifications (FCM) ---------- */
+
+function notifDismissedKey(){ return "sh_notif_dismissed"; }
+
+function updateNotifBanner(){
+  var el = document.getElementById("notifBanner");
+  if(!el) return;
+  if(!S.currentUser){ el.style.display = "none"; return; }
+  if(!("Notification" in window) || !("serviceWorker" in navigator)){ el.style.display = "none"; return; }
+  var perm = Notification.permission;
+  var dismissed = false;
+  try{ dismissed = localStorage.getItem(notifDismissedKey()) === "1"; }catch(e){}
+  if(perm !== "default" || dismissed){ el.style.display = "none"; return; }
+  el.style.display = "flex";
+  el.innerHTML =
+    '<span style="flex:1;">'+esc(t("notifBannerText"))+'</span>' +
+    '<button type="button" id="notifEnableBtn">'+esc(t("notifEnableBtn"))+'</button>' +
+    '<button type="button" class="x" id="notifDismissBtn">'+ICONS.close+'</button>';
+  document.getElementById("notifEnableBtn").onclick = requestNotificationPermission;
+  document.getElementById("notifDismissBtn").onclick = function(){
+    try{ localStorage.setItem(notifDismissedKey(), "1"); }catch(e){}
+    updateNotifBanner();
+  };
+}
+
+function isStandalonePwa(){
+  return window.matchMedia && window.matchMedia("(display-mode: standalone)").matches ||
+    window.navigator.standalone === true;
+}
+
+function isIos(){
+  return /iphone|ipad|ipod/i.test(navigator.userAgent);
+}
+
+function requestNotificationPermission(){
+  if(!("Notification" in window)){ toast(t("notifUnsupportedToast")); return; }
+  if(isIos() && !isStandalonePwa()){
+    toast(t("notifIosHint"));
+    return;
+  }
+  Notification.requestPermission().then(function(perm){
+    updateNotifBanner();
+    if(perm === "granted"){
+      fetchAndSaveFcmToken();
+    } else if(perm === "denied"){
+      toast(t("notifBlockedToast"));
+    }
+  });
+}
+
+function fetchAndSaveFcmToken(){
+  if(!S.currentUser || !S.db) return;
+  if(typeof firebase === "undefined" || !firebase.messaging || !firebase.messaging.isSupported || !firebase.messaging.isSupported()){
+    return;
+  }
+  if(YOUR_FCM_VAPID_KEY.indexOf("PASTE_") === 0) return;
+  navigator.serviceWorker.getRegistration().then(function(reg){
+    var messaging = firebase.messaging();
+    return messaging.getToken({vapidKey: YOUR_FCM_VAPID_KEY, serviceWorkerRegistration: reg});
+  }).then(function(token){
+    if(!token) return;
+    var u = S.currentUser;
+    S.db.doc("fcm_tokens/"+encodeURIComponent(token)).set({
+      token: token, userId: u.id, username: u.username, fullName: u.fullName,
+      role: u.role, company: u.company || "", department: u.department || "",
+      updatedAt: new Date().toISOString()
+    }, {merge:true}).then(function(){
+      toast(t("notifEnabledToast"));
+    }).catch(function(){});
+    setupForegroundMessaging();
+  }).catch(function(err){
+    console.error("FCM getToken failed:", err);
+  });
+}
+
+function setupForegroundMessaging(){
+  if(S.fcmForegroundSetup) return;
+  if(typeof firebase === "undefined" || !firebase.messaging) return;
+  try{
+    var messaging = firebase.messaging();
+    messaging.onMessage(function(payload){
+      var n = payload.notification || {};
+      toast((n.title ? n.title+": " : "") + (n.body || ""));
+    });
+    S.fcmForegroundSetup = true;
+  }catch(e){}
+}
+
+function initNotificationsOnLogin(){
+  updateNotifBanner();
+  if("Notification" in window && Notification.permission === "granted"){
+    fetchAndSaveFcmToken();
+  }
 }
 
 function computeStatus(f){
@@ -1586,6 +1705,7 @@ function submitHandover(){
       ackOut: !!f.ackOut, ackIn: !!f.ackIn,
       status: computeStatus(f),
       managerReviewed: false, managerNote: "",
+      notifiedAdmin: false,
       createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
     };
 
@@ -2225,6 +2345,7 @@ function routeAfterAuth(){
   S.appMode = role === "merchandiser" ? "merch" : "handover";
   S.view = "form";
   applyIdentityToForms();
+  initNotificationsOnLogin();
 }
 
 function applyIdentityToForms(){
@@ -3120,6 +3241,7 @@ function updateAuthChrome(){
 
 function render(){
   updateAuthChrome();
+  updateNotifBanner();
   if(!S.currentUser){
     document.getElementById("main").innerHTML = "";
     renderAuthScreen();
