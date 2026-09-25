@@ -1,0 +1,9 @@
+{
+  "name": "floor-link-notifications",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Scheduled Firebase Cloud Messaging sender for Floor Link, run by GitHub Actions.",
+  "dependencies": {
+    "firebase-admin": "^12.6.0"
+  }
+}
