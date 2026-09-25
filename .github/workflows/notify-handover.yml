@@ -1,0 +1,25 @@
+name: Notify — new handovers
+
+on:
+  schedule:
+    # Every 10 minutes. GitHub may delay this by a few extra minutes under
+    # load — that's normal and out of our control, not a bug.
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install dependencies
+        working-directory: scripts
+        run: npm install
+      - name: Run notifier
+        working-directory: scripts
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node notify.js handover
