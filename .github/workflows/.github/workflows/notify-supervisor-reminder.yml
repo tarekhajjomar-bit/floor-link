@@ -1,0 +1,27 @@
+name: Notify — daily supervisor reminder
+
+on:
+  schedule:
+    # 18:00 UTC ≈ 9:00 PM Beirut in summer (UTC+3) / 8:00 PM in winter (UTC+2).
+    # Cron always runs in UTC and has no idea about daylight saving — if the
+    # local time drifts by an hour with the seasons, adjust the number below
+    # and commit the change. See SETUP.md for how to pick a different time.
+    - cron: "0 18 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install dependencies
+        working-directory: scripts
+        run: npm install
+      - name: Run notifier
+        working-directory: scripts
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node notify.js supervisor-reminder
