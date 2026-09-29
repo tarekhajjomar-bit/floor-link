@@ -149,12 +149,33 @@ async function merchandiserReminder() {
   );
 }
 
+/** Test mode — sends one notification to every registered token, no
+ * matter what's in the data. Use this to verify the whole pipeline
+ * (service account auth → FCM send → device receives it) actually works,
+ * separately from whether any real handover/expiry condition is true. */
+async function sendTestNotification() {
+  const snap = await db.collection("fcm_tokens").get();
+  const tokens = [...new Set(snap.docs.map((d) => d.data().token).filter(Boolean))];
+  if (!tokens.length) {
+    console.log("No tokens registered in fcm_tokens at all — nothing to send to.");
+    return;
+  }
+  console.log(`Found ${tokens.length} registered token(s). Sending test push...`);
+  await sendToTokens(
+    tokens,
+    "🔔 Floor Link — Test",
+    "إذا وصلك هذا الإشعار، يعني النظام شغال تمام.",
+    { type: "test", sentAt: new Date().toISOString() }
+  );
+}
+
 const mode = process.argv[2];
 const modes = {
   "handover": checkNewHandovers,
   "supervisor-reminder": checkSupervisorReminders,
   "expiry-check": checkExpiry,
-  "merchandiser-reminder": merchandiserReminder
+  "merchandiser-reminder": merchandiserReminder,
+  "test": sendTestNotification
 };
 
 if (!modes[mode]) {
