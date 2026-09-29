@@ -1198,7 +1198,7 @@ function requestNotificationPermission(){
   });
 }
 
-function fetchAndSaveFcmToken(){
+function fetchAndSaveFcmToken(silent){
   if(!S.currentUser || !S.db) return;
   if(typeof firebase === "undefined" || !firebase.messaging || !firebase.messaging.isSupported || !firebase.messaging.isSupported()){
     return;
@@ -1215,7 +1215,7 @@ function fetchAndSaveFcmToken(){
       role: u.role, company: u.company || "", department: u.department || "",
       updatedAt: new Date().toISOString()
     }, {merge:true}).then(function(){
-      toast(t("notifEnabledToast"));
+      if(!silent){ toast(t("notifEnabledToast")); }
     }).catch(function(){});
     setupForegroundMessaging();
   }).catch(function(err){
@@ -1239,7 +1239,7 @@ function setupForegroundMessaging(){
 function initNotificationsOnLogin(){
   updateNotifBanner();
   if("Notification" in window && Notification.permission === "granted"){
-    fetchAndSaveFcmToken();
+    fetchAndSaveFcmToken(true);
   }
 }
 
