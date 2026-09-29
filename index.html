@@ -1204,11 +1204,13 @@ function fetchAndSaveFcmToken(silent){
     return;
   }
   if(YOUR_FCM_VAPID_KEY.indexOf("PASTE_") === 0) return;
-  navigator.serviceWorker.getRegistration().then(function(reg){
+  navigator.serviceWorker.ready.then(function(reg){
+    console.log("FCM: service worker ready, scope:", reg.scope, "active:", !!reg.active);
     var messaging = firebase.messaging();
     return messaging.getToken({vapidKey: YOUR_FCM_VAPID_KEY, serviceWorkerRegistration: reg});
   }).then(function(token){
     if(!token) return;
+    console.log("FCM: got token ending in …" + token.slice(-12));
     var u = S.currentUser;
     S.db.doc("fcm_tokens/"+encodeURIComponent(token)).set({
       token: token, userId: u.id, username: u.username, fullName: u.fullName,
