@@ -21,6 +21,7 @@
      capability — Firebase Storage was deliberately NOT used here because Google now
      requires a billing card for it even at zero cost. See SETUP.md. -->
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-compat.js"></script>
 <script>
@@ -519,6 +520,20 @@ en:{
   merchDeptLabel:"Department", merchDeptPh:"Select department",
   authErrDeptRequired:"Please select a department for this merchandiser.",
   authErrCompanyRequired:"Please select which branch this account works at.",
+  emailLabel:"Email", emailPh:"you@example.com",
+  authErrEmailTaken:"That email already has an account — try logging in instead.",
+  authErrInvalidEmail:"That doesn't look like a valid email address.",
+  authErrTooManyAttempts:"Too many attempts — please wait a bit and try again.",
+  authErrOldAccountNotFound:"Couldn't find an old account with that username.",
+  authErrAlreadyMigrated:"That old account has already been moved to a new login.",
+  haveOldAccountQ:"Were you already using Floor Link before?",
+  newEmployeeOpt:"No, I'm new here",
+  migratingOpt:"Yes, move my old account over",
+  oldUsernameLabel:"Your old username",
+  oldUsernamePh:"The username you used to log in with",
+  migratingNote:"We'll copy your name, role, branch and department from your old account automatically — you just need a new login.",
+  forgotPasswordLink:"Forgot password?",
+  resetEmailSentToast:"Password reset email sent — check your inbox.",
   notifBannerText:"Turn on notifications to get alerts for handovers, reminders, and expiring products.",
   notifEnableBtn:"Enable", notifDismissBtn:"Not now",
   notifEnabledToast:"Notifications enabled.",
@@ -743,6 +758,20 @@ ar:{
   merchDeptLabel:"القسم", merchDeptPh:"اختر القسم",
   authErrDeptRequired:"يرجى اختيار قسم لهذا المارشندايزر.",
   authErrCompanyRequired:"يرجى اختيار الفرع يلي بيشتغل فيه هذا الحساب.",
+  emailLabel:"الإيميل", emailPh:"you@example.com",
+  authErrEmailTaken:"في حساب مسجّل بهذا الإيميل أصلاً — جرّب تسجّل دخول بدل حساب جديد.",
+  authErrInvalidEmail:"هذا مش إيميل صحيح.",
+  authErrTooManyAttempts:"كتير محاولات — استنى شوي وجرب مرة تانية.",
+  authErrOldAccountNotFound:"ما لقينا حساب قديم بهذا اسم المستخدم.",
+  authErrAlreadyMigrated:"هذا الحساب القديم انتقل مسبقًا لتسجيل دخول جديد.",
+  haveOldAccountQ:"كنت مستخدم فلور لينك من قبل؟",
+  newEmployeeOpt:"لأ، أنا جديد هون",
+  migratingOpt:"إي، انقل حسابي القديم",
+  oldUsernameLabel:"اسم المستخدم القديم تبعك",
+  oldUsernamePh:"اسم المستخدم يلي كنت تسجل فيه دخول",
+  migratingNote:"رح ننقل اسمك ودورك وفرعك وقسمك من حسابك القديم أوتوماتيكيًا — بس بدك تسجيل دخول جديد.",
+  forgotPasswordLink:"نسيت كلمة السر؟",
+  resetEmailSentToast:"تم إرسال إيميل استعادة كلمة السر — تأكد من صندوق الوارد.",
   notifBannerText:"فعّل الإشعارات حتى توصلك تنبيهات الهاند أوفر والتذكيرات والمنتجات يلي قربت تخلص.",
   notifEnableBtn:"تفعيل", notifDismissBtn:"مو هلق",
   notifEnabledToast:"تم تفعيل الإشعارات.",
@@ -980,8 +1009,8 @@ var S = {
   authChecked: false,
   authView: "login",
   authError: "",
-  loginForm: {username:"", password:""},
-  signupForm: {fullName:"", contact:"", username:"", password:"", confirmPassword:"", role:"supervisor", department:"", company:""},
+  loginForm: {email:"", password:""},
+  signupForm: {migrating:false, oldUsername:"", email:"", fullName:"", contact:"", password:"", confirmPassword:"", role:"supervisor", department:"", company:""},
   users: [],
   usersLoaded: false,
   accountsError: "",
@@ -1067,7 +1096,7 @@ try{
   if(savedLang === "en" || savedLang === "ar") S.lang = savedLang;
 }catch(e){}
 
-function isManagerUser(){ return !!(S.currentUser && S.currentUser.role === "manager"); }
+function isManagerUser(){ return !!(S.currentUser && (S.currentUser.role === "manager" || S.currentUser.role === "admin")); }
 
 function updateUserChip(){
   var chip = document.getElementById("userChip");
@@ -1084,9 +1113,9 @@ function updateDeptSwitch(){
   var x = document.getElementById("deptExpiryBtn");
   if(!S.currentUser) return;
   var role = S.currentUser.role;
-  var canHandover = role === "manager" || role === "supervisor";
-  var canMerch = role === "manager" || role === "merchandiser";
-  var canAccounts = role === "manager";
+  var canHandover = role === "manager" || role === "admin" || role === "supervisor";
+  var canMerch = role === "manager" || role === "admin" || role === "merchandiser";
+  var canAccounts = role === "manager" || role === "admin";
   var canExpiry = true;
   h.style.display = canHandover ? "" : "none";
   m.style.display = canMerch ? "" : "none";
@@ -2383,7 +2412,7 @@ function describeFirebaseError(err){
 }
 
 function hasManagerAccount(){
-  return S.users.some(function(u){ return u.role === "manager"; });
+  return S.users.some(function(u){ return u.role === "manager" || u.role === "admin"; });
 }
 
 function renderAuthScreen(){
@@ -2401,9 +2430,10 @@ function renderLoginForm(){
       '<div class="section-title">'+t("loginTitle")+'</div>' +
       '<div class="section-sub">'+t("loginSub")+'</div>' +
       (S.authError ? '<p class="form-error" style="margin-bottom:10px;">'+esc(S.authError)+'</p>' : '') +
-      '<div class="field"><label>'+t("usernameLabel")+'</label><input type="text" id="a_username" autocomplete="username" placeholder="'+t("usernamePh")+'" value="'+esc(f.username)+'"></div>' +
+      '<div class="field"><label>'+t("emailLabel")+'</label><input type="email" id="a_email" autocomplete="username" placeholder="'+t("emailPh")+'" value="'+esc(f.email)+'"></div>' +
       '<div class="field"><label>'+t("passwordLabel")+'</label><input type="password" id="a_password" autocomplete="current-password" placeholder="'+t("passwordPh")+'" value="'+esc(f.password)+'"></div>' +
       '<button type="submit" class="btn btn-primary" id="loginSubmitBtn">'+(S.authBusy?t("loggingIn"):t("loginBtn"))+'</button>' +
+      '<button type="button" class="link-btn" id="forgotPwBtn" style="margin-top:8px;">'+t("forgotPasswordLink")+'</button>' +
     '</div>' +
     '<p class="auth-switch">'+t("noAccountYet")+' <button type="button" id="toSignupBtn">'+t("createOneLink")+'</button></p>' +
   '</form>';
@@ -2412,28 +2442,41 @@ function renderLoginForm(){
 function renderSignupForm(){
   var f = S.signupForm;
   var showManagerOpt = S.usersLoaded && !hasManagerAccount();
-  if(f.role === "manager" && !showManagerOpt) f.role = "supervisor";
+  if(f.role === "admin" && !showManagerOpt) f.role = "supervisor";
   var roleOpts = '<option value="supervisor"'+(f.role==="supervisor"?" selected":"")+'>'+t("roleSupervisor")+'</option>' +
     '<option value="merchandiser"'+(f.role==="merchandiser"?" selected":"")+'>'+t("roleMerchandiser")+'</option>' +
-    (showManagerOpt ? '<option value="manager"'+(f.role==="manager"?" selected":"")+'>'+t("roleManagerOpt")+'</option>' : '');
+    (showManagerOpt ? '<option value="admin"'+(f.role==="admin"?" selected":"")+'>'+t("roleManagerOpt")+'</option>' : '');
   return '<form id="signupFormEl">' +
     '<div class="card">' +
       '<div class="section-title">'+t("signupTitle")+'</div>' +
       '<div class="section-sub">'+t("signupSub")+'</div>' +
-      (showManagerOpt ? '<p class="hint" style="margin-bottom:10px;">'+t("bootstrapManagerNote")+'</p>' : '') +
       (S.authError ? '<p class="form-error" style="margin-bottom:10px;">'+esc(S.authError)+'</p>' : '') +
-      '<div class="field"><label>'+t("fullNameLabel")+'</label><input type="text" id="a_fullName" placeholder="'+t("fullNamePh")+'" value="'+esc(f.fullName)+'"></div>' +
-      '<div class="field"><label>'+t("contactLabel")+'</label><input type="text" id="a_contact" placeholder="'+t("contactPh")+'" value="'+esc(f.contact)+'"></div>' +
-      '<div class="field"><label>'+t("roleLabel")+'</label><select id="a_role">'+roleOpts+'</select></div>' +
-      (f.role === "merchandiser" ? '<div class="field"><label>'+t("merchDeptLabel")+'</label><select id="a_dept">' +
-        '<option value="">'+t("merchDeptPh")+'</option>' +
-        MERCH_DEPARTMENTS.map(function(d){ return '<option value="'+d.id+'"'+(f.department===d.id?" selected":"")+'>'+esc(S.lang==="ar"?d.ar:d.en)+'</option>'; }).join("") +
-      '</select></div>' : '') +
-      ((f.role === "merchandiser" || f.role === "supervisor") ? '<div class="field"><label>'+t("merchCompanyLabel")+'</label><select id="a_mcompany">' +
-        '<option value="">'+t("merchCompanyPh")+'</option>' +
-        COMPANIES.map(function(c){ return '<option value="'+c.id+'"'+(f.company===c.id?" selected":"")+'>'+esc(S.lang==="ar"?c.ar:c.en)+'</option>'; }).join("") +
-      '</select></div>' : '') +
-      '<div class="field"><label>'+t("usernameLabel")+'</label><input type="text" id="a_username2" autocomplete="username" placeholder="'+t("usernamePh")+'" value="'+esc(f.username)+'"></div>' +
+      '<div class="field"><label>'+t("haveOldAccountQ")+'</label><select id="a_migrating">' +
+        '<option value="0"'+(!f.migrating?" selected":"")+'>'+t("newEmployeeOpt")+'</option>' +
+        '<option value="1"'+(f.migrating?" selected":"")+'>'+t("migratingOpt")+'</option>' +
+      '</select></div>' +
+
+      (f.migrating ?
+        ('<p class="hint" style="margin-bottom:10px;">'+t("migratingNote")+'</p>' +
+         '<div class="field"><label>'+t("oldUsernameLabel")+'</label><input type="text" id="a_oldUsername" placeholder="'+t("oldUsernamePh")+'" value="'+esc(f.oldUsername)+'"></div>')
+        :
+        (
+          (showManagerOpt ? '<p class="hint" style="margin-bottom:10px;">'+t("bootstrapManagerNote")+'</p>' : '') +
+          '<div class="field"><label>'+t("fullNameLabel")+'</label><input type="text" id="a_fullName" placeholder="'+t("fullNamePh")+'" value="'+esc(f.fullName)+'"></div>' +
+          '<div class="field"><label>'+t("contactLabel")+'</label><input type="text" id="a_contact" placeholder="'+t("contactPh")+'" value="'+esc(f.contact)+'"></div>' +
+          '<div class="field"><label>'+t("roleLabel")+'</label><select id="a_role">'+roleOpts+'</select></div>' +
+          (f.role === "merchandiser" ? '<div class="field"><label>'+t("merchDeptLabel")+'</label><select id="a_dept">' +
+            '<option value="">'+t("merchDeptPh")+'</option>' +
+            MERCH_DEPARTMENTS.map(function(d){ return '<option value="'+d.id+'"'+(f.department===d.id?" selected":"")+'>'+esc(S.lang==="ar"?d.ar:d.en)+'</option>'; }).join("") +
+          '</select></div>' : '') +
+          ((f.role === "merchandiser" || f.role === "supervisor") ? '<div class="field"><label>'+t("merchCompanyLabel")+'</label><select id="a_mcompany">' +
+            '<option value="">'+t("merchCompanyPh")+'</option>' +
+            COMPANIES.map(function(c){ return '<option value="'+c.id+'"'+(f.company===c.id?" selected":"")+'>'+esc(S.lang==="ar"?c.ar:c.en)+'</option>'; }).join("") +
+          '</select></div>' : '')
+        )
+      ) +
+
+      '<div class="field"><label>'+t("emailLabel")+'</label><input type="email" id="a_email2" autocomplete="username" placeholder="'+t("emailPh")+'" value="'+esc(f.email)+'"></div>' +
       '<div class="field"><label>'+t("passwordLabel")+'</label><input type="password" id="a_password2" autocomplete="new-password" placeholder="'+t("passwordPh")+'" value="'+esc(f.password)+'"></div>' +
       '<div class="field"><label>'+t("confirmPasswordLabel")+'</label><input type="password" id="a_confirmPw" autocomplete="new-password" value="'+esc(f.confirmPassword)+'"></div>' +
       '<button type="submit" class="btn btn-primary" id="signupSubmitBtn">'+(S.authBusy?t("signingUp"):t("signupBtn"))+'</button>' +
@@ -2444,24 +2487,50 @@ function renderSignupForm(){
 
 function wireAuthScreen(){
   if(S.authView === "login"){
-    document.getElementById("a_username").oninput = function(){ S.loginForm.username = this.value; };
+    document.getElementById("a_email").oninput = function(){ S.loginForm.email = this.value; };
     document.getElementById("a_password").oninput = function(){ S.loginForm.password = this.value; };
     document.getElementById("toSignupBtn").onclick = function(){ S.authView = "signup"; S.authError = ""; render(); };
+    document.getElementById("forgotPwBtn").onclick = doForgotPassword;
     document.getElementById("loginFormEl").onsubmit = function(e){ e.preventDefault(); doLogin(); };
   } else {
-    document.getElementById("a_fullName").oninput = function(){ S.signupForm.fullName = this.value; };
-    document.getElementById("a_contact").oninput = function(){ S.signupForm.contact = this.value; };
-    document.getElementById("a_role").onchange = function(){ S.signupForm.role = this.value; renderAuthScreen(); };
+    document.getElementById("a_migrating").onchange = function(){ S.signupForm.migrating = this.value === "1"; renderAuthScreen(); };
+    var oldUnameEl = document.getElementById("a_oldUsername");
+    if(oldUnameEl) oldUnameEl.oninput = function(){ S.signupForm.oldUsername = this.value; };
+    var fullNameEl = document.getElementById("a_fullName");
+    if(fullNameEl) fullNameEl.oninput = function(){ S.signupForm.fullName = this.value; };
+    var contactEl = document.getElementById("a_contact");
+    if(contactEl) contactEl.oninput = function(){ S.signupForm.contact = this.value; };
+    var roleEl = document.getElementById("a_role");
+    if(roleEl) roleEl.onchange = function(){ S.signupForm.role = this.value; renderAuthScreen(); };
     var deptSel = document.getElementById("a_dept");
     if(deptSel) deptSel.onchange = function(){ S.signupForm.department = this.value; };
     var mcoSel = document.getElementById("a_mcompany");
     if(mcoSel) mcoSel.onchange = function(){ S.signupForm.company = this.value; };
-    document.getElementById("a_username2").oninput = function(){ S.signupForm.username = this.value; };
+    document.getElementById("a_email2").oninput = function(){ S.signupForm.email = this.value; };
     document.getElementById("a_password2").oninput = function(){ S.signupForm.password = this.value; };
     document.getElementById("a_confirmPw").oninput = function(){ S.signupForm.confirmPassword = this.value; };
     document.getElementById("toLoginBtn").onclick = function(){ S.authView = "login"; S.authError = ""; render(); };
     document.getElementById("signupFormEl").onsubmit = function(e){ e.preventDefault(); doSignup(); };
   }
+}
+
+function doForgotPassword(){
+  var email = (S.loginForm.email||"").trim();
+  if(!email){ S.authError = t("authErrRequired"); render(); return; }
+  S.auth.sendPasswordResetEmail(email).then(function(){
+    toast(t("resetEmailSentToast"));
+  }).catch(function(err){ S.authError = describeAuthError(err); render(); });
+}
+
+function describeAuthError(err){
+  console.error("Firebase Auth error:", err);
+  var code = err && err.code;
+  if(code === "auth/email-already-in-use") return t("authErrEmailTaken");
+  if(code === "auth/invalid-email") return t("authErrInvalidEmail");
+  if(code === "auth/weak-password") return t("authErrPwShort");
+  if(code === "auth/user-not-found" || code === "auth/wrong-password" || code === "auth/invalid-credential") return t("authErrWrongPw");
+  if(code === "auth/too-many-requests") return t("authErrTooManyAttempts");
+  return t("authErrGeneric");
 }
 
 function routeAfterAuth(){
@@ -2488,78 +2557,104 @@ function applyIdentityToForms(){
 function doLogin(){
   if(S.authBusy) return;
   var f = S.loginForm;
-  var uname = normalizeUsername(f.username);
-  if(!uname || !f.password){ S.authError = t("authErrRequired"); render(); return; }
-  if(!S.db){ S.authError = t("authErrGeneric"); render(); return; }
+  var email = f.email.trim();
+  if(!email || !f.password){ S.authError = t("authErrRequired"); render(); return; }
+  if(!S.auth){ S.authError = t("authErrGeneric"); render(); return; }
   S.authBusy = true; render();
-  S.db.collection("users").where("username","==",uname).limit(1).get().then(function(snap){
-    if(snap.empty){ S.authBusy=false; S.authError = t("authErrUserNotFound"); render(); return; }
-    var d = snap.docs[0];
-    var data = d.data();
-    if(data.disabled){ S.authBusy=false; S.authError = t("authErrDisabled"); render(); return; }
-    hashPw(f.password).then(function(h){
-      S.authBusy = false;
-      if(h !== data.passwordHash){ S.authError = t("authErrWrongPw"); render(); return; }
-      S.currentUser = Object.assign({id:d.id}, data);
-      S.authError = "";
-      try{ localStorage.setItem("sh_session_uid", d.id); }catch(e){}
-      S.db.doc("users/"+d.id).update({lastLoginAt:new Date().toISOString()}).catch(function(){});
-      routeAfterAuth();
-      render();
+  S.auth.signInWithEmailAndPassword(email, f.password).then(function(){
+    S.authBusy = false;
+    S.authError = "";
+    render();
+    // watchAuthState()'s onAuthStateChanged listener picks up from here:
+    // loads the Firestore profile, checks disabled, and routes into the app.
+  }).catch(function(err){
+    S.authBusy = false;
+    S.authError = describeAuthError(err);
+    render();
+  });
+}
+
+function createAuthAccountAndProfile(email, password, profile, oldDocRef){
+  S.auth.createUserWithEmailAndPassword(email, password).then(function(cred){
+    var uid = cred.user.uid;
+    var doc = Object.assign({}, profile, {
+      disabled:false, createdAt: new Date().toISOString(), lastLoginAt: new Date().toISOString()
     });
-  }).catch(function(err){ S.authBusy=false; S.authError = describeFirebaseError(err); render(); });
+    var tasks = [S.db.doc("users/"+uid).set(doc)];
+    if(oldDocRef){ tasks.push(oldDocRef.update({migratedToUid: uid})); }
+    Promise.all(tasks).then(function(){
+      S.authBusy = false;
+      S.authError = "";
+      render();
+      // onAuthStateChanged fires automatically and routes into the app.
+    }).catch(function(err){ S.authBusy = false; S.authError = describeFirebaseError(err); render(); });
+  }).catch(function(err){ S.authBusy = false; S.authError = describeAuthError(err); render(); });
 }
 
 function doSignup(){
   if(S.authBusy) return;
   var f = S.signupForm;
-  var uname = normalizeUsername(f.username);
-  if(!f.fullName.trim() || !f.contact.trim() || !uname || !f.password || !f.confirmPassword){
-    S.authError = t("authErrRequired"); render(); return;
-  }
-  if(f.password.length < 4){ S.authError = t("authErrPwShort"); render(); return; }
+  var email = f.email.trim();
+  if(!email || !f.password || !f.confirmPassword){ S.authError = t("authErrRequired"); render(); return; }
+  if(f.password.length < 6){ S.authError = t("authErrPwShort"); render(); return; }
   if(f.password !== f.confirmPassword){ S.authError = t("authErrPwMismatch"); render(); return; }
+  if(!S.auth || !S.db){ S.authError = t("authErrGeneric"); render(); return; }
+
+  if(f.migrating){
+    var oldUname = normalizeUsername(f.oldUsername);
+    if(!oldUname){ S.authError = t("authErrRequired"); render(); return; }
+    S.authBusy = true; render();
+    S.db.collection("users").where("username","==",oldUname).limit(1).get().then(function(snap){
+      if(snap.empty){ S.authBusy=false; S.authError = t("authErrOldAccountNotFound"); render(); return; }
+      var oldDoc = snap.docs[0];
+      var oldData = oldDoc.data();
+      if(oldData.migratedToUid){ S.authBusy=false; S.authError = t("authErrAlreadyMigrated"); render(); return; }
+      var oldRole = oldData.role === "manager" ? "admin" : oldData.role;
+      createAuthAccountAndProfile(email, f.password, {
+        fullName: oldData.fullName || "", contact: oldData.contact || "",
+        role: oldRole, department: oldData.department || "", company: oldData.company || ""
+      }, oldDoc.ref);
+    }).catch(function(err){ S.authBusy=false; S.authError = describeFirebaseError(err); render(); });
+    return;
+  }
+
+  if(!f.fullName.trim() || !f.contact.trim()){ S.authError = t("authErrRequired"); render(); return; }
   var role = f.role;
-  if(role === "manager" && hasManagerAccount()){ role = "supervisor"; }
+  if(role === "admin" && hasManagerAccount()){ role = "supervisor"; }
   if(role === "merchandiser" && !f.department){ S.authError = t("authErrDeptRequired"); render(); return; }
   if((role === "merchandiser" || role === "supervisor") && !f.company){ S.authError = t("authErrCompanyRequired"); render(); return; }
-  if(!S.db){ S.authError = t("authErrGeneric"); render(); return; }
   S.authBusy = true; render();
-  S.db.collection("users").where("username","==",uname).limit(1).get().then(function(snap){
-    if(!snap.empty){ S.authBusy=false; S.authError = t("authErrUserTaken"); render(); return; }
-    hashPw(f.password).then(function(h){
-      var doc = {
-        fullName: f.fullName.trim(), contact: f.contact.trim(), username: uname,
-        passwordHash: h, role: role, department: role === "merchandiser" ? f.department : "",
-        company: (role === "merchandiser" || role === "supervisor") ? f.company : "", disabled:false,
-        createdAt: new Date().toISOString(), lastLoginAt: new Date().toISOString()
-      };
-      S.db.collection("users").add(doc).then(function(ref){
-        S.authBusy = false;
-        S.currentUser = Object.assign({id:ref.id}, doc);
-        S.authError = "";
-        try{ localStorage.setItem("sh_session_uid", ref.id); }catch(e){}
-        routeAfterAuth();
-        render();
-      }).catch(function(err){ S.authBusy=false; S.authError = describeFirebaseError(err); render(); });
-    });
-  }).catch(function(err){ S.authBusy=false; S.authError = describeFirebaseError(err); render(); });
+  createAuthAccountAndProfile(email, f.password, {
+    fullName: f.fullName.trim(), contact: f.contact.trim(), role: role,
+    department: role === "merchandiser" ? f.department : "",
+    company: (role === "merchandiser" || role === "supervisor") ? f.company : ""
+  }, null);
 }
 
-function restoreSession(){
-  var uid = null;
-  try{ uid = localStorage.getItem("sh_session_uid"); }catch(e){}
-  if(!uid){ S.authChecked = true; render(); return; }
-  S.db.doc("users/"+uid).get().then(function(snap){
-    S.authChecked = true;
-    if(snap.exists && !snap.data().disabled){
-      S.currentUser = Object.assign({id:uid}, snap.data());
-      routeAfterAuth();
-    } else {
-      try{ localStorage.removeItem("sh_session_uid"); }catch(e){}
+function watchAuthState(){
+  S.auth.onAuthStateChanged(function(user){
+    if(!user){
+      S.authChecked = true;
+      S.currentUser = null;
+      render();
+      return;
     }
-    render();
-  }).catch(function(){ S.authChecked = true; render(); });
+    S.db.doc("users/"+user.uid).get().then(function(snap){
+      S.authChecked = true;
+      if(snap.exists && !snap.data().disabled){
+        S.currentUser = Object.assign({id:user.uid}, snap.data());
+        S.db.doc("users/"+user.uid).update({lastLoginAt:new Date().toISOString()}).catch(function(){});
+        routeAfterAuth();
+      } else if(snap.exists && snap.data().disabled){
+        S.authError = t("authErrDisabled");
+        S.auth.signOut();
+        return; // signOut() re-triggers this listener with user=null, which renders
+      } else {
+        S.currentUser = null;
+      }
+      render();
+    }).catch(function(){ S.authChecked = true; render(); });
+  });
 }
 
 function subscribeUsers(){
@@ -2573,7 +2668,7 @@ function subscribeUsers(){
         if(mine.disabled){
           S.currentUser = null;
           S.authView = "login";
-          try{ localStorage.removeItem("sh_session_uid"); }catch(e){}
+          if(S.auth) S.auth.signOut();
         } else {
           S.currentUser = mine;
         }
@@ -2586,7 +2681,7 @@ function subscribeUsers(){
 /* ================= ACCOUNTS ================= */
 
 function freshNewAccountForm(){
-  return {fullName:"", contact:"", username:"", password:"", role:"supervisor", department:"", company:""};
+  return {fullName:"", contact:"", email:"", password:"", role:"supervisor", department:"", company:""};
 }
 
 function renderAccounts(){
@@ -2597,7 +2692,7 @@ function renderAccounts(){
 
   if(S.newAccountForm){
     var nf = S.newAccountForm;
-    var roleOpts2 = ["supervisor","merchandiser","manager"].map(function(r){
+    var roleOpts2 = ["supervisor","merchandiser","admin"].map(function(r){
       return '<option value="'+r+'"'+(nf.role===r?" selected":"")+'>'+roleBadgeLabel(r)+'</option>';
     }).join("");
     html += '<div class="divider-note">' +
@@ -2605,7 +2700,7 @@ function renderAccounts(){
       (S.accountsError ? '<p class="form-error">'+esc(S.accountsError)+'</p>' : '') +
       '<div class="field"><label>'+t("fullNameLabel")+'</label><input type="text" id="na_fullName" value="'+esc(nf.fullName)+'"></div>' +
       '<div class="field"><label>'+t("contactLabel")+'</label><input type="text" id="na_contact" value="'+esc(nf.contact)+'"></div>' +
-      '<div class="field"><label>'+t("usernameLabel")+'</label><input type="text" id="na_username" value="'+esc(nf.username)+'"></div>' +
+      '<div class="field"><label>'+t("emailLabel")+'</label><input type="email" id="na_email" value="'+esc(nf.email)+'"></div>' +
       '<div class="field"><label>'+t("passwordLabel")+'</label><input type="password" id="na_password" value="'+esc(nf.password)+'"></div>' +
       '<div class="field"><label>'+t("roleLabel")+'</label><select id="na_role">'+roleOpts2+'</select></div>' +
       (nf.role === "merchandiser" ? '<div class="field"><label>'+t("merchDeptLabel")+'</label><select id="na_dept">' +
@@ -2639,7 +2734,7 @@ function renderAccounts(){
 }
 
 function roleBadgeLabel(role){
-  return role==="manager"?t("roleManagerOpt"):role==="merchandiser"?t("roleMerchandiser"):t("roleSupervisor");
+  return (role==="manager"||role==="admin")?t("roleManagerOpt"):role==="merchandiser"?t("roleMerchandiser"):t("roleSupervisor");
 }
 
 function deptLabel(deptId){
@@ -2648,7 +2743,7 @@ function deptLabel(deptId){
 }
 
 function acctRow(u){
-  var roleOpts = ["supervisor","merchandiser","manager"].map(function(r){
+  var roleOpts = ["supervisor","merchandiser","admin"].map(function(r){
     return '<option value="'+r+'"'+(u.role===r?" selected":"")+'>'+roleBadgeLabel(r)+'</option>';
   }).join("");
   var lastLogin = u.lastLoginAt ? fmtDateTime(u.lastLoginAt) : t("neverLoggedIn");
@@ -2677,7 +2772,7 @@ function wireAccounts(){
   if(openBtn) openBtn.onclick = function(){ S.newAccountForm = freshNewAccountForm(); S.accountsError=""; renderAccounts(); };
   var cancelBtn = document.getElementById("cancelAcctBtn");
   if(cancelBtn) cancelBtn.onclick = function(){ S.newAccountForm = null; renderAccounts(); };
-  ["na_fullName","na_contact","na_username","na_password"].forEach(function(id){
+  ["na_fullName","na_contact","na_email","na_password"].forEach(function(id){
     var el = document.getElementById(id);
     if(el) el.oninput = function(){ S.newAccountForm[id.replace("na_","")] = this.value; };
   });
@@ -2710,29 +2805,32 @@ function wireAccounts(){
 
 function createAccount(){
   var nf = S.newAccountForm;
-  var uname = normalizeUsername(nf.username);
-  if(!nf.fullName.trim() || !nf.contact.trim() || !uname || !nf.password){
+  var email = (nf.email||"").trim();
+  if(!nf.fullName.trim() || !nf.contact.trim() || !email || !nf.password){
     S.accountsError = t("authErrRequired"); renderAccounts(); return;
   }
-  if(nf.password.length < 4){ S.accountsError = t("authErrPwShort"); renderAccounts(); return; }
+  if(nf.password.length < 6){ S.accountsError = t("authErrPwShort"); renderAccounts(); return; }
   if(nf.role === "merchandiser" && !nf.department){ S.accountsError = t("authErrDeptRequired"); renderAccounts(); return; }
   if((nf.role === "merchandiser" || nf.role === "supervisor") && !nf.company){ S.accountsError = t("authErrCompanyRequired"); renderAccounts(); return; }
-  S.db.collection("users").where("username","==",uname).limit(1).get().then(function(snap){
-    if(!snap.empty){ S.accountsError = t("authErrUserTaken"); renderAccounts(); return; }
-    hashPw(nf.password).then(function(h){
-      S.db.collection("users").add({
-        fullName: nf.fullName.trim(), contact: nf.contact.trim(), username: uname,
-        passwordHash: h, role: nf.role, department: nf.role === "merchandiser" ? nf.department : "",
-        company: (nf.role === "merchandiser" || nf.role === "supervisor") ? nf.company : "", disabled:false,
-        createdAt: new Date().toISOString(), lastLoginAt: null
-      }).then(function(){
-        S.newAccountForm = null;
-        S.accountsError = "";
-        toast(t("accountCreated"));
-        renderAccounts();
-      }).catch(function(err){ S.accountsError = describeFirebaseError(err); renderAccounts(); });
-    });
-  }).catch(function(err){ S.accountsError = describeFirebaseError(err); renderAccounts(); });
+
+  // Created on a SECOND, independent Firebase App instance — otherwise the
+  // client SDK would sign the admin out of their own session and into the
+  // new account it just created.
+  S.secondaryAuth.createUserWithEmailAndPassword(email, nf.password).then(function(cred){
+    var uid = cred.user.uid;
+    S.db.doc("users/"+uid).set({
+      fullName: nf.fullName.trim(), contact: nf.contact.trim(), role: nf.role,
+      department: nf.role === "merchandiser" ? nf.department : "",
+      company: (nf.role === "merchandiser" || nf.role === "supervisor") ? nf.company : "",
+      disabled:false, createdAt: new Date().toISOString(), lastLoginAt: null
+    }).then(function(){
+      S.secondaryAuth.signOut().catch(function(){});
+      S.newAccountForm = null;
+      S.accountsError = "";
+      toast(t("accountCreated"));
+      renderAccounts();
+    }).catch(function(err){ S.accountsError = describeFirebaseError(err); renderAccounts(); });
+  }).catch(function(err){ S.accountsError = describeAuthError(err); renderAccounts(); });
 }
 
 /* ================= DELETE CONFIRM ================= */
@@ -3600,13 +3698,11 @@ document.getElementById("tabDash").onclick = function(){ S.view = "dashboard"; r
 document.getElementById("langToggle").onclick = function(){ setLang(S.lang === "en" ? "ar" : "en"); };
 document.getElementById("logoutBtn").onclick = function(){
   if(!confirm(t("logoutConfirm"))) return;
-  try{ localStorage.removeItem("sh_session_uid"); }catch(e){}
-  S.currentUser = null;
   S.authView = "login";
   S.authError = "";
   S.appMode = "handover";
   S.view = "form";
-  render();
+  if(S.auth) S.auth.signOut(); // onAuthStateChanged picks this up and clears S.currentUser
 };
 document.getElementById("deptHandoverBtn").onclick = function(){ S.appMode = "handover"; S.view = "form"; render(); };
 document.getElementById("deptMerchBtn").onclick = function(){ S.appMode = "merch"; S.view = "form"; render(); };
@@ -3650,11 +3746,18 @@ function boot(){
   window.addEventListener("online", function(){ updateSyncBanner(); trySyncQueue(); });
   window.addEventListener("offline", function(){ updateSyncBanner(); });
 
-  var db = null, assetsApi = null;
+  var db = null, assetsApi = null, auth = null;
   try{
     if(YOUR_FIREBASE_CONFIG.apiKey.indexOf("PASTE_") !== 0){
       firebase.initializeApp(YOUR_FIREBASE_CONFIG);
       db = firebase.firestore();
+      auth = firebase.auth();
+      // A second, independent Firebase App instance used ONLY when an admin
+      // creates a new account from the Accounts screen. Firebase Auth's
+      // client SDK signs you in as whichever user you just created — using
+      // a separate app instance for that one call keeps the admin's own
+      // session untouched.
+      S.secondaryAuth = firebase.initializeApp(YOUR_FIREBASE_CONFIG, "secondary").auth();
     }
   }catch(e){ console.error("Firebase init failed — check YOUR_FIREBASE_CONFIG in index.html", e); }
 
@@ -3687,6 +3790,7 @@ function boot(){
   }
 
   S.db = db;
+  S.auth = auth;
   S.assets = assetsApi;
   S.canWriteAssets = !!assetsApi;
 
@@ -3698,7 +3802,7 @@ function boot(){
     subscribeQuickShortages();
     subscribeActivityLog();
     subscribeThresholds();
-    restoreSession();
+    watchAuthState();
     trySyncQueue();
   } else {
     S.authChecked = true;
