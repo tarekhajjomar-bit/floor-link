@@ -261,6 +261,16 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
 .btn-primary:disabled{opacity:.45; box-shadow:none;}
 .btn-secondary{background:var(--paper); color:var(--ink); border:1.5px solid var(--line);}
 
+.quick-fab-btn{
+  width:auto; display:inline-flex; align-items:center; gap:7px; border:none; cursor:pointer;
+  background:var(--teal); color:#fff; border-radius:999px; padding:9px 16px 9px 12px;
+  font-size:13.5px; font-weight:700; box-shadow:0 4px 14px -4px color-mix(in srgb, var(--teal) 60%, transparent);
+  transition:transform .12s var(--ease), box-shadow .16s var(--ease);
+}
+[dir="rtl"] .quick-fab-btn{padding:9px 12px 9px 16px;}
+.quick-fab-btn:active{transform:scale(.96);}
+.quick-fab-btn svg{width:16px; height:16px;}
+
 .badge{
   display:inline-flex; align-items:center; gap:5px; font-size:11.5px; font-weight:700; border-radius:999px;
   padding:4px 11px; white-space:nowrap;
@@ -642,6 +652,9 @@ en:{
   quickShortagesEmpty:"No shortages logged.",
   quickShortageResolveBtn:"Resolved",
   quickShortageResolvedTag:"Resolved",
+  categoryLabel:"Category", uncategorizedLabel:"Uncategorized",
+  changeCategoryBtn:"Change category",
+  historyCategoryChanged:"Category changed to",
   deleteConfirmBtn:"Yes, delete", deleted:"Deleted.",
 
   scanBarcodeBtn:"Scan barcode", scannerTitle:"Scan product barcode",
@@ -852,6 +865,9 @@ ar:{
   quickShortagesEmpty:"ما في نواقص مسجّلة.",
   quickShortageResolveBtn:"تمت المعالجة",
   quickShortageResolvedTag:"تمت المعالجة",
+  categoryLabel:"القسم", uncategorizedLabel:"بدون قسم",
+  changeCategoryBtn:"تغيير القسم",
+  historyCategoryChanged:"تم تغيير القسم إلى",
   deleteConfirmBtn:"أيوا، احذف", deleted:"تم الحذف.",
 
   scanBarcodeBtn:"مسح باركود", scannerTitle:"مسح باركود المنتج",
@@ -1452,7 +1468,7 @@ function renderForm(){
   var html = '';
 
   if(S.currentUser && S.currentUser.role === "supervisor"){
-    html += '<button type="button" class="btn btn-secondary" id="openQuickShortageBtn" style="margin-bottom:14px;">'+ICONS.plus+' '+t("quickShortageBtn")+'</button>';
+    html += '<div style="margin-bottom:14px;"><button type="button" class="quick-fab-btn" id="openQuickShortageBtn">'+ICONS.plus+' '+t("quickShortageBtn")+'</button></div>';
   }
 
   html += '<form id="handoverForm">';
@@ -2946,7 +2962,22 @@ function renderTrackedDashboard(){
   } else if(!list.length){
     html += '<div class="empty">'+t("itemsEmptyState")+'</div>';
   } else {
-    list.forEach(function(l){ html += trackedItemCard(l); });
+    var groups = {};
+    var order = [];
+    list.forEach(function(l){
+      var key = l.category || "";
+      if(!groups[key]){ groups[key] = []; order.push(key); }
+      groups[key].push(l);
+    });
+    order.sort(function(a,b){
+      if(a === "") return 1;
+      if(b === "") return -1;
+      return deptLabel(a).localeCompare(deptLabel(b));
+    });
+    order.forEach(function(key){
+      html += '<div class="section-title" style="margin:18px 0 6px;">'+(key ? esc(deptLabel(key)) : t("uncategorizedLabel"))+'</div>';
+      groups[key].forEach(function(l){ html += trackedItemCard(l); });
+    });
   }
 
   document.getElementById("main").innerHTML = html;
@@ -2975,13 +3006,21 @@ function trackedItemCard(l){
 
     body += '<div class="log-cat"><div class="log-cat-head"><b>'+t("historyTitle")+'</b></div>';
     (l.history||[]).forEach(function(h){
-      var actionLabel = h.action === "created" ? t("historyCreated") : h.action === "deleted" ? t("historyDeleted") : (t("historyQtyUpdate")+" "+h.qty);
+      var actionLabel = h.action === "created" ? t("historyCreated") : h.action === "deleted" ? t("historyDeleted") :
+        h.action === "category_changed" ? (t("historyCategoryChanged")+" "+deptLabel(h.category)) :
+        (t("historyQtyUpdate")+" "+h.qty);
       body += '<p class="log-note">'+actionLabel+' — '+esc(h.fullName||h.username||"—")+' · '+fmtDateTime(h.at)+'</p>';
     });
     body += '</div>';
 
     body += '<div class="field" style="margin-top:10px;"><input type="text" placeholder="'+t("newQtyPh")+'" id="qty_'+l.id+'"></div>';
     body += '<button type="button" class="btn btn-secondary" data-update-qty="'+l.id+'">'+t("updateQtyBtn")+'</button>';
+
+    var catOpts = '<option value="">'+t("uncategorizedLabel")+'</option>' + MERCH_DEPARTMENTS.map(function(d){
+      return '<option value="'+d.id+'"'+(l.category===d.id?" selected":"")+'>'+esc(S.lang==="ar"?d.ar:d.en)+'</option>';
+    }).join("");
+    body += '<div class="field" style="margin-top:10px;"><label>'+t("categoryLabel")+'</label><select id="cat_'+l.id+'">'+catOpts+'</select></div>';
+    body += '<button type="button" class="btn btn-secondary" data-update-category="'+l.id+'">'+t("changeCategoryBtn")+'</button>';
 
     if(isManagerUser()){
       body += '<button type="button" class="btn btn-danger" data-delete-track="'+l.id+'" style="margin-top:10px;">'+ICONS.trash+' '+t("deleteProductBtn")+'</button>';
@@ -3036,6 +3075,20 @@ function wireTrackedDashboard(){
   Array.prototype.forEach.call(document.querySelectorAll("[data-delete-track]"), function(btn){
     btn.onclick = function(){ requestDelete("expiry_items", this.getAttribute("data-delete-track"), true); };
   });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-update-category]"), function(btn){
+    btn.onclick = function(){
+      var id = this.getAttribute("data-update-category");
+      var sel = document.getElementById("cat_"+id);
+      var newCat = sel.value;
+      var user = S.currentUser;
+      var who = {userId: user ? user.id : null, username: user ? user.username : "", fullName: user ? user.fullName : ""};
+      var nowIso = new Date().toISOString();
+      S.db.doc("expiry_items/"+id).update({
+        category: newCat, updatedAt: nowIso,
+        history: firebase.firestore.FieldValue.arrayUnion({action:"category_changed", category:newCat, userId:who.userId, username:who.username, fullName:who.fullName, at:nowIso})
+      }).then(function(){ toast(t("accountUpdated")); }).catch(function(){ toast(t("connError")); });
+    };
+  });
 }
 
 
@@ -3050,6 +3103,7 @@ function freshTrackForm(barcode, catalogData){
     qty: "",
     expiryDate: "",
     company: S.trackContext.company,
+    category: (S.currentUser && S.currentUser.department) ? S.currentUser.department : ""
   };
 }
 
@@ -3340,7 +3394,7 @@ function submitTrackedProduct(){
     image: tf.image ? tf.image.url : null,
     size: tf.size.trim(), supplier: tf.supplier.trim(),
     qty: tf.qty.toString().trim(), expiryDate: tf.expiryDate,
-    company: tf.company,
+    company: tf.company, category: tf.category || "",
     status: "active",
     createdBy: who, createdAt: nowIso, updatedAt: nowIso,
     history: [{action:"created", qty: tf.qty.toString().trim(), expiryDate: tf.expiryDate, userId: who.userId, username: who.username, fullName: who.fullName, at: nowIso}]
