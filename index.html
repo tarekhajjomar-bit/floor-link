@@ -629,6 +629,19 @@ en:{
 
   myShiftsTab:"My Shifts", myVisitsTab:"My Reports",
   deleteEntry:"Delete", deleteConfirmTitle:"Delete this entry?", deleteConfirmSub:"This can't be undone.",
+  deleteAccountBtn:"Delete account",
+  deleteAccountConfirmTitle:"Delete this account?",
+  deleteAccountConfirmSub:"The account itself is removed permanently and can't be undone. Any expiry items they registered stay on record exactly as they are — nothing there is deleted.",
+  quickShortageBtn:"Quick shortage",
+  quickShortageTitle:"Log a missing item",
+  quickShortageInputPh:"What's missing?",
+  quickShortageSaveBtn:"Add",
+  quickShortageSavedToast:"Added.",
+  quickShortageAnotherHint:"Saved — add another, or close when you're done.",
+  quickShortagesTitle:"Quick shortages",
+  quickShortagesEmpty:"No shortages logged.",
+  quickShortageResolveBtn:"Resolved",
+  quickShortageResolvedTag:"Resolved",
   deleteConfirmBtn:"Yes, delete", deleted:"Deleted.",
 
   scanBarcodeBtn:"Scan barcode", scannerTitle:"Scan product barcode",
@@ -826,6 +839,19 @@ ar:{
 
   myShiftsTab:"ورديّاتي", myVisitsTab:"تقاريري",
   deleteEntry:"حذف", deleteConfirmTitle:"حذف هذا السجل؟", deleteConfirmSub:"هذا الإجراء ما بينرجع فيه.",
+  deleteAccountBtn:"حذف الحساب",
+  deleteAccountConfirmTitle:"حذف هذا الحساب؟",
+  deleteAccountConfirmSub:"الحساب نفسه بينحذف نهائيًا وما بيترجع. أي أصناف إكسبايري سجّلها هذا الحساب بتضل موجودة بالسجل زي ما هي — ما بينحذف منها شي.",
+  quickShortageBtn:"نواقص سريعة",
+  quickShortageTitle:"سجّل صنف ناقص",
+  quickShortageInputPh:"شو الناقص؟",
+  quickShortageSaveBtn:"إضافة",
+  quickShortageSavedToast:"تمت الإضافة.",
+  quickShortageAnotherHint:"تم الحفظ — ضيف واحد كمان، أو سكّر إذا خلصت.",
+  quickShortagesTitle:"النواقص السريعة",
+  quickShortagesEmpty:"ما في نواقص مسجّلة.",
+  quickShortageResolveBtn:"تمت المعالجة",
+  quickShortageResolvedTag:"تمت المعالجة",
   deleteConfirmBtn:"أيوا، احذف", deleted:"تم الحذف.",
 
   scanBarcodeBtn:"مسح باركود", scannerTitle:"مسح باركود المنتج",
@@ -916,6 +942,9 @@ var S = {
   trackExpanded: {},
   trackFilters: {company:"", employee:""},
   trackContext: null,
+  quickShortages: [],
+  quickShortagesLoaded: false,
+  quickShortageModal: null,
   catalogLookup: null,
   thresholds: [7,3,1],
   thresholdsLoaded: false,
@@ -1422,6 +1451,10 @@ function renderForm(){
 
   var html = '';
 
+  if(S.currentUser && S.currentUser.role === "supervisor"){
+    html += '<button type="button" class="btn btn-secondary" id="openQuickShortageBtn" style="margin-bottom:14px;">'+ICONS.plus+' '+t("quickShortageBtn")+'</button>';
+  }
+
   html += '<form id="handoverForm">';
   html += '<div class="card">' +
     '<div class="section-title">'+t("shiftDetails")+'</div>' +
@@ -1526,6 +1559,8 @@ function setupSigCanvas(which, existingUrl){
 
 function wireForm(){
   var f = S.form;
+  var qsBtn = document.getElementById("openQuickShortageBtn");
+  if(qsBtn) qsBtn.onclick = openQuickShortageModal;
   var fCompanySel = document.getElementById("f_company");
   if(fCompanySel) fCompanySel.onchange = function(){ f.company = this.value; applyBrand(f.company); };
   document.getElementById("f_date").onchange = function(){ f.date = this.value; };
@@ -1751,6 +1786,27 @@ function filteredLogs(){
 
 function renderDashboard(){
   var html = "";
+
+  if(isManagerUser()){
+    var openShortages = S.quickShortages.filter(function(s){ return !s.resolved; });
+    html += '<div class="card">' +
+      '<div class="section-title">'+t("quickShortagesTitle")+'</div>';
+    if(!S.quickShortagesLoaded){
+      html += '<p class="hint">'+t("loading")+'</p>';
+    } else if(!openShortages.length){
+      html += '<p class="hint">'+t("quickShortagesEmpty")+'</p>';
+    } else {
+      html += openShortages.map(function(s){
+        return '<div class="alert-row">' +
+          '<div style="flex:1; min-width:0;"><b style="font-size:13.5px; display:block;">'+esc(s.item)+'</b>' +
+          '<span class="hint">'+esc(companyName(s.company))+' · '+esc(s.fullName||"")+' · '+fmtDateTime(s.createdAt)+'</span></div>' +
+          '<button type="button" class="link-btn" data-resolve-shortage="'+s.id+'">'+t("quickShortageResolveBtn")+'</button>' +
+        '</div>';
+      }).join("");
+    }
+    html += '</div>';
+  }
+
   var companyOpts = '<option value="">'+t("filterAll")+'</option>' + COMPANIES.map(function(c){
     return '<option value="'+c.id+'"'+(S.filters.company===c.id?" selected":"")+'>'+esc(S.lang==="ar"?c.ar:c.en)+'</option>';
   }).join("");
@@ -1894,6 +1950,12 @@ function catLogBlock(label, cat){
 }
 
 function wireDashboard(){
+  Array.prototype.forEach.call(document.querySelectorAll("[data-resolve-shortage]"), function(btn){
+    btn.onclick = function(){
+      var id = this.getAttribute("data-resolve-shortage");
+      S.db.doc("quick_shortages/"+id).update({resolved:true}).catch(function(){ toast(t("connError")); });
+    };
+  });
   document.getElementById("filt_company").onchange = function(){ S.filters.company = this.value; applyBrand(S.filters.company || S.form.company); renderDashboard(); };
   document.getElementById("filt_status").onchange = function(){ S.filters.status = this.value; renderDashboard(); };
   document.getElementById("filt_range").onchange = function(){ S.filters.range = this.value; renderDashboard(); };
@@ -2545,6 +2607,7 @@ function acctRow(u){
         '<span class="badge badge-issues">'+t("statusDisabled")+'</span><button type="button" class="link-btn" data-toggle-disable="'+u.id+'" data-next="false">'+t("enableBtn")+'</button>' :
         '<span class="badge badge-approved">'+t("statusActive")+'</span>'+(isSelf?'':'<button type="button" class="link-btn" data-toggle-disable="'+u.id+'" data-next="true">'+t("disableBtn")+'</button>')
       ) +
+      (isSelf?'':'<button type="button" class="link-btn" style="color:var(--red);" data-delete-acct="'+u.id+'">'+ICONS.trash+' '+t("deleteAccountBtn")+'</button>') +
     '</div>' +
   '</div>';
 }
@@ -2580,6 +2643,9 @@ function wireAccounts(){
       S.db.doc("users/"+id).update({disabled: next}).then(function(){ toast(t("accountUpdated")); }).catch(function(){ toast(t("connError")); });
     };
   });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-delete-acct]"), function(btn){
+    btn.onclick = function(){ requestDelete("users", this.getAttribute("data-delete-acct"), false); };
+  });
 }
 
 function createAccount(){
@@ -2611,6 +2677,66 @@ function createAccount(){
 
 /* ================= DELETE CONFIRM ================= */
 
+/* ================= QUICK SHORTAGES ================= */
+
+function subscribeQuickShortages(){
+  if(!S.db) return;
+  S.db.collection("quick_shortages").orderBy("createdAt","desc").limit(300).onSnapshot(function(snap){
+    S.quickShortages = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data() || {}); });
+    S.quickShortagesLoaded = true;
+    if(S.appMode === "handover" && S.view === "dashboard") renderDashboard();
+  }, function(){ S.quickShortagesLoaded = true; });
+}
+
+function openQuickShortageModal(){
+  S.quickShortageModal = {value:"", justSaved:false};
+  renderQuickShortageModal();
+}
+function closeQuickShortageModal(){
+  S.quickShortageModal = null;
+  document.getElementById("modalHost").innerHTML = "";
+}
+function renderQuickShortageModal(){
+  var host = document.getElementById("modalHost");
+  if(!S.quickShortageModal){ host.innerHTML = ""; return; }
+  var m = S.quickShortageModal;
+  host.innerHTML = '<div class="modal-overlay" id="qsOverlay">' +
+    '<div class="modal-sheet">' +
+      '<div class="modal-head"><h2>'+t("quickShortageTitle")+'</h2>' +
+        '<button type="button" class="modal-close" id="qsCloseBtn">'+ICONS.close+'</button></div>' +
+      (m.justSaved ? '<p class="form-ok">'+t("quickShortageAnotherHint")+'</p>' : '') +
+      '<div class="field"><input type="text" id="qsInput" placeholder="'+t("quickShortageInputPh")+'" value="'+esc(m.value)+'" autofocus></div>' +
+      '<button type="button" class="btn btn-primary" id="qsSaveBtn">'+ICONS.plus+' '+t("quickShortageSaveBtn")+'</button>' +
+    '</div>' +
+  '</div>';
+  document.getElementById("qsCloseBtn").onclick = closeQuickShortageModal;
+  document.getElementById("qsOverlay").onclick = function(e){ if(e.target.id==="qsOverlay") closeQuickShortageModal(); };
+  var inp = document.getElementById("qsInput");
+  inp.oninput = function(){ m.value = this.value; };
+  inp.focus();
+  inp.onkeydown = function(e){ if(e.key === "Enter"){ e.preventDefault(); submitQuickShortage(); } };
+  document.getElementById("qsSaveBtn").onclick = submitQuickShortage;
+}
+
+function submitQuickShortage(){
+  var m = S.quickShortageModal;
+  if(!m || !m.value.trim()) return;
+  var u = S.currentUser;
+  var doc = {
+    item: m.value.trim(),
+    company: (u && u.company) ? u.company : S.form.company,
+    submittedByUserId: u ? u.id : null,
+    submittedByUsername: u ? u.username : "",
+    fullName: u ? u.fullName : "",
+    resolved: false,
+    createdAt: new Date().toISOString()
+  };
+  saveOrQueue("quick_shortages", doc, function(){
+    S.quickShortageModal = {value:"", justSaved:true};
+    renderQuickShortageModal();
+  });
+}
+
 function requestDelete(collectionName, id, soft){
   S.deleteTarget = {collection: collectionName, id: id, soft: !!soft};
   renderDeleteConfirm();
@@ -2623,11 +2749,14 @@ function renderDeleteConfirm(){
   var host = document.getElementById("modalHost");
   if(!S.deleteTarget){ host.innerHTML=""; return; }
   var isSoft = S.deleteTarget.soft;
+  var isAccount = S.deleteTarget.collection === "users";
+  var titleKey = isSoft ? "deleteProductConfirmTitle" : (isAccount ? "deleteAccountConfirmTitle" : "deleteConfirmTitle");
+  var subKey = isSoft ? "deleteProductConfirmSub" : (isAccount ? "deleteAccountConfirmSub" : "deleteConfirmSub");
   host.innerHTML = '<div class="modal-overlay" id="delOverlay">' +
     '<div class="modal-sheet">' +
-      '<div class="modal-head"><h2>'+(isSoft ? t("deleteProductConfirmTitle") : t("deleteConfirmTitle"))+'</h2>' +
+      '<div class="modal-head"><h2>'+t(titleKey)+'</h2>' +
         '<button type="button" class="modal-close" id="delCloseBtn">'+ICONS.close+'</button></div>' +
-      '<p class="modal-sub">'+(isSoft ? t("deleteProductConfirmSub") : t("deleteConfirmSub"))+'</p>' +
+      '<p class="modal-sub">'+t(subKey)+'</p>' +
       '<button type="button" class="btn btn-danger" id="delConfirmBtn">'+t("deleteConfirmBtn")+'</button>' +
     '</div>' +
   '</div>';
@@ -2722,9 +2851,11 @@ function renderTrackForm(){
 }
 
 function filteredTrackedItems(){
+  var lockedCompany = (!isManagerUser() && S.currentUser && S.currentUser.company) ? S.currentUser.company : null;
   return S.trackedItems.filter(function(l){
     if(l.status === "deleted") return false;
-    if(S.trackFilters.company && l.company !== S.trackFilters.company) return false;
+    if(lockedCompany){ if(l.company !== lockedCompany) return false; }
+    else if(S.trackFilters.company && l.company !== S.trackFilters.company) return false;
     if(S.trackFilters.employee && (l.createdBy||{}).userId !== S.trackFilters.employee) return false;
     return true;
   });
@@ -2802,10 +2933,12 @@ function renderTrackedDashboard(){
   var employeeOpts = '<option value="">'+t("filterByEmployee")+'</option>' + S.users.map(function(u){
     return '<option value="'+u.id+'"'+(S.trackFilters.employee===u.id?" selected":"")+'>'+esc(u.fullName)+'</option>';
   }).join("");
-  html += '<div class="filters">' +
-    '<select id="tfilt_company">'+companyOpts+'</select>' +
-    (isManagerUser() ? '<select id="tfilt_employee">'+employeeOpts+'</select>' : '') +
-  '</div>';
+  if(isManagerUser()){
+    html += '<div class="filters">' +
+      '<select id="tfilt_company">'+companyOpts+'</select>' +
+      '<select id="tfilt_employee">'+employeeOpts+'</select>' +
+    '</div>';
+  }
 
   var list = filteredTrackedItems();
   if(!S.trackedItemsLoaded){
@@ -3367,6 +3500,7 @@ function boot(){
     subscribeMerchLogs();
     subscribeUsers();
     subscribeTrackedItems();
+    subscribeQuickShortages();
     subscribeThresholds();
     restoreSession();
     trySyncQueue();
