@@ -1,26 +1,86 @@
-// Firestore security rules for Floor Link.
-//
-// Floor Link does its OWN username/password login (stored in the "users"
-// collection, passwords hashed) — it does not use Firebase Authentication.
-// That means Firestore has no idea who's "logged in"; from Firestore's
-// point of view every request is anonymous. These rules simply mirror
-// that: anyone who has your Firebase config (i.e. anyone using the app)
-// can read and write, which matches how the app worked inside Claude too.
-//
-// This is fine for an internal tool on a link you control, but it means
-// someone who inspects your site's source could read this same config
-// and call Firestore directly, bypassing the app's UI. If that risk
-// matters to you, the real fix is to add Firebase Authentication and
-// tighten these rules to check request.auth — that's a follow-up project,
-// not a quick edit.
-//
-// To apply: Firebase Console → Firestore Database → Rules → paste this → Publish.
-
 rules_version = '2';
+
+// Floor Link — role-based Firestore rules (Firebase Auth + Custom Claims).
+//
+// The role claim is set by a scheduled GitHub Action (not a Cloud Function —
+// see /scripts/sync-roles.js), reading the "role" field already present on
+// each /users/{uid} document and writing it to that user's Auth token as a
+// custom claim. There's a short delay (a few minutes, per the sync
+// schedule) between changing someone's role and that change taking effect
+// here — that's expected, not a bug.
+//
+// Collections NOT mentioned below (handovers, merch_visits, catalog,
+// quick_shortages, settings, fcm_tokens) keep today's simple behavior:
+// open to any signed-in user, no role distinction yet. That's a deliberate
+// scope choice for this pass — tell me if you want any of those locked
+// down the same way.
+
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.role == 'admin';
+    }
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // ---------------- users ----------------
+    // Each employee can read their own profile; admins can read everyone's.
+    // A user can create their OWN profile doc at signup, but cannot set
+    // their own role to "admin" that way — only the sync script (reading
+    // a role an admin set through the app's Accounts screen) can promote
+    // someone, and even then it only updates the Auth claim, not this
+    // field directly (the Accounts screen still writes "role" here as it
+    // does today; this rule just stops a user from self-promoting at
+    // signup time).
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId)
+                    && request.resource.data.role in ['supervisor', 'merchandiser'];
+      allow update: if isAdmin()
+                    || (isOwner(userId)
+                        && request.resource.data.role == resource.data.role);
+      allow delete: if isAdmin();
+    }
+
+    // ---------------- expiry_items ----------------
+    // Any signed-in employee can read, create, and make ordinary edits
+    // (quantity, category). Only an admin can touch the two fields that
+    // actually remove an item from view: "status" and "deletedInfo".
+    match /expiry_items/{itemId} {
+      allow read: if isSignedIn();
+
+      allow create: if isSignedIn()
+                    && request.resource.data.createdBy.userId == request.auth.uid
+                    && request.resource.data.status == 'active';
+
+      allow update: if isAdmin()
+                    || (isSignedIn()
+                        && !request.resource.data.diff(resource.data)
+                              .affectedKeys().hasAny(['status', 'deletedInfo']));
+
+      allow delete: if isAdmin();
+    }
+
+    // ---------------- activity_log ----------------
+    // Append-only. Anyone signed in can log their OWN activity; nobody can
+    // log activity as someone else, edit, or delete an entry after the
+    // fact. Only admins can read the log (that's the whole point of it).
+    match /activity_log/{logId} {
+      allow create: if isSignedIn()
+                    && request.resource.data.userId == request.auth.uid;
+      allow read: if isAdmin();
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // ---------------- everything else (unchanged scope for now) ----------------
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
   }
 }
