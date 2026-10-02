@@ -674,6 +674,17 @@ en:{
   categoryLabel:"Category", uncategorizedLabel:"Uncategorized",
   changeCategoryBtn:"Change category",
   historyCategoryChanged:"Category changed to",
+  activityTitle:"Employee activity", activitySub:"Points weight real actions (adding or deleting a product) higher than just viewing the page.",
+  activityPeriodWeek:"This week", activityPeriodMonth:"This month",
+  activityPointsLabel:"pts",
+  activityViewsLabel:"views", activityAddsLabel:"added", activityDeletesLabel:"deleted", activityUpdatesLabel:"updates",
+  activityLastSeenLabel:"Last active",
+  activityNeverLabel:"Never opened this section",
+  activityDaysAgoLabel:"days ago", activityTodayLabel:"today", activityYesterdayLabel:"yesterday",
+  inactivityAlertTitle:"Gone quiet",
+  inactivityAlertSub:"No activity in Expiry Control for 3+ days.",
+  noInactivityNow:"Everyone's been active in the last few days.",
+  activityEmptyState:"No activity recorded yet.",
   deleteConfirmBtn:"Yes, delete", deleted:"Deleted.",
 
   scanBarcodeBtn:"Scan barcode", scannerTitle:"Scan product barcode",
@@ -887,6 +898,17 @@ ar:{
   categoryLabel:"القسم", uncategorizedLabel:"بدون قسم",
   changeCategoryBtn:"تغيير القسم",
   historyCategoryChanged:"تم تغيير القسم إلى",
+  activityTitle:"نشاط الموظفين", activitySub:"الأفعال الحقيقية (إضافة أو حذف منتج) آخذة نقاط أكتر من مجرد فتح الصفحة.",
+  activityPeriodWeek:"هالأسبوع", activityPeriodMonth:"هالشهر",
+  activityPointsLabel:"نقطة",
+  activityViewsLabel:"فتحات", activityAddsLabel:"إضافات", activityDeletesLabel:"حذوفات", activityUpdatesLabel:"تحديثات",
+  activityLastSeenLabel:"آخر نشاط",
+  activityNeverLabel:"ما فتح هالقسم أبدًا",
+  activityDaysAgoLabel:"يوم", activityTodayLabel:"اليوم", activityYesterdayLabel:"البارحة",
+  inactivityAlertTitle:"انقطعوا عن النشاط",
+  inactivityAlertSub:"ما في أي نشاط بقسم الإكسبايري من ٣ أيام أو أكتر.",
+  noInactivityNow:"كل الموظفين نشيطين بآخر كم يوم.",
+  activityEmptyState:"ما في نشاط مسجّل لسا.",
   deleteConfirmBtn:"أيوا، احذف", deleted:"تم الحذف.",
 
   scanBarcodeBtn:"مسح باركود", scannerTitle:"مسح باركود المنتج",
@@ -980,6 +1002,9 @@ var S = {
   quickShortages: [],
   quickShortagesLoaded: false,
   quickShortageModal: null,
+  activityLog: [],
+  activityLogLoaded: false,
+  activityPeriod: 7,
   catalogLookup: null,
   thresholds: [7,3,1],
   thresholdsLoaded: false,
@@ -2811,6 +2836,7 @@ function renderDeleteConfirm(){
       }).then(function(){
         closeDeleteConfirm();
         toast(t("deleted"));
+        if(target.collection === "expiry_items") logActivity("delete");
       }).catch(function(){ toast(t("connError")); });
     } else {
       S.db.doc(target.collection+"/"+target.id).delete().then(function(){
@@ -2835,6 +2861,71 @@ function daysLeftTag(days){
   if(days === 1) return {cls:"badge-pending", label:t("dayLeftLabel")};
   var minThr = S.thresholds.length ? Math.min.apply(null, S.thresholds) : 7;
   return {cls: days <= minThr ? "badge-pending" : "badge-neutral", label: days + " " + t("daysLeftLabel")};
+}
+
+var ACTIVITY_POINTS = {view:1, create:10, delete:8, qty_update:3, category_changed:3};
+
+function logActivity(action){
+  if(!S.db || !S.currentUser) return;
+  var u = S.currentUser;
+  S.db.collection("activity_log").add({
+    userId: u.id, username: u.username, fullName: u.fullName, role: u.role,
+    action: action, points: ACTIVITY_POINTS[action] || 0,
+    at: new Date().toISOString()
+  }).catch(function(){});
+}
+
+function subscribeActivityLog(){
+  if(!S.db) return;
+  S.db.collection("activity_log").orderBy("at","desc").limit(3000).onSnapshot(function(snap){
+    S.activityLog = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data() || {}); });
+    S.activityLogLoaded = true;
+    if(S.appMode === "expiry" && S.view === "dashboard") renderTrackedDashboard();
+  }, function(){ S.activityLogLoaded = true; });
+}
+
+function activityReport(periodDays){
+  var cutoff = new Date(Date.now() - periodDays*86400000);
+  var byUser = {};
+  S.activityLog.forEach(function(e){
+    var key = e.userId || e.username || "?";
+    if(!byUser[key]) byUser[key] = {name: e.fullName || e.username || "—", points:0, counts:{view:0, create:0, delete:0, qty_update:0, category_changed:0}, lastActiveAt:null};
+    var rec = byUser[key];
+    if(!rec.lastActiveAt || new Date(e.at) > new Date(rec.lastActiveAt)){ rec.lastActiveAt = e.at; }
+    if(new Date(e.at) < cutoff) return;
+    rec.points += (e.points || 0);
+    if(rec.counts[e.action] !== undefined) rec.counts[e.action]++;
+  });
+  return Object.keys(byUser).map(function(k){ return byUser[k]; }).sort(function(a,b){ return b.points - a.points; });
+}
+
+function relativeDaysLabel(iso){
+  var days = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+  if(days <= 0) return t("activityTodayLabel");
+  if(days === 1) return t("activityYesterdayLabel");
+  return days + " " + t("activityDaysAgoLabel");
+}
+
+function inactiveEmployees(thresholdDays){
+  var lastByUser = {};
+  S.activityLog.forEach(function(e){
+    var key = e.userId;
+    if(!key) return;
+    if(!lastByUser[key] || new Date(e.at) > new Date(lastByUser[key])){ lastByUser[key] = e.at; }
+  });
+  var cutoff = Date.now() - thresholdDays*86400000;
+  return S.users.filter(function(u){
+    return (u.role === "supervisor" || u.role === "merchandiser") && !u.disabled;
+  }).map(function(u){
+    var last = lastByUser[u.id] || null;
+    return {id:u.id, name:u.fullName, lastActiveAt:last};
+  }).filter(function(r){
+    return !r.lastActiveAt || new Date(r.lastActiveAt).getTime() < cutoff;
+  }).sort(function(a,b){
+    if(!a.lastActiveAt) return -1;
+    if(!b.lastActiveAt) return 1;
+    return new Date(a.lastActiveAt) - new Date(b.lastActiveAt);
+  });
 }
 
 function subscribeTrackedItems(){
@@ -2948,16 +3039,43 @@ function renderTrackedDashboard(){
       '<button type="button" class="btn btn-secondary" id="saveThresholdsBtn" style="width:auto; padding-inline:18px;">'+t("saveThresholdsBtn")+'</button>' +
     '</div>';
 
-    var compWeek = complianceReport(7);
+    var inactive = inactiveEmployees(3);
     html += '<div class="card">' +
-      '<div class="section-title">'+t("complianceTitle")+'</div>' +
-      '<div class="section-sub">'+t("complianceSub")+' — '+t("periodWeek")+'</div>';
-    if(!compWeek.length){
-      html += '<p class="hint">'+t("itemsEmptyState")+'</p>';
+      '<div class="section-title">'+t("inactivityAlertTitle")+'</div>' +
+      '<div class="section-sub">'+t("inactivityAlertSub")+'</div>';
+    if(!S.activityLogLoaded || !S.usersLoaded){
+      html += '<p class="hint">'+t("loading")+'</p>';
+    } else if(!inactive.length){
+      html += '<p class="hint">'+t("noInactivityNow")+'</p>';
     } else {
-      html += compWeek.map(function(c){
-        return '<div class="compliance-row"><span>'+esc(c.name)+'</span><b>'+c.count+' '+t("itemsLoggedLabel")+'</b></div>';
+      html += inactive.map(function(r){
+        return '<div class="compliance-row"><span>'+esc(r.name)+'</span><b style="color:var(--red);">'+(r.lastActiveAt ? relativeDaysLabel(r.lastActiveAt) : t("activityNeverLabel"))+'</b></div>';
       }).join("");
+    }
+    html += '</div>';
+
+    html += '<div class="card">' +
+      '<div class="section-title">'+t("activityTitle")+'</div>' +
+      '<div class="section-sub">'+t("activitySub")+'</div>' +
+      '<div class="chip-row" style="margin:10px 0;">' +
+        '<button type="button" class="chip'+(S.activityPeriod===7?" sel":"")+'" data-activity-period="7">'+t("activityPeriodWeek")+'</button>' +
+        '<button type="button" class="chip'+(S.activityPeriod===30?" sel":"")+'" data-activity-period="30">'+t("activityPeriodMonth")+'</button>' +
+      '</div>';
+    if(!S.activityLogLoaded){
+      html += '<p class="hint">'+t("loading")+'</p>';
+    } else {
+      var report = activityReport(S.activityPeriod);
+      if(!report.length){
+        html += '<p class="hint">'+t("activityEmptyState")+'</p>';
+      } else {
+        html += report.map(function(r){
+          return '<div class="compliance-row" style="flex-direction:column; align-items:stretch; gap:4px;">' +
+            '<div style="display:flex; justify-content:space-between;"><b>'+esc(r.name)+'</b><span>'+r.points+' '+t("activityPointsLabel")+'</span></div>' +
+            '<span class="hint">'+r.counts.create+' '+t("activityAddsLabel")+' · '+r.counts.delete+' '+t("activityDeletesLabel")+' · '+r.counts.qty_update+' '+t("activityUpdatesLabel")+' · '+r.counts.view+' '+t("activityViewsLabel")+'</span>' +
+            '<span class="hint">'+t("activityLastSeenLabel")+': '+(r.lastActiveAt ? relativeDaysLabel(r.lastActiveAt) : t("activityNeverLabel"))+'</span>' +
+          '</div>';
+        }).join("");
+      }
     }
     html += '</div>';
   }
@@ -3050,6 +3168,9 @@ function trackedItemCard(l){
 }
 
 function wireTrackedDashboard(){
+  Array.prototype.forEach.call(document.querySelectorAll("[data-activity-period]"), function(btn){
+    btn.onclick = function(){ S.activityPeriod = parseInt(this.getAttribute("data-activity-period"),10); renderTrackedDashboard(); };
+  });
   var fc = document.getElementById("tfilt_company");
   if(fc) fc.onchange = function(){ S.trackFilters.company = this.value; renderTrackedDashboard(); };
   var fe = document.getElementById("tfilt_employee");
@@ -3088,7 +3209,7 @@ function wireTrackedDashboard(){
       S.db.doc("expiry_items/"+id).update({
         qty: newQty, updatedAt: nowIso,
         history: firebase.firestore.FieldValue.arrayUnion({action:"qty_updated", qty:newQty, userId:who.userId, username:who.username, fullName:who.fullName, at:nowIso})
-      }).then(function(){ toast(t("accountUpdated")); }).catch(function(){ toast(t("connError")); });
+      }).then(function(){ toast(t("accountUpdated")); logActivity("qty_update"); }).catch(function(){ toast(t("connError")); });
     };
   });
   Array.prototype.forEach.call(document.querySelectorAll("[data-delete-track]"), function(btn){
@@ -3105,7 +3226,7 @@ function wireTrackedDashboard(){
       S.db.doc("expiry_items/"+id).update({
         category: newCat, updatedAt: nowIso,
         history: firebase.firestore.FieldValue.arrayUnion({action:"category_changed", category:newCat, userId:who.userId, username:who.username, fullName:who.fullName, at:nowIso})
-      }).then(function(){ toast(t("accountUpdated")); }).catch(function(){ toast(t("connError")); });
+      }).then(function(){ toast(t("accountUpdated")); logActivity("category_changed"); }).catch(function(){ toast(t("connError")); });
     };
   });
 }
@@ -3421,6 +3542,7 @@ function submitTrackedProduct(){
 
   saveOrQueue("expiry_items", doc, function(queued){
     toast(queued ? t("offlineSavedToast") : t("productSavedToast"));
+    if(!queued) logActivity("create");
     S.scanTarget.stage = "camera";
     S.scanTarget.barcode = "";
     renderScanner();
@@ -3489,7 +3611,7 @@ document.getElementById("logoutBtn").onclick = function(){
 document.getElementById("deptHandoverBtn").onclick = function(){ S.appMode = "handover"; S.view = "form"; render(); };
 document.getElementById("deptMerchBtn").onclick = function(){ S.appMode = "merch"; S.view = "form"; render(); };
 document.getElementById("deptAccountsBtn").onclick = function(){ S.appMode = "accounts"; render(); };
-document.getElementById("deptExpiryBtn").onclick = function(){ S.appMode = "expiry"; S.view = "form"; render(); };
+document.getElementById("deptExpiryBtn").onclick = function(){ S.appMode = "expiry"; S.view = "form"; logActivity("view"); render(); };
 
 function resolvePhotoUrls(doc){
   ["cash","inventory","cleanliness"].forEach(function(k){
@@ -3574,6 +3696,7 @@ function boot(){
     subscribeUsers();
     subscribeTrackedItems();
     subscribeQuickShortages();
+    subscribeActivityLog();
     subscribeThresholds();
     restoreSession();
     trySyncQueue();
