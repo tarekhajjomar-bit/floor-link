@@ -1331,7 +1331,7 @@ function fetchAndSaveFcmToken(silent){
     console.log("FCM: got token ending in …" + token.slice(-12));
     var u = S.currentUser;
     S.db.doc("fcm_tokens/"+encodeURIComponent(token)).set({
-      token: token, userId: u.id, username: u.username, fullName: u.fullName,
+      token: token, userId: u.id, username: u.username || "", fullName: u.fullName,
       role: u.role, company: u.company || "", department: u.department || "",
       updatedAt: new Date().toISOString()
     }, {merge:true}).then(function(){
@@ -1817,7 +1817,7 @@ function submitHandover(){
       outgoingName: f.outgoingName.trim(), incomingName: f.incomingName.trim(),
       incomingUserId: f.incomingUserId || null,
       submittedByUserId: S.currentUser ? S.currentUser.id : null,
-      submittedByUsername: S.currentUser ? S.currentUser.username : null,
+      submittedByUsername: S.currentUser ? (S.currentUser.username || "") : null,
       cash: {status: f.cash.status, notes: f.cash.notes.trim(), photos: photoIds("cash")},
       inventory: {status: f.inventory.status, notes: f.inventory.notes.trim(), photos: photoIds("inventory")},
       cleanliness: {status: f.cleanliness.status, notes: f.cleanliness.notes.trim(), photos: photoIds("cleanliness")},
@@ -2248,7 +2248,7 @@ function submitMerchVisit(){
     merchName: f.merchName.trim(), company: f.company,
     date: f.date, time: f.time,
     submittedByUserId: S.currentUser ? S.currentUser.id : null,
-    submittedByUsername: S.currentUser ? S.currentUser.username : null,
+    submittedByUsername: S.currentUser ? (S.currentUser.username || "") : null,
     display: {status: f.display.status, notes: f.display.notes.trim(), photos: photoIds},
     hasOrder: !!f.hasOrder, orderItems: items,
     shortages: f.shortages.trim(),
@@ -2751,7 +2751,7 @@ function acctRow(u){
   return '<div class="acct-row" data-acct="'+u.id+'">' +
     '<div class="acct-info">' +
       '<b>'+esc(u.fullName)+'</b>' +
-      '<span>@'+esc(u.username)+' · '+esc(u.contact||"")+'</span>' +
+      '<span>'+(u.username ? '@'+esc(u.username)+' · ' : '')+esc(u.contact||"")+'</span>' +
       (u.role === "merchandiser" && u.department ? '<span>'+t("colDepartment")+': '+esc(deptLabel(u.department))+'</span>' : '') +
       ((u.role === "merchandiser" || u.role === "supervisor") && u.company ? '<span>'+t("company")+': '+esc(companyName(u.company))+'</span>' : '') +
       '<span>'+t("colLastLogin")+': '+lastLogin+'</span>' +
@@ -2884,7 +2884,7 @@ function submitQuickShortage(){
     item: m.value.trim(),
     company: (u && u.company) ? u.company : S.form.company,
     submittedByUserId: u ? u.id : null,
-    submittedByUsername: u ? u.username : "",
+    submittedByUsername: u ? (u.username || "") : "",
     fullName: u ? u.fullName : "",
     resolved: false,
     createdAt: new Date().toISOString()
@@ -2930,7 +2930,7 @@ function renderDeleteConfirm(){
       S.db.doc(target.collection+"/"+target.id).update({
         status: "deleted",
         deletedInfo: Object.assign({at: nowIso}, who),
-        history: firebase.firestore.FieldValue.arrayUnion({action:"deleted", userId:who.userId, username:who.username, fullName:who.fullName, at: nowIso})
+        history: firebase.firestore.FieldValue.arrayUnion({action:"deleted", userId:who.userId, username:who.username || "", fullName:who.fullName, at: nowIso})
       }).then(function(){
         closeDeleteConfirm();
         toast(t("deleted"));
@@ -2967,7 +2967,7 @@ function logActivity(action){
   if(!S.db || !S.currentUser) return;
   var u = S.currentUser;
   S.db.collection("activity_log").add({
-    userId: u.id, username: u.username, fullName: u.fullName, role: u.role,
+    userId: u.id, username: u.username || "", fullName: u.fullName, role: u.role,
     action: action, points: ACTIVITY_POINTS[action] || 0,
     at: new Date().toISOString()
   }).catch(function(){});
@@ -3306,7 +3306,7 @@ function wireTrackedDashboard(){
       var nowIso = new Date().toISOString();
       S.db.doc("expiry_items/"+id).update({
         qty: newQty, updatedAt: nowIso,
-        history: firebase.firestore.FieldValue.arrayUnion({action:"qty_updated", qty:newQty, userId:who.userId, username:who.username, fullName:who.fullName, at:nowIso})
+        history: firebase.firestore.FieldValue.arrayUnion({action:"qty_updated", qty:newQty, userId:who.userId, username:who.username || "", fullName:who.fullName, at:nowIso})
       }).then(function(){ toast(t("accountUpdated")); logActivity("qty_update"); }).catch(function(){ toast(t("connError")); });
     };
   });
@@ -3323,7 +3323,7 @@ function wireTrackedDashboard(){
       var nowIso = new Date().toISOString();
       S.db.doc("expiry_items/"+id).update({
         category: newCat, updatedAt: nowIso,
-        history: firebase.firestore.FieldValue.arrayUnion({action:"category_changed", category:newCat, userId:who.userId, username:who.username, fullName:who.fullName, at:nowIso})
+        history: firebase.firestore.FieldValue.arrayUnion({action:"category_changed", category:newCat, userId:who.userId, username:who.username || "", fullName:who.fullName, at:nowIso})
       }).then(function(){ toast(t("accountUpdated")); logActivity("category_changed"); }).catch(function(){ toast(t("connError")); });
     };
   });
@@ -3635,7 +3635,7 @@ function submitTrackedProduct(){
     company: tf.company, category: tf.category || "",
     status: "active",
     createdBy: who, createdAt: nowIso, updatedAt: nowIso,
-    history: [{action:"created", qty: tf.qty.toString().trim(), expiryDate: tf.expiryDate, userId: who.userId, username: who.username, fullName: who.fullName, at: nowIso}]
+    history: [{action:"created", qty: tf.qty.toString().trim(), expiryDate: tf.expiryDate, userId: who.userId, username: who.username || "", fullName: who.fullName, at: nowIso}]
   };
 
   saveOrQueue("expiry_items", doc, function(queued){
