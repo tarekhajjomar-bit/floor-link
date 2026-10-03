@@ -2418,7 +2418,6 @@ function hasManagerAccount(){
 function renderAuthScreen(){
   var html = '<div class="auth-wrap">';
   html += S.authView === "signup" ? renderSignupForm() : renderLoginForm();
-  html += '<p style="text-align:center; font-size:11px; color:var(--ink-dim); margin-top:18px; opacity:.6;">build-check-0002</p>';
   html += '</div>';
   document.getElementById("main").innerHTML = html;
   wireAuthScreen();
