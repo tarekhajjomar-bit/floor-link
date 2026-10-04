@@ -2925,7 +2925,7 @@ function renderDeleteConfirm(){
     if(!target || !S.db) return;
     if(target.soft){
       var user = S.currentUser;
-      var who = {userId: user ? user.id : null, username: user ? user.username : "", fullName: user ? user.fullName : ""};
+      var who = {userId: user ? user.id : null, username: (user ? user.username : "") || "", fullName: user ? user.fullName : ""};
       var nowIso = new Date().toISOString();
       S.db.doc(target.collection+"/"+target.id).update({
         status: "deleted",
@@ -3302,7 +3302,7 @@ function wireTrackedDashboard(){
       var newQty = inp.value.trim();
       if(!newQty) return;
       var user = S.currentUser;
-      var who = {userId: user ? user.id : null, username: user ? user.username : "", fullName: user ? user.fullName : ""};
+      var who = {userId: user ? user.id : null, username: (user ? user.username : "") || "", fullName: user ? user.fullName : ""};
       var nowIso = new Date().toISOString();
       S.db.doc("expiry_items/"+id).update({
         qty: newQty, updatedAt: nowIso,
@@ -3319,7 +3319,7 @@ function wireTrackedDashboard(){
       var sel = document.getElementById("cat_"+id);
       var newCat = sel.value;
       var user = S.currentUser;
-      var who = {userId: user ? user.id : null, username: user ? user.username : "", fullName: user ? user.fullName : ""};
+      var who = {userId: user ? user.id : null, username: (user ? user.username : "") || "", fullName: user ? user.fullName : ""};
       var nowIso = new Date().toISOString();
       S.db.doc("expiry_items/"+id).update({
         category: newCat, updatedAt: nowIso,
@@ -3615,7 +3615,7 @@ function submitTrackedProduct(){
     return;
   }
   var user = S.currentUser;
-  var who = {userId: user ? user.id : null, username: user ? user.username : "", fullName: user ? user.fullName : ""};
+  var who = {userId: user ? user.id : null, username: (user ? user.username : "") || "", fullName: user ? user.fullName : ""};
   var nowIso = new Date().toISOString();
 
   if(S.db){
