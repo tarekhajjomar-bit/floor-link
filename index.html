@@ -546,6 +546,7 @@ en:{
   verifyEmailBannerText:"Please verify your email address.",
   resendVerificationBtn:"Resend",
   verificationResentToast:"Verification email sent — check your inbox.",
+  categoryPickerSub:"Which department are you adding products for? Every item you scan will go under this category until you change it here.",
   notifBannerText:"Turn on notifications to get alerts for handovers, reminders, and expiring products.",
   notifEnableBtn:"Enable", notifDismissBtn:"Not now",
   notifEnabledToast:"Notifications enabled.",
@@ -795,6 +796,7 @@ ar:{
   verifyEmailBannerText:"رجاءً أكّد إيميلك.",
   resendVerificationBtn:"إعادة إرسال",
   verificationResentToast:"تم إرسال إيميل التأكيد — تأكد من صندوق الوارد.",
+  categoryPickerSub:"لمين قسم عم تضيف منتجات؟ كل صنف بتمسحه رح ينحط تحت هاد القسم لحد ما تغيّره من هون.",
   notifBannerText:"فعّل الإشعارات حتى توصلك تنبيهات الهاند أوفر والتذكيرات والمنتجات يلي قربت تخلص.",
   notifEnableBtn:"تفعيل", notifDismissBtn:"مو هلق",
   notifEnabledToast:"تم تفعيل الإشعارات.",
@@ -1110,7 +1112,7 @@ function freshMerchForm(){
   };
 }
 S.merchForm = freshMerchForm();
-S.trackContext = {company: COMPANIES[0].id, branch:""};
+S.trackContext = {company: COMPANIES[0].id, branch:"", category:""};
 
 function t(k){ return STR[S.lang][k] || k; }
 
@@ -3162,6 +3164,17 @@ function renderTrackForm(){
     '<div class="section-title">'+t("locationDetailsTitle")+'</div>' +
     companyField +
   '</div>';
+  var showCategoryPicker = !(S.currentUser && S.currentUser.role === "merchandiser");
+  if(showCategoryPicker){
+    var catOpts2 = '<option value="">'+t("uncategorizedLabel")+'</option>' + MERCH_DEPARTMENTS.map(function(d){
+      return '<option value="'+d.id+'"'+(S.trackContext.category===d.id?" selected":"")+'>'+esc(S.lang==="ar"?d.ar:d.en)+'</option>';
+    }).join("");
+    html += '<div class="card">' +
+      '<div class="section-title">'+t("categoryLabel")+'</div>' +
+      '<p class="section-sub">'+t("categoryPickerSub")+'</p>' +
+      '<div class="field"><select id="tc_category">'+catOpts2+'</select></div>' +
+    '</div>';
+  }
   html += '<div class="card" style="text-align:center; padding:32px 20px;">' +
     '<div class="locked-icon" style="color:var(--teal);">'+ICONS.barcode+'</div>' +
     '<div class="section-title" style="margin-bottom:6px;">'+t("scanProductBtn")+'</div>' +
@@ -3171,6 +3184,8 @@ function renderTrackForm(){
   document.getElementById("main").innerHTML = html;
   var tcSel = document.getElementById("tc_company");
   if(tcSel) tcSel.onchange = function(){ S.trackContext.company = this.value; applyBrand(this.value); };
+  var catSel = document.getElementById("tc_category");
+  if(catSel) catSel.onchange = function(){ S.trackContext.category = this.value; };
   document.getElementById("openScanBtn2").onclick = openScanner;
 }
 
@@ -3441,7 +3456,7 @@ function freshTrackForm(barcode, catalogData){
     qty: "",
     expiryDate: "",
     company: S.trackContext.company,
-    category: (S.currentUser && S.currentUser.department) ? S.currentUser.department : ""
+    category: (S.currentUser && S.currentUser.role === "merchandiser" && S.currentUser.department) ? S.currentUser.department : (S.trackContext.category || "")
   };
 }
 
