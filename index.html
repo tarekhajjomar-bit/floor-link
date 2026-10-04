@@ -259,6 +259,7 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
   display:inline-flex; align-items:center; justify-content:center; gap:7px;
 }
 .btn:active{transform:scale(.98);}
+.btn:disabled{opacity:.45; cursor:not-allowed; box-shadow:none;}
 .btn-primary{background:var(--teal); color:#fff; box-shadow:0 2px 10px -2px color-mix(in srgb, var(--teal) 55%, transparent);}
 .btn-primary:disabled{opacity:.45; box-shadow:none;}
 .btn-secondary{background:var(--paper); color:var(--ink); border:1.5px solid var(--line);}
@@ -547,6 +548,8 @@ en:{
   resendVerificationBtn:"Resend",
   verificationResentToast:"Verification email sent — check your inbox.",
   categoryPickerSub:"Which department are you adding products for? Every item you scan will go under this category until you change it here.",
+  categoryRequiredPh:"Select a department first",
+  categoryRequiredHint:"Pick a department above before scanning — it's required.",
   notifBannerText:"Turn on notifications to get alerts for handovers, reminders, and expiring products.",
   notifEnableBtn:"Enable", notifDismissBtn:"Not now",
   notifEnabledToast:"Notifications enabled.",
@@ -797,6 +800,8 @@ ar:{
   resendVerificationBtn:"إعادة إرسال",
   verificationResentToast:"تم إرسال إيميل التأكيد — تأكد من صندوق الوارد.",
   categoryPickerSub:"لمين قسم عم تضيف منتجات؟ كل صنف بتمسحه رح ينحط تحت هاد القسم لحد ما تغيّره من هون.",
+  categoryRequiredPh:"اختر قسم أول",
+  categoryRequiredHint:"اختار قسم فوق قبل ما تمسح — إلزامي.",
   notifBannerText:"فعّل الإشعارات حتى توصلك تنبيهات الهاند أوفر والتذكيرات والمنتجات يلي قربت تخلص.",
   notifEnableBtn:"تفعيل", notifDismissBtn:"مو هلق",
   notifEnabledToast:"تم تفعيل الإشعارات.",
@@ -3165,8 +3170,9 @@ function renderTrackForm(){
     companyField +
   '</div>';
   var showCategoryPicker = !(S.currentUser && S.currentUser.role === "merchandiser");
+  var categoryMissing = showCategoryPicker && !S.trackContext.category;
   if(showCategoryPicker){
-    var catOpts2 = '<option value="">'+t("uncategorizedLabel")+'</option>' + MERCH_DEPARTMENTS.map(function(d){
+    var catOpts2 = '<option value="" disabled'+(!S.trackContext.category?" selected":"")+'>'+t("categoryRequiredPh")+'</option>' + MERCH_DEPARTMENTS.map(function(d){
       return '<option value="'+d.id+'"'+(S.trackContext.category===d.id?" selected":"")+'>'+esc(S.lang==="ar"?d.ar:d.en)+'</option>';
     }).join("");
     html += '<div class="card">' +
@@ -3178,15 +3184,18 @@ function renderTrackForm(){
   html += '<div class="card" style="text-align:center; padding:32px 20px;">' +
     '<div class="locked-icon" style="color:var(--teal);">'+ICONS.barcode+'</div>' +
     '<div class="section-title" style="margin-bottom:6px;">'+t("scanProductBtn")+'</div>' +
-    '<p class="section-sub" style="margin-bottom:16px;">'+t("scanIntroSub")+'</p>' +
-    '<button type="button" class="btn btn-primary" id="openScanBtn2" style="width:auto; padding-inline:28px;">'+ICONS.barcode+' '+t("scanProductBtn")+'</button>' +
+    '<p class="section-sub" style="margin-bottom:16px;">'+(categoryMissing ? t("categoryRequiredHint") : t("scanIntroSub"))+'</p>' +
+    '<button type="button" class="btn btn-primary" id="openScanBtn2" style="width:auto; padding-inline:28px;"'+(categoryMissing?' disabled':'')+'>'+ICONS.barcode+' '+t("scanProductBtn")+'</button>' +
   '</div>';
   document.getElementById("main").innerHTML = html;
   var tcSel = document.getElementById("tc_company");
   if(tcSel) tcSel.onchange = function(){ S.trackContext.company = this.value; applyBrand(this.value); };
   var catSel = document.getElementById("tc_category");
-  if(catSel) catSel.onchange = function(){ S.trackContext.category = this.value; };
-  document.getElementById("openScanBtn2").onclick = openScanner;
+  if(catSel) catSel.onchange = function(){ S.trackContext.category = this.value; renderTrackForm(); };
+  document.getElementById("openScanBtn2").onclick = function(){
+    if(categoryMissing){ toast(t("categoryRequiredHint")); return; }
+    openScanner();
+  };
 }
 
 function filteredTrackedItems(){
