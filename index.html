@@ -417,13 +417,14 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
       </div>
     </div>
     <div class="header-controls">
-      <span class="pill-btn" id="userChip" style="cursor:default;"></span>
+      <button class="pill-btn" id="userChip" type="button"></button>
       <button class="pill-btn" id="logoutBtn" type="button" title="Logout"></button>
       <button class="pill-btn" id="langToggle" type="button">العربية</button>
     </div>
   </div>
   <div class="sync-banner" id="syncBanner" style="display:none;"></div>
   <div class="notif-banner" id="notifBanner" style="display:none;"></div>
+  <div class="notif-banner" id="verifyEmailBanner" style="display:none;"></div>
   <div class="tabbar" id="deptbar" style="margin-top:10px;">
     <button class="tab-btn active" id="deptHandoverBtn" type="button"></button>
     <button class="tab-btn" id="deptMerchBtn" type="button"></button>
@@ -534,6 +535,17 @@ en:{
   migratingNote:"We'll copy your name, role, branch and department from your old account automatically — you just need a new login.",
   forgotPasswordLink:"Forgot password?",
   resetEmailSentToast:"Password reset email sent — check your inbox.",
+  accountModalTitle:"Your account",
+  changePasswordTitle:"Change password",
+  currentPasswordLabel:"Current password",
+  newPasswordLabel:"New password",
+  confirmNewPasswordLabel:"Confirm new password",
+  changePasswordBtn:"Change password",
+  pwChangedToast:"Password changed.",
+  authErrWrongCurrentPw:"Your current password is wrong.",
+  verifyEmailBannerText:"Please verify your email address.",
+  resendVerificationBtn:"Resend",
+  verificationResentToast:"Verification email sent — check your inbox.",
   notifBannerText:"Turn on notifications to get alerts for handovers, reminders, and expiring products.",
   notifEnableBtn:"Enable", notifDismissBtn:"Not now",
   notifEnabledToast:"Notifications enabled.",
@@ -772,6 +784,17 @@ ar:{
   migratingNote:"رح ننقل اسمك ودورك وفرعك وقسمك من حسابك القديم أوتوماتيكيًا — بس بدك تسجيل دخول جديد.",
   forgotPasswordLink:"نسيت كلمة السر؟",
   resetEmailSentToast:"تم إرسال إيميل استعادة كلمة السر — تأكد من صندوق الوارد.",
+  accountModalTitle:"حسابك",
+  changePasswordTitle:"تغيير كلمة السر",
+  currentPasswordLabel:"كلمة السر الحالية",
+  newPasswordLabel:"كلمة السر الجديدة",
+  confirmNewPasswordLabel:"تأكيد كلمة السر الجديدة",
+  changePasswordBtn:"تغيير كلمة السر",
+  pwChangedToast:"تم تغيير كلمة السر.",
+  authErrWrongCurrentPw:"كلمة السر الحالية غلط.",
+  verifyEmailBannerText:"رجاءً أكّد إيميلك.",
+  resendVerificationBtn:"إعادة إرسال",
+  verificationResentToast:"تم إرسال إيميل التأكيد — تأكد من صندوق الوارد.",
   notifBannerText:"فعّل الإشعارات حتى توصلك تنبيهات الهاند أوفر والتذكيرات والمنتجات يلي قربت تخلص.",
   notifEnableBtn:"تفعيل", notifDismissBtn:"مو هلق",
   notifEnabledToast:"تم تفعيل الإشعارات.",
@@ -1010,7 +1033,7 @@ var S = {
   authView: "login",
   authError: "",
   loginForm: {email:"", password:""},
-  signupForm: {migrating:false, oldUsername:"", email:"", fullName:"", contact:"", password:"", confirmPassword:"", role:"supervisor", department:"", company:""},
+  signupForm: {migrating:false, oldUsername:"", email:"", fullName:"", password:"", confirmPassword:"", role:"supervisor", department:"", company:""},
   users: [],
   usersLoaded: false,
   accountsError: "",
@@ -1031,6 +1054,7 @@ var S = {
   quickShortages: [],
   quickShortagesLoaded: false,
   quickShortageModal: null,
+  accountModal: null,
   activityLog: [],
   activityLogLoaded: false,
   activityPeriod: 7,
@@ -1288,6 +1312,22 @@ function updateNotifBanner(){
   document.getElementById("notifDismissBtn").onclick = function(){
     try{ localStorage.setItem(notifDismissedKey(), "1"); }catch(e){}
     updateNotifBanner();
+  };
+}
+
+function updateVerifyEmailBanner(){
+  var el = document.getElementById("verifyEmailBanner");
+  if(!el) return;
+  var authUser = S.auth && S.auth.currentUser;
+  if(!S.currentUser || !authUser || authUser.emailVerified){ el.style.display = "none"; return; }
+  el.style.display = "flex";
+  el.innerHTML =
+    '<span style="flex:1;">'+esc(t("verifyEmailBannerText"))+'</span>' +
+    '<button type="button" id="resendVerifyBtn">'+esc(t("resendVerificationBtn"))+'</button>';
+  document.getElementById("resendVerifyBtn").onclick = function(){
+    authUser.sendEmailVerification().then(function(){
+      toast(t("verificationResentToast"));
+    }).catch(function(){ toast(t("connError")); });
   };
 }
 
@@ -2463,7 +2503,6 @@ function renderSignupForm(){
         (
           (showManagerOpt ? '<p class="hint" style="margin-bottom:10px;">'+t("bootstrapManagerNote")+'</p>' : '') +
           '<div class="field"><label>'+t("fullNameLabel")+'</label><input type="text" id="a_fullName" placeholder="'+t("fullNamePh")+'" value="'+esc(f.fullName)+'"></div>' +
-          '<div class="field"><label>'+t("contactLabel")+'</label><input type="text" id="a_contact" placeholder="'+t("contactPh")+'" value="'+esc(f.contact)+'"></div>' +
           '<div class="field"><label>'+t("roleLabel")+'</label><select id="a_role">'+roleOpts+'</select></div>' +
           (f.role === "merchandiser" ? '<div class="field"><label>'+t("merchDeptLabel")+'</label><select id="a_dept">' +
             '<option value="">'+t("merchDeptPh")+'</option>' +
@@ -2498,8 +2537,6 @@ function wireAuthScreen(){
     if(oldUnameEl) oldUnameEl.oninput = function(){ S.signupForm.oldUsername = this.value; };
     var fullNameEl = document.getElementById("a_fullName");
     if(fullNameEl) fullNameEl.oninput = function(){ S.signupForm.fullName = this.value; };
-    var contactEl = document.getElementById("a_contact");
-    if(contactEl) contactEl.oninput = function(){ S.signupForm.contact = this.value; };
     var roleEl = document.getElementById("a_role");
     if(roleEl) roleEl.onchange = function(){ S.signupForm.role = this.value; renderAuthScreen(); };
     var deptSel = document.getElementById("a_dept");
@@ -2586,6 +2623,7 @@ function createAuthAccountAndProfile(email, password, profile, oldDocRef){
       S.authBusy = false;
       S.authError = "";
       render();
+      cred.user.sendEmailVerification().catch(function(){});
       // onAuthStateChanged fires automatically and routes into the app.
     }).catch(function(err){ S.authBusy = false; S.authError = describeFirebaseError(err); render(); });
   }).catch(function(err){ S.authBusy = false; S.authError = describeAuthError(err); render(); });
@@ -2611,21 +2649,21 @@ function doSignup(){
       if(oldData.migratedToUid){ S.authBusy=false; S.authError = t("authErrAlreadyMigrated"); render(); return; }
       var oldRole = oldData.role === "manager" ? "admin" : oldData.role;
       createAuthAccountAndProfile(email, f.password, {
-        fullName: oldData.fullName || "", contact: oldData.contact || "",
+        fullName: oldData.fullName || "",
         role: oldRole, department: oldData.department || "", company: oldData.company || ""
       }, oldDoc.ref);
     }).catch(function(err){ S.authBusy=false; S.authError = describeFirebaseError(err); render(); });
     return;
   }
 
-  if(!f.fullName.trim() || !f.contact.trim()){ S.authError = t("authErrRequired"); render(); return; }
+  if(!f.fullName.trim()){ S.authError = t("authErrRequired"); render(); return; }
   var role = f.role;
   if(role === "admin" && hasManagerAccount()){ role = "supervisor"; }
   if(role === "merchandiser" && !f.department){ S.authError = t("authErrDeptRequired"); render(); return; }
   if((role === "merchandiser" || role === "supervisor") && !f.company){ S.authError = t("authErrCompanyRequired"); render(); return; }
   S.authBusy = true; render();
   createAuthAccountAndProfile(email, f.password, {
-    fullName: f.fullName.trim(), contact: f.contact.trim(), role: role,
+    fullName: f.fullName.trim(), role: role,
     department: role === "merchandiser" ? f.department : "",
     company: (role === "merchandiser" || role === "supervisor") ? f.company : ""
   }, null);
@@ -2681,7 +2719,7 @@ function subscribeUsers(){
 /* ================= ACCOUNTS ================= */
 
 function freshNewAccountForm(){
-  return {fullName:"", contact:"", email:"", password:"", role:"supervisor", department:"", company:""};
+  return {fullName:"", email:"", password:"", role:"supervisor", department:"", company:""};
 }
 
 function renderAccounts(){
@@ -2699,7 +2737,6 @@ function renderAccounts(){
       '<div class="section-title">'+t("newAccountTitle")+'</div>' +
       (S.accountsError ? '<p class="form-error">'+esc(S.accountsError)+'</p>' : '') +
       '<div class="field"><label>'+t("fullNameLabel")+'</label><input type="text" id="na_fullName" value="'+esc(nf.fullName)+'"></div>' +
-      '<div class="field"><label>'+t("contactLabel")+'</label><input type="text" id="na_contact" value="'+esc(nf.contact)+'"></div>' +
       '<div class="field"><label>'+t("emailLabel")+'</label><input type="email" id="na_email" value="'+esc(nf.email)+'"></div>' +
       '<div class="field"><label>'+t("passwordLabel")+'</label><input type="password" id="na_password" value="'+esc(nf.password)+'"></div>' +
       '<div class="field"><label>'+t("roleLabel")+'</label><select id="na_role">'+roleOpts2+'</select></div>' +
@@ -2751,7 +2788,7 @@ function acctRow(u){
   return '<div class="acct-row" data-acct="'+u.id+'">' +
     '<div class="acct-info">' +
       '<b>'+esc(u.fullName)+'</b>' +
-      '<span>'+(u.username ? '@'+esc(u.username)+' · ' : '')+esc(u.contact||"")+'</span>' +
+      (u.username ? '<span>@'+esc(u.username)+'</span>' : '') +
       (u.role === "merchandiser" && u.department ? '<span>'+t("colDepartment")+': '+esc(deptLabel(u.department))+'</span>' : '') +
       ((u.role === "merchandiser" || u.role === "supervisor") && u.company ? '<span>'+t("company")+': '+esc(companyName(u.company))+'</span>' : '') +
       '<span>'+t("colLastLogin")+': '+lastLogin+'</span>' +
@@ -2772,7 +2809,7 @@ function wireAccounts(){
   if(openBtn) openBtn.onclick = function(){ S.newAccountForm = freshNewAccountForm(); S.accountsError=""; renderAccounts(); };
   var cancelBtn = document.getElementById("cancelAcctBtn");
   if(cancelBtn) cancelBtn.onclick = function(){ S.newAccountForm = null; renderAccounts(); };
-  ["na_fullName","na_contact","na_email","na_password"].forEach(function(id){
+  ["na_fullName","na_email","na_password"].forEach(function(id){
     var el = document.getElementById(id);
     if(el) el.oninput = function(){ S.newAccountForm[id.replace("na_","")] = this.value; };
   });
@@ -2806,7 +2843,7 @@ function wireAccounts(){
 function createAccount(){
   var nf = S.newAccountForm;
   var email = (nf.email||"").trim();
-  if(!nf.fullName.trim() || !nf.contact.trim() || !email || !nf.password){
+  if(!nf.fullName.trim() || !email || !nf.password){
     S.accountsError = t("authErrRequired"); renderAccounts(); return;
   }
   if(nf.password.length < 6){ S.accountsError = t("authErrPwShort"); renderAccounts(); return; }
@@ -2819,11 +2856,12 @@ function createAccount(){
   S.secondaryAuth.createUserWithEmailAndPassword(email, nf.password).then(function(cred){
     var uid = cred.user.uid;
     S.db.doc("users/"+uid).set({
-      fullName: nf.fullName.trim(), contact: nf.contact.trim(), role: nf.role,
+      fullName: nf.fullName.trim(), role: nf.role,
       department: nf.role === "merchandiser" ? nf.department : "",
       company: (nf.role === "merchandiser" || nf.role === "supervisor") ? nf.company : "",
       disabled:false, createdAt: new Date().toISOString(), lastLoginAt: null
     }).then(function(){
+      cred.user.sendEmailVerification().catch(function(){});
       S.secondaryAuth.signOut().catch(function(){});
       S.newAccountForm = null;
       S.accountsError = "";
@@ -2834,6 +2872,68 @@ function createAccount(){
 }
 
 /* ================= DELETE CONFIRM ================= */
+
+/* ================= ACCOUNT / CHANGE PASSWORD ================= */
+
+function openAccountModal(){
+  S.accountModal = {currentPassword:"", newPassword:"", confirmPassword:"", error:""};
+  renderAccountModal();
+}
+function closeAccountModal(){
+  S.accountModal = null;
+  document.getElementById("modalHost").innerHTML = "";
+}
+function renderAccountModal(){
+  var host = document.getElementById("modalHost");
+  if(!S.accountModal){ host.innerHTML = ""; return; }
+  var m = S.accountModal;
+  var u = S.currentUser;
+  host.innerHTML = '<div class="modal-overlay" id="acctModalOverlay">' +
+    '<div class="modal-sheet">' +
+      '<div class="modal-head"><h2>'+t("accountModalTitle")+'</h2>' +
+        '<button type="button" class="modal-close" id="acctModalCloseBtn">'+ICONS.close+'</button></div>' +
+      '<p class="hint" style="margin-bottom:14px;">'+esc(u ? u.fullName : "")+' · '+esc(roleBadgeLabel(u ? u.role : ""))+'</p>' +
+      '<div class="section-title" style="margin-bottom:8px;">'+t("changePasswordTitle")+'</div>' +
+      (m.error ? '<p class="form-error" style="margin-bottom:10px;">'+esc(m.error)+'</p>' : '') +
+      '<div class="field"><label>'+t("currentPasswordLabel")+'</label><input type="password" id="pw_current" autocomplete="current-password" value="'+esc(m.currentPassword)+'"></div>' +
+      '<div class="field"><label>'+t("newPasswordLabel")+'</label><input type="password" id="pw_new" autocomplete="new-password" value="'+esc(m.newPassword)+'"></div>' +
+      '<div class="field"><label>'+t("confirmNewPasswordLabel")+'</label><input type="password" id="pw_confirm" autocomplete="new-password" value="'+esc(m.confirmPassword)+'"></div>' +
+      '<button type="button" class="btn btn-primary" id="changePwBtn">'+t("changePasswordBtn")+'</button>' +
+    '</div>' +
+  '</div>';
+  document.getElementById("acctModalCloseBtn").onclick = closeAccountModal;
+  document.getElementById("acctModalOverlay").onclick = function(e){ if(e.target.id==="acctModalOverlay") closeAccountModal(); };
+  document.getElementById("pw_current").oninput = function(){ m.currentPassword = this.value; };
+  document.getElementById("pw_new").oninput = function(){ m.newPassword = this.value; };
+  document.getElementById("pw_confirm").oninput = function(){ m.confirmPassword = this.value; };
+  document.getElementById("changePwBtn").onclick = submitPasswordChange;
+}
+
+function submitPasswordChange(){
+  var m = S.accountModal;
+  if(!m.currentPassword || !m.newPassword || !m.confirmPassword){ m.error = t("authErrRequired"); renderAccountModal(); return; }
+  if(m.newPassword.length < 6){ m.error = t("authErrPwShort"); renderAccountModal(); return; }
+  if(m.newPassword !== m.confirmPassword){ m.error = t("authErrPwMismatch"); renderAccountModal(); return; }
+  var authUser = S.auth.currentUser;
+  if(!authUser || !authUser.email){ m.error = t("authErrGeneric"); renderAccountModal(); return; }
+  var cred = firebase.auth.EmailAuthProvider.credential(authUser.email, m.currentPassword);
+  authUser.reauthenticateWithCredential(cred).then(function(){
+    return authUser.updatePassword(m.newPassword);
+  }).then(function(){
+    closeAccountModal();
+    toast(t("pwChangedToast"));
+  }).catch(function(err){
+    console.error("Change password error:", err);
+    if(err.code === "auth/wrong-password" || err.code === "auth/invalid-credential"){
+      m.error = t("authErrWrongCurrentPw");
+    } else if(err.code === "auth/weak-password"){
+      m.error = t("authErrPwShort");
+    } else {
+      m.error = t("authErrGeneric");
+    }
+    renderAccountModal();
+  });
+}
 
 /* ================= QUICK SHORTAGES ================= */
 
@@ -3670,6 +3770,7 @@ function updateAuthChrome(){
 function render(){
   updateAuthChrome();
   updateNotifBanner();
+  updateVerifyEmailBanner();
   if(!S.currentUser){
     document.getElementById("main").innerHTML = "";
     renderAuthScreen();
@@ -3696,6 +3797,7 @@ function render(){
 document.getElementById("tabForm").onclick = function(){ S.view = "form"; render(); };
 document.getElementById("tabDash").onclick = function(){ S.view = "dashboard"; render(); };
 document.getElementById("langToggle").onclick = function(){ setLang(S.lang === "en" ? "ar" : "en"); };
+document.getElementById("userChip").onclick = openAccountModal;
 document.getElementById("logoutBtn").onclick = function(){
   if(!confirm(t("logoutConfirm"))) return;
   S.authView = "login";
