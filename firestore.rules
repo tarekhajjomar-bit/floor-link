@@ -11,9 +11,12 @@ rules_version = '2';
 //
 // Collections NOT mentioned below (handovers, merch_visits, catalog,
 // quick_shortages, settings, fcm_tokens) keep today's simple behavior:
-// open to any signed-in user, no role distinction yet. That's a deliberate
-// scope choice for this pass — tell me if you want any of those locked
-// down the same way.
+// open to any signed-in user, no role distinction yet.
+//
+// delivery_shifts: written by the offline branch delivery book
+// (shoppies-delivery.html), signed in as an account whose role is
+// "delivery". Only admins can read them. Delivery accounts can do
+// nothing else in the database.
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -24,19 +27,14 @@ service cloud.firestore {
     function isAdmin() {
       return isSignedIn() && request.auth.token.role == 'admin';
     }
+    function isDelivery() {
+      return isSignedIn() && request.auth.token.role == 'delivery';
+    }
     function isOwner(uid) {
       return isSignedIn() && request.auth.uid == uid;
     }
 
     // ---------------- users ----------------
-    // Each employee can read their own profile; admins can read everyone's.
-    // A user can create their OWN profile doc at signup, but cannot set
-    // their own role to "admin" that way — only the sync script (reading
-    // a role an admin set through the app's Accounts screen) can promote
-    // someone, and even then it only updates the Auth claim, not this
-    // field directly (the Accounts screen still writes "role" here as it
-    // does today; this rule just stops a user from self-promoting at
-    // signup time).
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
       allow create: if isOwner(userId)
@@ -48,28 +46,19 @@ service cloud.firestore {
     }
 
     // ---------------- expiry_items ----------------
-    // Any signed-in employee can read, create, and make ordinary edits
-    // (quantity, category). Only an admin can touch the two fields that
-    // actually remove an item from view: "status" and "deletedInfo".
     match /expiry_items/{itemId} {
       allow read: if isSignedIn();
-
       allow create: if isSignedIn()
                     && request.resource.data.createdBy.userId == request.auth.uid
                     && request.resource.data.status == 'active';
-
       allow update: if isAdmin()
                     || (isSignedIn()
                         && !request.resource.data.diff(resource.data)
                               .affectedKeys().hasAny(['status', 'deletedInfo']));
-
       allow delete: if isAdmin();
     }
 
     // ---------------- activity_log ----------------
-    // Append-only. Anyone signed in can log their OWN activity; nobody can
-    // log activity as someone else, edit, or delete an entry after the
-    // fact. Only admins can read the log (that's the whole point of it).
     match /activity_log/{logId} {
       allow create: if isSignedIn()
                     && request.resource.data.userId == request.auth.uid;
@@ -78,9 +67,22 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ---------------- delivery_shifts ----------------
+    // Branch delivery books send one document per branch / day / shift.
+    // A delivery account may create or re-send its own shifts, never read.
+    match /delivery_shifts/{shiftId} {
+      allow read, delete: if isAdmin();
+      allow create, update: if isDelivery()
+                            && request.resource.data.by == request.auth.uid;
+    }
+
     // ---------------- everything else (unchanged scope for now) ----------------
-    match /{document=**} {
-      allow read, write: if isSignedIn();
+    // Same as before for every collection, except: delivery accounts are kept
+    // out, and delivery_shifts is never opened up by this catch-all.
+    match /{collection}/{document=**} {
+      allow read, write: if isSignedIn()
+                         && !isDelivery()
+                         && collection != 'delivery_shifts';
     }
   }
 }
