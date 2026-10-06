@@ -287,6 +287,27 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
 .alert-row:first-child{border-top:none;}
 .compliance-row{display:flex; justify-content:space-between; align-items:center; padding:7px 0; border-top:1px solid var(--line-soft); font-size:13px;}
 .compliance-row:first-child{border-top:none;}
+
+.order-card{
+  display:flex; align-items:center; gap:11px; background:var(--surface); border:1px solid var(--line);
+  border-radius:14px; padding:9px 10px;
+}
+.order-card-thumb{width:42px; height:42px; border-radius:10px; object-fit:cover; flex:none; background:var(--paper); border:1px solid var(--line);}
+.order-card-thumb-empty{display:flex; align-items:center; justify-content:center; color:var(--ink-dim);}
+.order-card-thumb-empty svg{width:18px; height:18px;}
+.order-card-info{flex:1; min-width:0; display:flex; flex-direction:column; gap:1px; cursor:pointer;}
+.order-card-info b{font-size:13.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.order-card-info span{font-size:12px; color:var(--ink-soft);}
+.order-card-info .order-card-noSupplier{color:var(--ink-dim); font-style:italic;}
+.order-card-rm{flex:none; border:none; background:transparent; color:var(--ink-dim); padding:6px; cursor:pointer; display:flex;}
+.order-card-rm svg{width:16px; height:16px;}
+.order-card-rm:active{color:var(--red);}
+.order-card-edit{align-items:flex-start; padding:11px;}
+.order-card-done{
+  flex:none; width:36px; height:36px; border-radius:50%; border:none; background:var(--teal); color:#fff;
+  display:flex; align-items:center; justify-content:center; cursor:pointer; margin-top:2px;
+}
+.order-card-done svg{width:16px; height:16px;}
 .badge::before{content:""; width:6px; height:6px; border-radius:50%; background:currentColor;}
 
 .filters{display:flex; gap:8px; overflow-x:auto; padding-bottom:2px; margin-bottom:12px;}
@@ -404,34 +425,6 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
   border-radius:999px; padding:6px 12px; font-size:11.5px; font-weight:700; cursor:pointer;
 }
 .notif-banner .x{flex:none; border:none; background:transparent; color:#F5FAF8; opacity:.7; cursor:pointer; padding:2px;}
-/* ---------- delivery (manager only) ---------- */
-.dlv-nav{display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:12px;}
-.dlv-nav b{font-size:15px;}
-.dlv-nav button{width:38px; height:38px; border-radius:10px; border:1.5px solid var(--line); background:var(--surface); font-size:18px; cursor:pointer; color:var(--ink);}
-.dlv-nav button:disabled{opacity:.35; cursor:default;}
-.dlv-bars{display:flex; align-items:flex-end; gap:2px; height:120px; margin-top:6px;}
-.dlv-bars i{flex:1; min-width:0; background:var(--teal); border-radius:4px 4px 1px 1px; min-height:2px;}
-.dlv-bars i.peak{background:var(--amber);}
-.dlv-bars i.zero{background:var(--line-soft);}
-.dlv-axis{display:flex; justify-content:space-between; font-size:10.5px; color:var(--ink-soft); margin-top:4px;}
-.dlv-info{font-size:12px; color:var(--ink-soft); min-height:18px;}
-.dlv-row{display:grid; grid-template-columns:minmax(70px,1.1fr) 2fr auto; gap:10px; align-items:center; padding:8px 0; border-bottom:1px solid var(--line-soft);}
-.dlv-row:last-child{border-bottom:0;}
-.dlv-row .nm{font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
-.dlv-track{height:9px; background:var(--paper); border-radius:99px; overflow:hidden;}
-.dlv-track i{display:block; height:100%; background:var(--teal); border-radius:99px;}
-.dlv-row.top .dlv-track i{background:var(--amber);}
-.dlv-row .val{text-align:end; font-size:13px; line-height:1.3;}
-.dlv-row .val small{display:block; color:var(--ink-soft); font-size:11px;}
-.dlv-split{display:flex; height:10px; border-radius:99px; overflow:hidden; background:var(--paper); margin:8px 0;}
-.dlv-split .am{background:var(--amber);} .dlv-split .pm{background:var(--ink);}
-.dlv-shift{border:1px solid var(--line-soft); border-radius:12px; padding:10px 12px; margin-bottom:8px; cursor:pointer; background:var(--surface);}
-.dlv-shift-head{display:flex; flex-wrap:wrap; gap:6px 10px; align-items:center; font-size:13px;}
-.dlv-shift-head .amt{margin-inline-start:auto; font-weight:700;}
-.dlv-shift table{width:100%; border-collapse:collapse; margin-top:8px; font-size:12.5px;}
-.dlv-shift td,.dlv-shift th{padding:5px 4px; text-align:start; border-top:1px solid var(--line-soft);}
-.dlv-shift th{color:var(--ink-soft); font-weight:600;}
-.m-ltr{direction:ltr; unicode-bidi:isolate; display:inline-block;}
 </style>
 </head>
 <body>
@@ -459,7 +452,6 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
     <button class="tab-btn" id="deptMerchBtn" type="button"></button>
     <button class="tab-btn" id="deptAccountsBtn" type="button" style="display:none;"></button>
     <button class="tab-btn" id="deptExpiryBtn" type="button" style="display:none;"></button>
-    <button class="tab-btn" id="deptDeliveryBtn" type="button" style="display:none;"></button>
   </div>
   <div class="tabbar" id="subtabbar">
     <button class="tab-btn active" id="tabForm" type="button"></button>
@@ -506,6 +498,7 @@ var ICONS = {
   camera:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8a2 2 0 0 1 2-2h1.5l1-1.5h7l1 1.5H18a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8z"></path><circle cx="12" cy="12.5" r="3.4"></circle></svg>',
   logout:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h9"></path><path d="M10 12h11M17 8l4 4-4 4"></path></svg>',
   trash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"></path><path d="M10 11v6M14 11v6"></path></svg>',
+  check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"></path></svg>',
   barcode:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 5v14M7 5v14M10 5v14M13 5v14M15 5v14M19 5v14M21 5v14"></path></svg>'
 };
 
@@ -633,7 +626,8 @@ en:{
   orderTitle:"Order request", orderSub:"Does this branch need an order placed? List the items and which supplier they're from.",
   hasOrderLabel:"There's an order to place for this branch",
   itemPh:"Item name", supplierPh:"Company / supplier",
-  addItemBtn:"Add item", removeItemBtn:"Remove", scanItemBtn:"Scan item barcode", itemAddedToast:"Item added to the order.",
+  addItemBtn:"Add manually", removeItemBtn:"Remove", scanItemBtn:"Scan item barcode", itemAddedToast:"Item added to the order.",
+  itemsCountLabel:"items",
   shortagesTitle:"Stock shortages", shortagesSub:"Any items currently out of stock or running low — separate from the order above.",
   shortagesPh:"List missing or low items…",
   merchSubmit:"Submit report", merchReqError:"Please fill in the merchandiser name, branch, and date before submitting.",
@@ -669,16 +663,6 @@ en:{
   authErrOffline:"Couldn't reach the database. Check your internet connection, and make sure the Firebase config values in index.html are correct.",
 
   deptExpiryLabel:"Expiry Control",
-  deptDeliveryLabel:"Delivery", roleDelivery:"Delivery book (branch)",
-  deliveryOnlyAccount:"This account is only for the delivery book on branch computers. It can't open Floor Link.",
-  dlvTitle:"Delivery cash", dlvSub:"Shifts handed over from the branch delivery books. Only managers can see this page.",
-  dlvAllBranches:"All branches", dlvTotal:"Total", dlvOrders:"Orders", dlvShifts:"Shifts", dlvAvgDay:"Daily average",
-  dlvBestDay:"Best day", dlvByDay:"Delivery by day", dlvByBranch:"By branch", dlvDrivers:"Drivers",
-  dlvShiftList:"Handed-over shifts", dlvEmpty:"No shifts handed over for this month yet.",
-  dlvMorning:"Morning", dlvNight:"Night", dlvStaff:"Staff", dlvOrdersWord:"orders", dlvDaysWord:"days",
-  dlvNoAccess:"Could not load delivery data. Check that the new Firestore rules are published.",
-  dlvAmPm:"Morning vs night", dlvTopDriver:"Best driver this month", dlvCustomer:"Customer", dlvArea:"Area",
-  dlvTime:"Time", dlvCharge:"Charge", dlvHandedAt:"Handed over", dlvTapHint:"Tap a shift to see its orders.",
   locationDetailsTitle:"Location",
   scanIntroSub:"Scan a barcode to log a new batch for expiry tracking.",
   expiryTabNew:"New Product", expiryTabItems:"Items",
@@ -895,7 +879,8 @@ ar:{
   orderTitle:"طلبية", orderSub:"هل هذا الفرع محتاج طلبية؟ اذكر الأصناف ومن أي شركة/مورد.",
   hasOrderLabel:"في طلبية بدها تنعمل لهذا الفرع",
   itemPh:"اسم الصنف", supplierPh:"الشركة / المورد",
-  addItemBtn:"إضافة صنف", removeItemBtn:"حذف", scanItemBtn:"مسح باركود الصنف", itemAddedToast:"تمت إضافة الصنف للطلبية.",
+  addItemBtn:"إضافة يدوية", removeItemBtn:"حذف", scanItemBtn:"مسح باركود الصنف", itemAddedToast:"تمت إضافة الصنف للطلبية.",
+  itemsCountLabel:"صنف",
   shortagesTitle:"نواقص البضاعة", shortagesSub:"أي أصناف ناقصة حاليًا أو أوشكت تخلص — منفصلة عن الطلبية فوق.",
   shortagesPh:"اذكر الأصناف الناقصة أو الموشكة تخلص…",
   merchSubmit:"إرسال التقرير", merchReqError:"يرجى تعبئة اسم المارشندايزر والفرع والتاريخ قبل الإرسال.",
@@ -931,16 +916,6 @@ ar:{
   authErrOffline:"ما قدرنا نوصل لقاعدة البيانات. تأكد من الاتصال بالإنترنت، وإن قيم Firebase بملف index.html صحيحة.",
 
   deptExpiryLabel:"التحكم بالصلاحية",
-  deptDeliveryLabel:"الدليفري", roleDelivery:"دفتر الدليفري (فرع)",
-  deliveryOnlyAccount:"هذا الحساب مخصص لدفتر الدليفري على كمبيوترات الفروع فقط، ولا يمكنه فتح فلور لينك.",
-  dlvTitle:"كاش الدليفري", dlvSub:"الشفتات المسلّمة من دفاتر الدليفري في الفروع. هذه الصفحة للمدير فقط.",
-  dlvAllBranches:"كل الفروع", dlvTotal:"المجموع", dlvOrders:"الطلبيات", dlvShifts:"الشفتات", dlvAvgDay:"معدّل اليوم",
-  dlvBestDay:"أعلى يوم", dlvByDay:"الدليفري كل يوم", dlvByBranch:"حسب الفرع", dlvDrivers:"الدرايفرز",
-  dlvShiftList:"الشفتات المسلّمة", dlvEmpty:"لا توجد شفتات مسلّمة لهذا الشهر بعد.",
-  dlvMorning:"صبح", dlvNight:"ليل", dlvStaff:"الموظف", dlvOrdersWord:"طلبية", dlvDaysWord:"يوم",
-  dlvNoAccess:"تعذّر تحميل بيانات الدليفري. تأكد أن قواعد Firestore الجديدة منشورة.",
-  dlvAmPm:"صبح أو ليل", dlvTopDriver:"أفضل درايفر هذا الشهر", dlvCustomer:"الزبون", dlvArea:"المنطقة",
-  dlvTime:"الوقت", dlvCharge:"التشارج", dlvHandedAt:"وقت التسليم", dlvTapHint:"اضغط على أي شفت لعرض طلبياته.",
   locationDetailsTitle:"الموقع",
   scanIntroSub:"امسح باركود لتسجيل دفعة جديدة للتتبع.",
   expiryTabNew:"تسجيل منتج", expiryTabItems:"المنتجات",
@@ -1160,7 +1135,8 @@ function freshMerchForm(){
     time: now.toTimeString().slice(0,5),
     display:{status:"", notes:"", photos:[]},
     hasOrder:false,
-    orderItems:[{item:"", supplier:""}],
+    orderItems:[],
+    orderEditIdx: -1,
     shortages:"",
     submitting:false
   };
@@ -1191,17 +1167,12 @@ function updateDeptSwitch(){
   var m = document.getElementById("deptMerchBtn");
   var a = document.getElementById("deptAccountsBtn");
   var x = document.getElementById("deptExpiryBtn");
-  var dv = document.getElementById("deptDeliveryBtn");
   if(!S.currentUser) return;
   var role = S.currentUser.role;
   var canHandover = role === "manager" || role === "admin" || role === "supervisor";
   var canMerch = role === "manager" || role === "admin" || role === "merchandiser";
   var canAccounts = role === "manager" || role === "admin";
   var canExpiry = true;
-  var canDelivery = role === "manager" || role === "admin";
-  dv.style.display = canDelivery ? "" : "none";
-  dv.textContent = t("deptDeliveryLabel");
-  dv.classList.toggle("active", S.appMode === "delivery");
   h.style.display = canHandover ? "" : "none";
   m.style.display = canMerch ? "" : "none";
   a.style.display = canAccounts ? "" : "none";
@@ -1214,12 +1185,12 @@ function updateDeptSwitch(){
   m.classList.toggle("active", S.appMode === "merch");
   a.classList.toggle("active", S.appMode === "accounts");
   x.classList.toggle("active", S.appMode === "expiry");
-  var visibleCount = (canHandover?1:0)+(canMerch?1:0)+(canAccounts?1:0)+(canExpiry?1:0)+(canDelivery?1:0);
+  var visibleCount = (canHandover?1:0)+(canMerch?1:0)+(canAccounts?1:0)+(canExpiry?1:0);
   document.getElementById("deptbar").style.display = visibleCount > 1 ? "" : "none";
   var tf = document.getElementById("tabForm");
   var td = document.getElementById("tabDash");
   var sub = document.getElementById("subtabbar");
-  if(S.appMode === "accounts" || S.appMode === "delivery"){
+  if(S.appMode === "accounts"){
     sub.style.display = "none";
   } else {
     sub.style.display = "";
@@ -2221,12 +2192,23 @@ function renderMerchForm(){
     '<p class="hint">'+t("merchPhotoBlocked")+'</p>';
 
   var itemsHtml = f.orderItems.map(function(row, i){
-    return '<div class="grid-2" style="margin-bottom:8px;" data-order-row="'+i+'">' +
-      '<input type="text" class="oi-input" placeholder="'+t("itemPh")+'" data-order-item="'+i+'" value="'+esc(row.item)+'">' +
-      '<div style="display:flex; gap:6px;">' +
-        '<input type="text" class="oi-input" placeholder="'+t("supplierPh")+'" data-order-supplier="'+i+'" value="'+esc(row.supplier)+'" style="flex:1;">' +
-        (f.orderItems.length > 1 ? '<button type="button" class="link-btn" data-order-rm="'+i+'">'+ICONS.close+'</button>' : '') +
+    if(f.orderEditIdx === i){
+      return '<div class="order-card order-card-edit" data-order-row="'+i+'">' +
+        '<div style="flex:1; display:flex; flex-direction:column; gap:7px;">' +
+          '<input type="text" class="oi-input" placeholder="'+t("itemPh")+'" data-order-item="'+i+'" value="'+esc(row.item)+'" autofocus>' +
+          '<input type="text" class="oi-input" placeholder="'+t("supplierPh")+'" data-order-supplier="'+i+'" value="'+esc(row.supplier)+'">' +
+        '</div>' +
+        '<button type="button" class="order-card-done" data-order-done="'+i+'">'+ICONS.check+'</button>' +
+      '</div>';
+    }
+    var label = row.item.trim() || t("itemPh");
+    return '<div class="order-card" data-order-row="'+i+'">' +
+      (row.image ? '<img class="order-card-thumb" src="'+esc(row.image)+'" alt="">' : '<div class="order-card-thumb order-card-thumb-empty">'+ICONS.barcode+'</div>') +
+      '<div class="order-card-info" data-order-edit="'+i+'">' +
+        '<b>'+esc(label)+'</b>' +
+        (row.supplier ? '<span>'+esc(row.supplier)+'</span>' : '<span class="order-card-noSupplier">'+t("supplierPh")+'</span>') +
       '</div>' +
+      '<button type="button" class="order-card-rm" data-order-rm="'+i+'">'+ICONS.trash+'</button>' +
     '</div>';
   }).join("");
 
@@ -2254,14 +2236,19 @@ function renderMerchForm(){
   '</div>';
 
   html += '<div class="card">' +
-    '<div class="section-title">'+t("orderTitle")+'</div>' +
+    '<div style="display:flex; justify-content:space-between; align-items:center;">' +
+      '<div class="section-title" style="margin-bottom:0;">'+t("orderTitle")+'</div>' +
+      (f.hasOrder && f.orderItems.length ? '<span class="badge badge-neutral">'+f.orderItems.length+' '+t("itemsCountLabel")+'</span>' : '') +
+    '</div>' +
     '<div class="section-sub">'+t("orderSub")+'</div>' +
     '<label class="ack-row"><input type="checkbox" id="m_hasOrder"'+(f.hasOrder?" checked":"")+'><span>'+t("hasOrderLabel")+'</span></label>' +
-    (f.hasOrder ? '<div style="margin-top:12px;">'+itemsHtml+
-      '<div class="chip-row" style="margin-top:4px;">' +
-        '<button type="button" class="link-btn" id="m_addItem">'+ICONS.plus+' '+t("addItemBtn")+'</button>' +
-        '<button type="button" class="link-btn" id="m_scanItem">'+ICONS.barcode+' '+t("scanItemBtn")+'</button>' +
-      '</div></div>' : '') +
+    (f.hasOrder ?
+      '<div style="margin-top:14px;">' +
+        '<button type="button" class="quick-fab-btn" id="m_scanItem" style="width:100%; justify-content:center; padding:13px;">'+ICONS.barcode+' '+t("scanItemBtn")+'</button>' +
+        (f.orderItems.length ? '<div style="margin-top:14px; display:flex; flex-direction:column; gap:8px;">'+itemsHtml+'</div>' : '') +
+        '<button type="button" class="link-btn" id="m_addItem" style="margin-top:10px;">'+ICONS.plus+' '+t("addItemBtn")+'</button>' +
+      '</div>'
+    : '') +
   '</div>';
 
   html += '<div class="card">' +
@@ -2316,13 +2303,25 @@ function wireMerchForm(){
   });
   Array.prototype.forEach.call(document.querySelectorAll("[data-order-rm]"), function(btn){
     btn.onclick = function(){
-      f.orderItems.splice(parseInt(this.getAttribute("data-order-rm"),10), 1);
+      var idx = parseInt(this.getAttribute("data-order-rm"),10);
+      f.orderItems.splice(idx, 1);
+      if(f.orderEditIdx === idx) f.orderEditIdx = -1;
       renderMerchForm();
     };
   });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-order-edit]"), function(el){
+    el.onclick = function(){ f.orderEditIdx = parseInt(this.getAttribute("data-order-edit"),10); renderMerchForm(); };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-order-done]"), function(btn){
+    btn.onclick = function(){ f.orderEditIdx = -1; renderMerchForm(); };
+  });
   var addItemBtn = document.getElementById("m_addItem");
   if(addItemBtn){
-    addItemBtn.onclick = function(){ f.orderItems.push({item:"", supplier:""}); renderMerchForm(); };
+    addItemBtn.onclick = function(){
+      f.orderItems.push({item:"", supplier:"", image:""});
+      f.orderEditIdx = f.orderItems.length - 1;
+      renderMerchForm();
+    };
   }
   var scanItemBtn = document.getElementById("m_scanItem");
   if(scanItemBtn){
@@ -2342,7 +2341,7 @@ function submitMerchVisit(){
 
   var photoIds = f.display.photos.filter(function(p){ return p.id; }).map(function(p){ return p.id; });
   var items = f.hasOrder ? f.orderItems.filter(function(r){ return r.item.trim() || r.supplier.trim(); }).map(function(r){
-    return {item:r.item.trim(), supplier:r.supplier.trim()};
+    return {item:r.item.trim(), supplier:r.supplier.trim(), image:r.image||""};
   }) : [];
 
   var doc = {
@@ -2740,11 +2739,6 @@ function watchAuthState(){
     }
     S.db.doc("users/"+user.uid).get().then(function(snap){
       S.authChecked = true;
-      if(snap.exists && snap.data().role === "delivery"){
-        S.authError = t("deliveryOnlyAccount");
-        S.auth.signOut();
-        return;
-      }
       if(snap.exists && !snap.data().disabled){
         S.currentUser = Object.assign({id:user.uid}, snap.data());
         S.db.doc("users/"+user.uid).update({lastLoginAt:new Date().toISOString()}).catch(function(){});
@@ -2782,141 +2776,6 @@ function subscribeUsers(){
   }, function(){});
 }
 
-/* ================= DELIVERY (manager only) ================= */
-// Shifts are written by the offline branch delivery book (shoppies-delivery.html),
-// signed in as an account with role "delivery". Firestore rules let only admins read them.
-function dlvMonthNow(){ var d = new Date(); return d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2); }
-S.dlv = {month: dlvMonthNow(), branch: "all", docs: [], loaded: false, error: false, unsub: null, open: null};
-function stopDelivery(){ if(S.dlv.unsub){ try{ S.dlv.unsub(); }catch(e){} S.dlv.unsub = null; } }
-function subscribeDelivery(){
-  if(!S.db || S.dlv.unsub) return;
-  S.dlv.loaded = false; S.dlv.error = false;
-  S.dlv.unsub = S.db.collection("delivery_shifts").where("month","==",S.dlv.month).onSnapshot(function(snap){
-    S.dlv.docs = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data() || {}); });
-    S.dlv.loaded = true; S.dlv.error = false;
-    if(S.appMode === "delivery") renderDelivery();
-  }, function(){
-    S.dlv.loaded = true; S.dlv.error = true; S.dlv.unsub = null;
-    if(S.appMode === "delivery") renderDelivery();
-  });
-}
-function dlvMoney(n, cur){
-  if(cur === "$") return "$" + (Math.round((+n||0)*100)/100).toLocaleString("en-US",{maximumFractionDigits:2});
-  return Math.round(+n||0).toLocaleString("en-US") + " " + (S.lang === "ar" ? "\u2067ل.ل.\u2069" : "LBP");
-}
-function dlvMonthLabel(m){
-  var p = m.split("-"), d = new Date(+p[0], +p[1]-1, 1);
-  var ar = ["كانون الثاني","شباط","آذار","نيسان","أيار","حزيران","تموز","آب","أيلول","تشرين الأول","تشرين الثاني","كانون الأول"];
-  return S.lang === "ar" ? ar[d.getMonth()] + " " + p[0] : d.toLocaleString("en-US",{month:"long", year:"numeric"});
-}
-function dlvShiftMonth(delta){
-  var p = S.dlv.month.split("-"), d = new Date(+p[0], +p[1]-1+delta, 1);
-  S.dlv.month = d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2);
-  S.dlv.open = null; stopDelivery(); subscribeDelivery(); renderDelivery();
-}
-function renderDelivery(){
-  var main = document.getElementById("main");
-  subscribeDelivery();
-  var D = S.dlv, cur = "LBP";
-  var nav = '<div class="dlv-nav"><button type="button" id="dlvPrev" aria-label="prev">'+(S.lang==="ar"?"›":"‹")+'</button>' +
-    '<b>'+esc(dlvMonthLabel(D.month))+'</b>' +
-    '<button type="button" id="dlvNext" aria-label="next" '+(D.month>=dlvMonthNow()?"disabled":"")+'>'+(S.lang==="ar"?"‹":"›")+'</button></div>';
-  var html = '<div class="card"><div class="section-title">'+t("dlvTitle")+'</div><div class="section-sub">'+t("dlvSub")+'</div>'+nav;
-  if(!D.loaded){ main.innerHTML = html + '<div class="empty">'+t("loading")+'</div></div>'; dlvWire(); return; }
-  if(D.error){ main.innerHTML = html + '<div class="empty">'+t("dlvNoAccess")+'</div></div>'; dlvWire(); return; }
-
-  var branches = {}; D.docs.forEach(function(d){ if(d.branch) branches[d.branch] = 1; });
-  var bnames = Object.keys(branches).sort();
-  if(D.branch !== "all" && !branches[D.branch]) D.branch = "all";
-  html += '<div class="filters"><select id="dlvBranch"><option value="all">'+t("dlvAllBranches")+'</option>' +
-    bnames.map(function(b){ return '<option value="'+esc(b)+'"'+(D.branch===b?" selected":"")+'>'+esc(b)+'</option>'; }).join("") + '</select></div>';
-  var docs = D.docs.filter(function(d){ return D.branch === "all" || d.branch === D.branch; });
-  if(docs.length) cur = docs[0].currency || "LBP";
-  if(!docs.length){ main.innerHTML = html + '<div class="empty">'+t("dlvEmpty")+'</div></div>'; dlvWire(); return; }
-
-  var total = 0, count = 0, p = D.month.split("-"), nd = new Date(+p[0], +p[1], 0).getDate();
-  var days = []; for(var i=0;i<nd;i++) days.push({t:0,c:0});
-  var drivers = {}, byBranch = {}, am = {t:0,c:0}, pm = {t:0,c:0};
-  docs.forEach(function(d){
-    var tt = +d.total || 0, cc = +d.count || 0, di = (+String(d.date).slice(8)) - 1;
-    total += tt; count += cc;
-    if(days[di]){ days[di].t += tt; days[di].c += cc; }
-    var sh = d.shift === "pm" ? pm : am; sh.t += tt; sh.c += cc;
-    var b = byBranch[d.branch||"—"] || (byBranch[d.branch||"—"] = {t:0,c:0}); b.t += tt; b.c += cc;
-    (d.drivers || []).forEach(function(x){
-      var k = x.driver || "—", r = drivers[k] || (drivers[k] = {t:0,c:0,days:{}});
-      r.t += +x.total || 0; r.c += +x.count || 0; r.days[d.date] = 1;
-    });
-  });
-  var active = days.filter(function(x){ return x.c; }).length, best = -1;
-  days.forEach(function(x,i){ if(x.c && (best < 0 || x.t > days[best].t)) best = i; });
-
-  html += '<div class="stat-row">' +
-    '<div class="stat"><b class="m-ltr">'+esc(dlvMoney(total,cur))+'</b><span>'+t("dlvTotal")+'</span></div>' +
-    '<div class="stat"><b>'+count+'</b><span>'+t("dlvOrders")+'</span></div>' +
-    '<div class="stat"><b>'+docs.length+'</b><span>'+t("dlvShifts")+'</span></div></div>';
-  html += '<div class="stat-row" style="grid-template-columns:repeat(2,1fr)">' +
-    '<div class="stat"><b class="m-ltr">'+esc(dlvMoney(active ? total/active : 0, cur))+'</b><span>'+t("dlvAvgDay")+'</span></div>' +
-    '<div class="stat"><b>'+(best >= 0 ? (best+1) : "—")+'</b><span>'+t("dlvBestDay")+(best >= 0 ? ' · <span class="m-ltr">'+esc(dlvMoney(days[best].t,cur))+'</span>' : '')+'</span></div></div>';
-  html += '</div>';
-
-  var vmax = Math.max.apply(null, days.map(function(x){ return x.t; }).concat([1]));
-  html += '<div class="card"><div class="section-title">'+t("dlvByDay")+'</div><div class="dlv-info" id="dlvInfo"></div><div class="dlv-bars" id="dlvBars">' +
-    days.map(function(x,i){ return '<i class="'+(x.c?"":"zero")+(i===best?" peak":"")+'" style="height:'+(x.t/vmax*100)+'%" data-info="'+esc((i+1)+" · "+x.c+" "+t("dlvOrdersWord")+" · "+dlvMoney(x.t,cur))+'"></i>'; }).join("") +
-    '</div><div class="dlv-axis"><span>1</span><span>'+Math.ceil(nd/2)+'</span><span>'+nd+'</span></div></div>';
-
-  var dr = Object.keys(drivers).map(function(k){ return {n:k, t:drivers[k].t, c:drivers[k].c, d:Object.keys(drivers[k].days).length}; })
-    .sort(function(a,b){ return b.t - a.t || b.c - a.c; });
-  var dmax = Math.max.apply(null, dr.map(function(x){ return x.t; }).concat([1]));
-  html += '<div class="card"><div class="section-title">'+t("dlvDrivers")+'</div>' +
-    (dr[0] ? '<div class="section-sub">★ '+t("dlvTopDriver")+': <b>'+esc(dr[0].n)+'</b></div>' : '') +
-    dr.map(function(x,i){ return '<div class="dlv-row'+(i===0?" top":"")+'"><span class="nm">'+esc(x.n)+'</span><span class="dlv-track"><i style="width:'+(x.t/dmax*100)+'%"></i></span>' +
-      '<span class="val"><b class="m-ltr">'+esc(dlvMoney(x.t,cur))+'</b><small>'+x.c+' '+t("dlvOrdersWord")+' · '+x.d+' '+t("dlvDaysWord")+'</small></span></div>'; }).join("") + '</div>';
-
-  var st = Math.max(1, am.t + pm.t);
-  html += '<div class="card"><div class="section-title">'+t("dlvAmPm")+'</div>' +
-    '<div class="dlv-split"><i class="am" style="width:'+(am.t/st*100)+'%"></i><i class="pm" style="width:'+(pm.t/st*100)+'%"></i></div>' +
-    '<div class="dlv-row"><span class="nm">☀︎ '+t("dlvMorning")+'</span><span></span><span class="val"><b class="m-ltr">'+esc(dlvMoney(am.t,cur))+'</b><small>'+am.c+' '+t("dlvOrdersWord")+'</small></span></div>' +
-    '<div class="dlv-row"><span class="nm">☾ '+t("dlvNight")+'</span><span></span><span class="val"><b class="m-ltr">'+esc(dlvMoney(pm.t,cur))+'</b><small>'+pm.c+' '+t("dlvOrdersWord")+'</small></span></div></div>';
-
-  if(D.branch === "all" && bnames.length > 1){
-    var bl = Object.keys(byBranch).map(function(k){ return {n:k, t:byBranch[k].t, c:byBranch[k].c}; }).sort(function(a,b){ return b.t - a.t; });
-    var bmax = Math.max.apply(null, bl.map(function(x){ return x.t; }).concat([1]));
-    html += '<div class="card"><div class="section-title">'+t("dlvByBranch")+'</div>' +
-      bl.map(function(x){ return '<div class="dlv-row"><span class="nm">'+esc(x.n)+'</span><span class="dlv-track"><i style="width:'+(x.t/bmax*100)+'%"></i></span><span class="val"><b class="m-ltr">'+esc(dlvMoney(x.t,cur))+'</b><small>'+x.c+' '+t("dlvOrdersWord")+'</small></span></div>'; }).join("") + '</div>';
-  }
-
-  var list = docs.slice().sort(function(a,b){ return (b.date+(b.shift==="pm"?"1":"0")).localeCompare(a.date+(a.shift==="pm"?"1":"0")); });
-  html += '<div class="card"><div class="section-title">'+t("dlvShiftList")+'</div><div class="section-sub">'+t("dlvTapHint")+'</div>' +
-    list.map(function(d){
-      var open = D.open === d.id;
-      return '<div class="dlv-shift" data-dlv-open="'+esc(d.id)+'"><div class="dlv-shift-head">' +
-        '<b>'+esc(d.date)+'</b><span class="badge '+(d.shift==="pm"?"badge-neutral":"badge-pending")+'">'+(d.shift==="pm"?t("dlvNight"):t("dlvMorning"))+'</span>' +
-        '<span>'+esc(d.branch||"")+'</span>' + (d.staff ? '<span style="color:var(--ink-soft)">'+t("dlvStaff")+': '+esc(d.staff)+'</span>' : '') +
-        '<span class="amt"><span class="m-ltr">'+esc(dlvMoney(d.total, d.currency||cur))+'</span> · '+(+d.count||0)+'</span></div>' +
-        (open ? '<table><thead><tr><th>'+t("dlvTime")+'</th><th>'+t("dlvDrivers")+'</th><th>'+t("dlvCustomer")+'</th><th>'+t("dlvArea")+'</th><th>'+t("dlvCharge")+'</th></tr></thead><tbody>' +
-          (d.orders||[]).map(function(o){ return '<tr><td>'+esc(o.time)+'</td><td>'+esc(o.driver)+'</td><td>'+esc(o.customer)+'</td><td>'+esc(o.area||"—")+'</td><td class="m-ltr">'+esc(dlvMoney(o.charge, d.currency||cur))+'</td></tr>'; }).join("") +
-          '</tbody></table>' : '') + '</div>';
-    }).join("") + '</div>';
-
-  main.innerHTML = html;
-  dlvWire();
-}
-function dlvWire(){
-  var pv = document.getElementById("dlvPrev"), nx = document.getElementById("dlvNext"), br = document.getElementById("dlvBranch");
-  if(pv) pv.onclick = function(){ dlvShiftMonth(-1); };
-  if(nx) nx.onclick = function(){ if(S.dlv.month < dlvMonthNow()) dlvShiftMonth(1); };
-  if(br) br.onchange = function(){ S.dlv.branch = this.value; renderDelivery(); };
-  var bars = document.getElementById("dlvBars"), info = document.getElementById("dlvInfo");
-  if(bars && info){
-    var show = function(e){ var el = e.target.closest ? e.target.closest("[data-info]") : null; if(el) info.textContent = el.getAttribute("data-info"); };
-    bars.onmouseover = show; bars.onclick = show;
-  }
-  Array.prototype.forEach.call(document.querySelectorAll("[data-dlv-open]"), function(el){
-    el.onclick = function(){ var id = this.getAttribute("data-dlv-open"); S.dlv.open = S.dlv.open === id ? null : id; renderDelivery(); };
-  });
-}
-
 /* ================= ACCOUNTS ================= */
 
 function freshNewAccountForm(){
@@ -2931,7 +2790,7 @@ function renderAccounts(){
 
   if(S.newAccountForm){
     var nf = S.newAccountForm;
-    var roleOpts2 = ["supervisor","merchandiser","admin","delivery"].map(function(r){
+    var roleOpts2 = ["supervisor","merchandiser","admin"].map(function(r){
       return '<option value="'+r+'"'+(nf.role===r?" selected":"")+'>'+roleBadgeLabel(r)+'</option>';
     }).join("");
     html += '<div class="divider-note">' +
@@ -2972,7 +2831,7 @@ function renderAccounts(){
 }
 
 function roleBadgeLabel(role){
-  return (role==="manager"||role==="admin")?t("roleManagerOpt"):role==="merchandiser"?t("roleMerchandiser"):role==="delivery"?t("roleDelivery"):t("roleSupervisor");
+  return (role==="manager"||role==="admin")?t("roleManagerOpt"):role==="merchandiser"?t("roleMerchandiser"):t("roleSupervisor");
 }
 
 function deptLabel(deptId){
@@ -2981,7 +2840,7 @@ function deptLabel(deptId){
 }
 
 function acctRow(u){
-  var roleOpts = ["supervisor","merchandiser","admin","delivery"].map(function(r){
+  var roleOpts = ["supervisor","merchandiser","admin"].map(function(r){
     return '<option value="'+r+'"'+(u.role===r?" selected":"")+'>'+roleBadgeLabel(r)+'</option>';
   }).join("");
   var lastLogin = u.lastLoginAt ? fmtDateTime(u.lastLoginAt) : t("neverLoggedIn");
@@ -3735,14 +3594,10 @@ function handleScannedBarcode(barcode){
 }
 
 function addOrderItemFromScan(barcode){
-  var finish = function(name, supplier){
+  var finish = function(name, supplier, image){
     var f = S.merchForm;
-    var emptyIdx = -1;
-    for(var i=0;i<f.orderItems.length;i++){
-      if(!f.orderItems[i].item.trim() && !f.orderItems[i].supplier.trim()){ emptyIdx = i; break; }
-    }
-    var row = {item:name, supplier:supplier || ""};
-    if(emptyIdx !== -1){ f.orderItems[emptyIdx] = row; } else { f.orderItems.push(row); }
+    var row = {item:name, supplier:supplier || "", image: image || "", barcode: barcode};
+    f.orderItems.push(row);
     closeScanner();
     toast(t("itemAddedToast"));
     renderMerchForm();
@@ -3757,15 +3612,15 @@ function addOrderItemFromScan(barcode){
             source: "openfoodfacts"
           }, {merge:true}).catch(function(){});
         }
-        finish(online.name, online.supplier);
+        finish(online.name, online.supplier, online.image);
       } else {
-        finish(barcode, "");
+        finish(barcode, "", "");
       }
     });
   };
   if(!S.db){ tryOnline(); return; }
   S.db.doc("catalog/"+encodeURIComponent(barcode)).get().then(function(snap){
-    if(snap.exists){ var d = snap.data(); finish(d.name || barcode, d.supplier || ""); }
+    if(snap.exists){ var d = snap.data(); finish(d.name || barcode, d.supplier || "", d.image || ""); }
     else { tryOnline(); }
   }).catch(function(){ tryOnline(); });
 }
@@ -4000,9 +3855,6 @@ function render(){
   if(S.appMode === "accounts"){
     applyBrand("");
     renderAccounts();
-  } else if(S.appMode === "delivery"){
-    applyBrand("");
-    if(isManagerUser()) renderDelivery(); else { S.appMode = "handover"; render(); }
   } else if(S.appMode === "merch"){
     applyBrand(S.view === "dashboard" ? (S.merchFilters.company || S.merchForm.company) : S.merchForm.company);
     if(S.view === "form") renderMerchForm(); else renderMerchDashboard();
@@ -4025,13 +3877,11 @@ document.getElementById("logoutBtn").onclick = function(){
   S.authError = "";
   S.appMode = "handover";
   S.view = "form";
-  stopDelivery();
   if(S.auth) S.auth.signOut(); // onAuthStateChanged picks this up and clears S.currentUser
 };
 document.getElementById("deptHandoverBtn").onclick = function(){ S.appMode = "handover"; S.view = "form"; render(); };
 document.getElementById("deptMerchBtn").onclick = function(){ S.appMode = "merch"; S.view = "form"; render(); };
 document.getElementById("deptAccountsBtn").onclick = function(){ S.appMode = "accounts"; render(); };
-document.getElementById("deptDeliveryBtn").onclick = function(){ S.appMode = "delivery"; render(); };
 document.getElementById("deptExpiryBtn").onclick = function(){ S.appMode = "expiry"; S.view = "form"; logActivity("view"); render(); };
 
 function resolvePhotoUrls(doc){
