@@ -6,7 +6,7 @@
 <title>Floor Link — Retail Operations</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Cairo:wght@600;700;800&family=Pacifico&family=El+Messiri:wght@600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <link rel="manifest" href="manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -66,7 +66,7 @@
   --radius-sm:12px;
   --shadow-sm:0 1px 2px rgba(20,20,16,.05), 0 1px 1px rgba(20,20,16,.04);
   --shadow-md:0 2px 6px rgba(20,20,16,.06), 0 8px 20px -8px rgba(20,20,16,.10);
-  --ease:cubic-bezier(.2,.8,.2,1);
+  --ease:cubic-bezier(.2,.7,.3,1);
   box-sizing:border-box;
   padding-top:env(safe-area-inset-top,0px);
   padding-bottom:env(safe-area-inset-bottom,0px);
@@ -94,16 +94,6 @@ body{
   overscroll-behavior:none; touch-action:pan-y;
 }
 [dir="rtl"] body{font-family:'IBM Plex Sans Arabic','IBM Plex Sans',system-ui,sans-serif;}
-/* Display type matches each brand's own site: Shoppies = Bricolage Grotesque (Cairo
-   for Arabic, since Bricolage has no Arabic glyphs); Omar = El Messiri, which is
-   Arabic-first and covers both. script-font is Shoppies' Pacifico wordmark — reserved
-   for one deliberate hero moment (the login screen), not everyday headers, since a
-   script face stops being legible at operational sizes. */
-.display-font{font-family:'Bricolage Grotesque',system-ui,sans-serif; font-weight:700;}
-[dir="rtl"] .display-font{font-family:'Cairo',system-ui,sans-serif; font-weight:800;}
-:root[data-brand="omar"] .display-font{font-family:'El Messiri',system-ui,sans-serif; font-weight:700;}
-.script-font{font-family:'Pacifico',cursive; font-weight:400;}
-.serif-accent{font-family:'Instrument Serif',serif; font-style:italic;}
 button,input,select,textarea{font-family:inherit; color:inherit;}
 h1,h2,h3,p{margin:0;}
 
@@ -111,23 +101,8 @@ h1,h2,h3,p{margin:0;}
   position:sticky; top:0; z-index:20; overflow:hidden;
   padding-top:calc(env(safe-area-inset-top,0px) + 14px);
   background:var(--teal-deep); color:#F5FAF8;
-  padding-inline:16px; padding-bottom:26px;
+  padding-inline:16px; padding-bottom:14px;
 }
-.app-header::after{
-  content:""; position:absolute; left:0; right:0; bottom:0; height:16px;
-  background:var(--teal-deep);
-  -webkit-mask:radial-gradient(circle at 10px 0, transparent 9px, #000 9.5px) repeat-x;
-  mask:radial-gradient(circle at 10px 0, transparent 9px, #000 9.5px) repeat-x;
-  -webkit-mask-size:20px 16px; mask-size:20px 16px;
-}
-@keyframes flourish-bob{ 0%,100%{transform:translateY(0) rotate(-8deg);} 50%{transform:translateY(-7px) rotate(-4deg);} }
-.header-flourish{
-  position:absolute; bottom:18px; inset-inline-end:-6px; width:58px; height:58px;
-  color:#F5FAF8; opacity:.16; pointer-events:none;
-  animation:flourish-bob 3.2s var(--ease) infinite;
-}
-:root[data-brand="omar"] .header-flourish{ animation:none; transform:rotate(-8deg); opacity:.12; }
-.header-flourish svg{width:100%; height:100%;}
 .header-watermark{
   position:absolute; top:-18px; inset-inline-end:-24px; width:150px; height:150px;
   object-fit:contain; opacity:.16; pointer-events:none;
@@ -153,19 +128,6 @@ h1,h2,h3,p{margin:0;}
 .pill-btn:active{transform:scale(.95);}
 .pill-btn.active{background:#F5FAF8; color:var(--teal-deep); border-color:transparent;}
 .tabbar{display:flex; gap:4px; margin-top:14px; background:rgba(0,0,0,.16); border-radius:12px; padding:3px;}
-.deptbar-float{
-  position:relative; z-index:21; display:flex; justify-content:center;
-  margin-top:-20px; padding-inline:16px;
-}
-.deptbar-pill{
-  margin-top:0; background:var(--surface); box-shadow:var(--shadow-md);
-  max-width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch;
-}
-.deptbar-pill .tab-btn{color:var(--ink-soft); opacity:1;}
-.deptbar-pill .tab-btn.active{background:var(--teal); color:#fff; box-shadow:none;}
-#subtabbar{background:var(--surface); box-shadow:var(--shadow-sm);}
-#subtabbar .tab-btn{color:var(--ink-soft); opacity:1;}
-#subtabbar .tab-btn.active{background:var(--teal-tint); color:var(--teal-deep); box-shadow:none;}
 #deptbar{overflow-x:auto; -webkit-overflow-scrolling:touch;}
 #deptbar .tab-btn{flex:none; padding-inline:12px; white-space:nowrap;}
 .tab-btn{
@@ -296,17 +258,9 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
   transition:transform .1s var(--ease), box-shadow .16s var(--ease), opacity .16s var(--ease), background-color .16s var(--ease);
   display:inline-flex; align-items:center; justify-content:center; gap:7px;
 }
-.btn:active{transform:scale(.96);}
+.btn:active{transform:scale(.98);}
 .btn:disabled{opacity:.45; cursor:not-allowed; box-shadow:none;}
-.btn-primary{
-  background:var(--teal); color:#fff; box-shadow:0 2px 10px -2px color-mix(in srgb, var(--teal) 55%, transparent);
-  position:relative; overflow:hidden; isolation:isolate;
-}
-.btn-primary::before{
-  content:""; position:absolute; inset:0; z-index:-1; border-radius:inherit;
-  background:var(--teal-deep); transform:translateY(101%); transition:transform .45s var(--ease);
-}
-.btn-primary:active::before{transform:translateY(0);}
+.btn-primary{background:var(--teal); color:#fff; box-shadow:0 2px 10px -2px color-mix(in srgb, var(--teal) 55%, transparent);}
 .btn-primary:disabled{opacity:.45; box-shadow:none;}
 .btn-secondary{background:var(--paper); color:var(--ink); border:1.5px solid var(--line);}
 
@@ -333,27 +287,6 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
 .alert-row:first-child{border-top:none;}
 .compliance-row{display:flex; justify-content:space-between; align-items:center; padding:7px 0; border-top:1px solid var(--line-soft); font-size:13px;}
 .compliance-row:first-child{border-top:none;}
-
-.order-card{
-  display:flex; align-items:center; gap:11px; background:var(--surface); border:1px solid var(--line);
-  border-radius:14px; padding:9px 10px;
-}
-.order-card-thumb{width:42px; height:42px; border-radius:10px; object-fit:cover; flex:none; background:var(--paper); border:1px solid var(--line);}
-.order-card-thumb-empty{display:flex; align-items:center; justify-content:center; color:var(--ink-dim);}
-.order-card-thumb-empty svg{width:18px; height:18px;}
-.order-card-info{flex:1; min-width:0; display:flex; flex-direction:column; gap:1px; cursor:pointer;}
-.order-card-info b{font-size:13.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-.order-card-info span{font-size:12px; color:var(--ink-soft);}
-.order-card-info .order-card-noSupplier{color:var(--ink-dim); font-style:italic;}
-.order-card-rm{flex:none; border:none; background:transparent; color:var(--ink-dim); padding:6px; cursor:pointer; display:flex;}
-.order-card-rm svg{width:16px; height:16px;}
-.order-card-rm:active{color:var(--red);}
-.order-card-edit{align-items:flex-start; padding:11px;}
-.order-card-done{
-  flex:none; width:36px; height:36px; border-radius:50%; border:none; background:var(--teal); color:#fff;
-  display:flex; align-items:center; justify-content:center; cursor:pointer; margin-top:2px;
-}
-.order-card-done svg{width:16px; height:16px;}
 .badge::before{content:""; width:6px; height:6px; border-radius:50%; background:currentColor;}
 
 .filters{display:flex; gap:8px; overflow-x:auto; padding-bottom:2px; margin-bottom:12px;}
@@ -401,23 +334,6 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
   animation:overlay-in .18s var(--ease);
 }
 @keyframes overlay-in{ from{opacity:0;} to{opacity:1;} }
-@keyframes section-fade-in{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
-.section-fade-in{ animation:section-fade-in .22s var(--ease); }
-.img-lightbox-overlay{
-  position:fixed; inset:0; background:rgba(5,8,7,.92); z-index:80;
-  display:flex; align-items:center; justify-content:center; padding:24px;
-  animation:overlay-in .16s var(--ease);
-}
-.img-lightbox-overlay img{
-  max-width:100%; max-height:100%; border-radius:12px; object-fit:contain;
-  box-shadow:0 20px 60px -10px rgba(0,0,0,.6);
-}
-.img-lightbox-close{
-  position:absolute; top:calc(env(safe-area-inset-top,0px) + 16px); right:18px;
-  width:40px; height:40px; border-radius:50%; border:none; background:rgba(255,255,255,.14);
-  color:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer;
-}
-[data-img-zoom]{cursor:zoom-in;}
 .modal-sheet{
   width:100%; max-width:640px; background:var(--surface); border-radius:20px 20px 0 0;
   padding:22px; padding-bottom:calc(24px + env(safe-area-inset-bottom,0px));
@@ -516,6 +432,24 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
 .dlv-shift td,.dlv-shift th{padding:5px 4px; text-align:start; border-top:1px solid var(--line-soft);}
 .dlv-shift th{color:var(--ink-soft); font-weight:600;}
 .m-ltr{direction:ltr; unicode-bidi:isolate; display:inline-block;}
+.dlv-day-title{display:flex; flex-direction:column; align-items:center; line-height:1.3;}
+.dlv-day-title small{font-size:12px; color:var(--ink-soft);}
+.dlv-day-title a{color:var(--teal); font-weight:600;}
+.dlv-hero{background:var(--teal); border-color:var(--teal); color:#fff; text-align:center;}
+.dlv-hero-k{font-size:12.5px; opacity:.85; font-weight:600;}
+.dlv-hero-n{font-size:24px; font-weight:800; margin:2px 0;}
+.dlv-hero-v{font-size:14px; opacity:.92;}
+.dlv-cmp{display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px;}
+.dlv-cmp-col{border:1px solid var(--line-soft); border-radius:12px; padding:12px; background:var(--paper);}
+.dlv-cmp-col.lead{border-color:var(--teal); box-shadow:inset 0 3px 0 var(--teal);}
+.dlv-cmp-h{font-weight:700; font-size:13.5px; margin-bottom:4px;}
+.dlv-cmp-big{font-size:19px; font-weight:800; font-family:'IBM Plex Mono',monospace;}
+.dlv-cmp-s{font-size:12px; color:var(--ink-soft); margin-bottom:8px;}
+.dlv-cmp-l{display:flex; justify-content:space-between; gap:8px; font-size:12.5px; padding:4px 0; border-top:1px solid var(--line-soft);}
+.dlv-br{display:block; font-size:11px; color:var(--ink-soft); font-weight:400;}
+.dlv-hbars{height:100px; gap:3px;}
+.dlv-month-btn{width:100%; margin:4px 0 14px;}
+.dlv-back{margin-top:0;}
 </style>
 </head>
 <body>
@@ -525,7 +459,7 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
     <div class="brand">
       <div class="brand-mark" id="brandMark"><span id="brandMarkFallback">SH</span></div>
       <div class="brand-text">
-        <h1 id="appTitle" class="display-font">Shift Handover</h1>
+        <h1 id="appTitle">Shift Handover</h1>
         <span id="appSub">Retail operations log</span>
       </div>
     </div>
@@ -535,35 +469,25 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
       <button class="pill-btn" id="langToggle" type="button">العربية</button>
     </div>
   </div>
-  <div class="header-flourish">
-    <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="10" y="16" width="28" height="22" rx="3"></rect>
-      <path d="M17 16v-3a7 7 0 0 1 14 0v3"></path>
-      <path d="M17 24h14M20 30h8"></path>
-    </svg>
-  </div>
   <div class="sync-banner" id="syncBanner" style="display:none;"></div>
   <div class="notif-banner" id="notifBanner" style="display:none;"></div>
   <div class="notif-banner" id="verifyEmailBanner" style="display:none;"></div>
-</header>
-<div class="deptbar-float">
-  <div class="tabbar deptbar-pill" id="deptbar">
+  <div class="tabbar" id="deptbar" style="margin-top:10px;">
     <button class="tab-btn active" id="deptHandoverBtn" type="button"></button>
     <button class="tab-btn" id="deptMerchBtn" type="button"></button>
     <button class="tab-btn" id="deptAccountsBtn" type="button" style="display:none;"></button>
     <button class="tab-btn" id="deptExpiryBtn" type="button" style="display:none;"></button>
     <button class="tab-btn" id="deptDeliveryBtn" type="button" style="display:none;"></button>
   </div>
-</div>
-<div class="tabbar" id="subtabbar" style="max-width:640px; margin:10px auto 0; padding-inline:16px;">
-  <button class="tab-btn active" id="tabForm" type="button"></button>
-  <button class="tab-btn" id="tabDash" type="button"></button>
-</div>
+  <div class="tabbar" id="subtabbar">
+    <button class="tab-btn active" id="tabForm" type="button"></button>
+    <button class="tab-btn" id="tabDash" type="button"></button>
+  </div>
+</header>
 <main id="main"></main>
 <div id="toastHost"></div>
 <div id="modalHost"></div>
 <div id="scannerHost"></div>
-<div id="imgLightboxHost"></div>
 
 <script>
 (function(){
@@ -600,7 +524,6 @@ var ICONS = {
   camera:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8a2 2 0 0 1 2-2h1.5l1-1.5h7l1 1.5H18a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8z"></path><circle cx="12" cy="12.5" r="3.4"></circle></svg>',
   logout:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h9"></path><path d="M10 12h11M17 8l4 4-4 4"></path></svg>',
   trash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"></path><path d="M10 11v6M14 11v6"></path></svg>',
-  check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"></path></svg>',
   barcode:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 5v14M7 5v14M10 5v14M13 5v14M15 5v14M19 5v14M21 5v14"></path></svg>'
 };
 
@@ -728,8 +651,7 @@ en:{
   orderTitle:"Order request", orderSub:"Does this branch need an order placed? List the items and which supplier they're from.",
   hasOrderLabel:"There's an order to place for this branch",
   itemPh:"Item name", supplierPh:"Company / supplier",
-  addItemBtn:"Add manually", removeItemBtn:"Remove", scanItemBtn:"Scan item barcode", itemAddedToast:"Item added to the order.",
-  itemsCountLabel:"items",
+  addItemBtn:"Add item", removeItemBtn:"Remove", scanItemBtn:"Scan item barcode", itemAddedToast:"Item added to the order.",
   shortagesTitle:"Stock shortages", shortagesSub:"Any items currently out of stock or running low — separate from the order above.",
   shortagesPh:"List missing or low items…",
   merchSubmit:"Submit report", merchReqError:"Please fill in the merchandiser name, branch, and date before submitting.",
@@ -775,6 +697,11 @@ en:{
   dlvNoAccess:"Could not load delivery data. Check that the new Firestore rules are published.",
   dlvAmPm:"Morning vs night", dlvTopDriver:"Best driver this month", dlvCustomer:"Customer", dlvArea:"Area",
   dlvTime:"Time", dlvCharge:"Charge", dlvHandedAt:"Handed over", dlvTapHint:"Tap a shift to see its orders.",
+  dlvToday:"Today", dlvBackToday:"Back to today", dlvDaySub:"Today's delivery from the handed-over shifts. Only managers can see this page.",
+  dlvSeeMonth:"See the whole month:", dlvBackToDay:"Back to today", dlvMonthTitle:"Delivery this month", dlvAvgOrder:"Average order",
+  dlvTopDriverDay:"Best driver today", dlvAmWon:"The morning shift did more orders today.", dlvPmWon:"The night shift did more orders today.",
+  dlvCompare:"Branches today", dlvLeads:"Ahead today", dlvDriversDay:"Drivers today", dlvByHour:"Orders by hour", dlvTopAreas:"Top areas today",
+  dlvDayEmptyToday:"No shift has been handed over today yet. The numbers show up as soon as a branch hands over its shift.", dlvDayEmpty:"No shifts were handed over on this day.",
   locationDetailsTitle:"Location",
   scanIntroSub:"Scan a barcode to log a new batch for expiry tracking.",
   expiryTabNew:"New Product", expiryTabItems:"Items",
@@ -991,8 +918,7 @@ ar:{
   orderTitle:"طلبية", orderSub:"هل هذا الفرع محتاج طلبية؟ اذكر الأصناف ومن أي شركة/مورد.",
   hasOrderLabel:"في طلبية بدها تنعمل لهذا الفرع",
   itemPh:"اسم الصنف", supplierPh:"الشركة / المورد",
-  addItemBtn:"إضافة يدوية", removeItemBtn:"حذف", scanItemBtn:"مسح باركود الصنف", itemAddedToast:"تمت إضافة الصنف للطلبية.",
-  itemsCountLabel:"صنف",
+  addItemBtn:"إضافة صنف", removeItemBtn:"حذف", scanItemBtn:"مسح باركود الصنف", itemAddedToast:"تمت إضافة الصنف للطلبية.",
   shortagesTitle:"نواقص البضاعة", shortagesSub:"أي أصناف ناقصة حاليًا أو أوشكت تخلص — منفصلة عن الطلبية فوق.",
   shortagesPh:"اذكر الأصناف الناقصة أو الموشكة تخلص…",
   merchSubmit:"إرسال التقرير", merchReqError:"يرجى تعبئة اسم المارشندايزر والفرع والتاريخ قبل الإرسال.",
@@ -1038,6 +964,11 @@ ar:{
   dlvNoAccess:"تعذّر تحميل بيانات الدليفري. تأكد أن قواعد Firestore الجديدة منشورة.",
   dlvAmPm:"صبح أو ليل", dlvTopDriver:"أفضل درايفر هذا الشهر", dlvCustomer:"الزبون", dlvArea:"المنطقة",
   dlvTime:"الوقت", dlvCharge:"التشارج", dlvHandedAt:"وقت التسليم", dlvTapHint:"اضغط على أي شفت لعرض طلبياته.",
+  dlvToday:"اليوم", dlvBackToday:"رجوع لليوم", dlvDaySub:"دليفري اليوم من الشفتات المسلّمة. هذه الصفحة للمدير فقط.",
+  dlvSeeMonth:"عرض الشهر كاملاً:", dlvBackToDay:"رجوع لليوم", dlvMonthTitle:"الدليفري هذا الشهر", dlvAvgOrder:"معدّل الطلبية",
+  dlvTopDriverDay:"أفضل درايفر اليوم", dlvAmWon:"شفت الصبح أخذ طلبيات أكثر اليوم.", dlvPmWon:"شفت الليل أخذ طلبيات أكثر اليوم.",
+  dlvCompare:"الفرعين اليوم", dlvLeads:"الأعلى اليوم", dlvDriversDay:"الدرايفرز اليوم", dlvByHour:"الطلبيات حسب الساعة", dlvTopAreas:"أكثر المناطق اليوم",
+  dlvDayEmptyToday:"لم يُسلَّم أي شفت اليوم بعد. الأرقام تظهر فور تسليم أي فرع لشفته.", dlvDayEmpty:"لا توجد شفتات مسلّمة في هذا اليوم.",
   locationDetailsTitle:"الموقع",
   scanIntroSub:"امسح باركود لتسجيل دفعة جديدة للتتبع.",
   expiryTabNew:"تسجيل منتج", expiryTabItems:"المنتجات",
@@ -1257,8 +1188,7 @@ function freshMerchForm(){
     time: now.toTimeString().slice(0,5),
     display:{status:"", notes:"", photos:[]},
     hasOrder:false,
-    orderItems:[],
-    orderEditIdx: -1,
+    orderItems:[{item:"", supplier:""}],
     shortages:"",
     submitting:false
   };
@@ -1339,13 +1269,6 @@ function setLang(l){
   render();
 }
 
-function playSectionTransition(){
-  var el = document.getElementById("main");
-  if(!el) return;
-  el.classList.remove("section-fade-in");
-  void el.offsetWidth; // restart the animation
-  el.classList.add("section-fade-in");
-}
 function toast(msg){
   var host = document.getElementById("toastHost");
   var d = document.createElement("div");
@@ -1633,7 +1556,7 @@ function reqPhotoBlock(key){
   var fullKey = "req:" + key;
   var photosHtml = "";
   arr.forEach(function(p, i){
-    photosHtml += '<div class="photo-thumb"><img src="'+esc(p.url)+'" alt="" data-img-zoom="'+esc(p.url)+'">' +
+    photosHtml += '<div class="photo-thumb"><img src="'+esc(p.url)+'" alt="">' +
       '<button class="rm" type="button" data-photo-rm="'+fullKey+'|'+i+'">'+ICONS.close+'</button></div>';
   });
   var addHtml = "";
@@ -1675,7 +1598,7 @@ function catBlock(key, titleKey, subKey, f){
   var issSel = cat.status === "issue" ? " sel" : "";
   var photosHtml = "";
   cat.photos.forEach(function(p, i){
-    photosHtml += '<div class="photo-thumb"><img src="'+esc(p.url)+'" alt="" data-img-zoom="'+esc(p.url)+'">' +
+    photosHtml += '<div class="photo-thumb"><img src="'+esc(p.url)+'" alt="">' +
       '<button class="rm" type="button" data-photo-rm="'+key+':'+i+'">'+ICONS.close+'</button></div>';
   });
   var addHtml = "";
@@ -2316,7 +2239,7 @@ function renderMerchForm(){
   var issSel = f.display.status === "issue" ? " sel" : "";
   var photosHtml = "";
   f.display.photos.forEach(function(p, i){
-    photosHtml += '<div class="photo-thumb"><img src="'+esc(p.url)+'" alt="" data-img-zoom="'+esc(p.url)+'">' +
+    photosHtml += '<div class="photo-thumb"><img src="'+esc(p.url)+'" alt="">' +
       '<button class="rm" type="button" data-mphoto-rm="'+i+'">'+ICONS.close+'</button></div>';
   });
   var addHtml = S.canWriteAssets ?
@@ -2326,23 +2249,12 @@ function renderMerchForm(){
     '<p class="hint">'+t("merchPhotoBlocked")+'</p>';
 
   var itemsHtml = f.orderItems.map(function(row, i){
-    if(f.orderEditIdx === i){
-      return '<div class="order-card order-card-edit" data-order-row="'+i+'">' +
-        '<div style="flex:1; display:flex; flex-direction:column; gap:7px;">' +
-          '<input type="text" class="oi-input" placeholder="'+t("itemPh")+'" data-order-item="'+i+'" value="'+esc(row.item)+'" autofocus>' +
-          '<input type="text" class="oi-input" placeholder="'+t("supplierPh")+'" data-order-supplier="'+i+'" value="'+esc(row.supplier)+'">' +
-        '</div>' +
-        '<button type="button" class="order-card-done" data-order-done="'+i+'">'+ICONS.check+'</button>' +
-      '</div>';
-    }
-    var label = row.item.trim() || t("itemPh");
-    return '<div class="order-card" data-order-row="'+i+'">' +
-      (row.image ? '<img class="order-card-thumb" src="'+esc(row.image)+'" alt="" data-img-zoom="'+esc(row.image)+'">' : '<div class="order-card-thumb order-card-thumb-empty">'+ICONS.barcode+'</div>') +
-      '<div class="order-card-info" data-order-edit="'+i+'">' +
-        '<b>'+esc(label)+'</b>' +
-        (row.supplier ? '<span>'+esc(row.supplier)+'</span>' : '<span class="order-card-noSupplier">'+t("supplierPh")+'</span>') +
+    return '<div class="grid-2" style="margin-bottom:8px;" data-order-row="'+i+'">' +
+      '<input type="text" class="oi-input" placeholder="'+t("itemPh")+'" data-order-item="'+i+'" value="'+esc(row.item)+'">' +
+      '<div style="display:flex; gap:6px;">' +
+        '<input type="text" class="oi-input" placeholder="'+t("supplierPh")+'" data-order-supplier="'+i+'" value="'+esc(row.supplier)+'" style="flex:1;">' +
+        (f.orderItems.length > 1 ? '<button type="button" class="link-btn" data-order-rm="'+i+'">'+ICONS.close+'</button>' : '') +
       '</div>' +
-      '<button type="button" class="order-card-rm" data-order-rm="'+i+'">'+ICONS.trash+'</button>' +
     '</div>';
   }).join("");
 
@@ -2370,19 +2282,14 @@ function renderMerchForm(){
   '</div>';
 
   html += '<div class="card">' +
-    '<div style="display:flex; justify-content:space-between; align-items:center;">' +
-      '<div class="section-title" style="margin-bottom:0;">'+t("orderTitle")+'</div>' +
-      (f.hasOrder && f.orderItems.length ? '<span class="badge badge-neutral">'+f.orderItems.length+' '+t("itemsCountLabel")+'</span>' : '') +
-    '</div>' +
+    '<div class="section-title">'+t("orderTitle")+'</div>' +
     '<div class="section-sub">'+t("orderSub")+'</div>' +
     '<label class="ack-row"><input type="checkbox" id="m_hasOrder"'+(f.hasOrder?" checked":"")+'><span>'+t("hasOrderLabel")+'</span></label>' +
-    (f.hasOrder ?
-      '<div style="margin-top:14px;">' +
-        '<button type="button" class="quick-fab-btn" id="m_scanItem" style="width:100%; justify-content:center; padding:13px;">'+ICONS.barcode+' '+t("scanItemBtn")+'</button>' +
-        (f.orderItems.length ? '<div style="margin-top:14px; display:flex; flex-direction:column; gap:8px;">'+itemsHtml+'</div>' : '') +
-        '<button type="button" class="link-btn" id="m_addItem" style="margin-top:10px;">'+ICONS.plus+' '+t("addItemBtn")+'</button>' +
-      '</div>'
-    : '') +
+    (f.hasOrder ? '<div style="margin-top:12px;">'+itemsHtml+
+      '<div class="chip-row" style="margin-top:4px;">' +
+        '<button type="button" class="link-btn" id="m_addItem">'+ICONS.plus+' '+t("addItemBtn")+'</button>' +
+        '<button type="button" class="link-btn" id="m_scanItem">'+ICONS.barcode+' '+t("scanItemBtn")+'</button>' +
+      '</div></div>' : '') +
   '</div>';
 
   html += '<div class="card">' +
@@ -2437,25 +2344,13 @@ function wireMerchForm(){
   });
   Array.prototype.forEach.call(document.querySelectorAll("[data-order-rm]"), function(btn){
     btn.onclick = function(){
-      var idx = parseInt(this.getAttribute("data-order-rm"),10);
-      f.orderItems.splice(idx, 1);
-      if(f.orderEditIdx === idx) f.orderEditIdx = -1;
+      f.orderItems.splice(parseInt(this.getAttribute("data-order-rm"),10), 1);
       renderMerchForm();
     };
-  });
-  Array.prototype.forEach.call(document.querySelectorAll("[data-order-edit]"), function(el){
-    el.onclick = function(){ f.orderEditIdx = parseInt(this.getAttribute("data-order-edit"),10); renderMerchForm(); };
-  });
-  Array.prototype.forEach.call(document.querySelectorAll("[data-order-done]"), function(btn){
-    btn.onclick = function(){ f.orderEditIdx = -1; renderMerchForm(); };
   });
   var addItemBtn = document.getElementById("m_addItem");
   if(addItemBtn){
-    addItemBtn.onclick = function(){
-      f.orderItems.push({item:"", supplier:"", image:""});
-      f.orderEditIdx = f.orderItems.length - 1;
-      renderMerchForm();
-    };
+    addItemBtn.onclick = function(){ f.orderItems.push({item:"", supplier:""}); renderMerchForm(); };
   }
   var scanItemBtn = document.getElementById("m_scanItem");
   if(scanItemBtn){
@@ -2475,7 +2370,7 @@ function submitMerchVisit(){
 
   var photoIds = f.display.photos.filter(function(p){ return p.id; }).map(function(p){ return p.id; });
   var items = f.hasOrder ? f.orderItems.filter(function(r){ return r.item.trim() || r.supplier.trim(); }).map(function(r){
-    return {item:r.item.trim(), supplier:r.supplier.trim(), image:r.image||""};
+    return {item:r.item.trim(), supplier:r.supplier.trim()};
   }) : [];
 
   var doc = {
@@ -2919,7 +2814,7 @@ function subscribeUsers(){
 // Shifts are written by the offline branch delivery book (shoppies-delivery.html),
 // signed in as an account with role "delivery". Firestore rules let only admins read them.
 function dlvMonthNow(){ var d = new Date(); return d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2); }
-S.dlv = {month: dlvMonthNow(), branch: "all", docs: [], loaded: false, error: false, unsub: null, open: null};
+S.dlv = {month: dlvMonthNow(), branch: "all", docs: [], loaded: false, error: false, unsub: null, open: null, view: "day", day: ""};
 function stopDelivery(){ if(S.dlv.unsub){ try{ S.dlv.unsub(); }catch(e){} S.dlv.unsub = null; } }
 function subscribeDelivery(){
   if(!S.db || S.dlv.unsub) return;
@@ -2947,14 +2842,153 @@ function dlvShiftMonth(delta){
   S.dlv.month = d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2);
   S.dlv.open = null; stopDelivery(); subscribeDelivery(); renderDelivery();
 }
+function dlvTodayStr(){ var d = new Date(); if(d.getHours() < 7) d.setDate(d.getDate()-1); return d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2); }
+function dlvDayLabel(s){
+  var p = s.split("-"), d = new Date(+p[0], +p[1]-1, +p[2]);
+  var ard = ["الأحد","الإثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"];
+  var arm = ["كانون الثاني","شباط","آذار","نيسان","أيار","حزيران","تموز","آب","أيلول","تشرين الأول","تشرين الثاني","كانون الأول"];
+  return S.lang === "ar" ? ard[d.getDay()]+" "+(+p[2])+" "+arm[d.getMonth()] : d.toLocaleString("en-US",{weekday:"long", day:"numeric", month:"long"});
+}
+function dlvSetDay(day){
+  S.dlv.day = day; S.dlv.open = null;
+  var m = day.slice(0,7);
+  if(m !== S.dlv.month){ S.dlv.month = m; stopDelivery(); }
+  renderDelivery();
+}
+function dlvShiftDay(delta){
+  var p = S.dlv.day.split("-"), d = new Date(+p[0], +p[1]-1, +p[2]+delta);
+  var s = d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2);
+  if(s > dlvTodayStr()) return;
+  dlvSetDay(s);
+}
+function dlvAgg(docs){
+  var r = {t:0, c:0, am:{t:0,c:0}, pm:{t:0,c:0}, drivers:{}, hours:{}, areas:{}, shifts:docs.length};
+  docs.forEach(function(d){
+    var tt = +d.total || 0, cc = +d.count || 0, sh = d.shift === "pm" ? r.pm : r.am;
+    r.t += tt; r.c += cc; sh.t += tt; sh.c += cc;
+    (d.drivers || []).forEach(function(x){
+      var k = x.driver || "—", q = r.drivers[k] || (r.drivers[k] = {t:0, c:0, br:{}});
+      q.t += +x.total || 0; q.c += +x.count || 0; if(d.branch) q.br[d.branch] = 1;
+    });
+    (d.orders || []).forEach(function(o){
+      var h = parseInt(String(o.time||"").split(":")[0], 10);
+      if(!isNaN(h)){ var hh = r.hours[h] || (r.hours[h] = {t:0,c:0}); hh.t += +o.charge || 0; hh.c++; }
+      var a = String(o.area||"").trim(); if(a){ var aa = r.areas[a] || (r.areas[a] = {t:0,c:0}); aa.t += +o.charge || 0; aa.c++; }
+    });
+  });
+  r.dl = Object.keys(r.drivers).map(function(k){ return {n:k, t:r.drivers[k].t, c:r.drivers[k].c, br:Object.keys(r.drivers[k].br)}; })
+    .sort(function(a,b){ return b.t - a.t || b.c - a.c; });
+  return r;
+}
+function renderDeliveryDay(){
+  var main = document.getElementById("main"), D = S.dlv, cur = "LBP";
+  var today = dlvTodayStr(), isToday = D.day === today;
+  var nav = '<div class="dlv-nav"><button type="button" id="dlvDPrev" aria-label="prev">'+(S.lang==="ar"?"›":"‹")+'</button>' +
+    '<div class="dlv-day-title"><b>'+esc(dlvDayLabel(D.day))+'</b><small>'+(isToday ? t("dlvToday") : '<a href="#" id="dlvToToday">'+t("dlvBackToday")+'</a>')+'</small></div>' +
+    '<button type="button" id="dlvDNext" aria-label="next" '+(isToday?"disabled":"")+'>'+(S.lang==="ar"?"‹":"›")+'</button></div>';
+  var html = '<div class="card"><div class="section-title">'+t("dlvTitle")+'</div><div class="section-sub">'+t("dlvDaySub")+'</div>'+nav;
+  var monthBtn = '<button type="button" class="btn btn-secondary dlv-month-btn" id="dlvMonthBtn">📅 '+t("dlvSeeMonth")+' '+esc(dlvMonthLabel(D.month))+'</button>';
+  if(!D.loaded){ main.innerHTML = html + '<div class="empty">'+t("loading")+'</div></div>'; dlvWire(); return; }
+  if(D.error){ main.innerHTML = html + '<div class="empty">'+t("dlvNoAccess")+'</div></div>'; dlvWire(); return; }
+
+  var branches = {}; D.docs.forEach(function(d){ if(d.branch) branches[d.branch] = 1; });
+  var bnames = Object.keys(branches).sort();
+  if(D.branch !== "all" && !branches[D.branch]) D.branch = "all";
+  if(bnames.length > 1) html += '<div class="filters"><select id="dlvBranch"><option value="all">'+t("dlvAllBranches")+'</option>' +
+    bnames.map(function(b){ return '<option value="'+esc(b)+'"'+(D.branch===b?" selected":"")+'>'+esc(b)+'</option>'; }).join("") + '</select></div>';
+  var dayDocs = D.docs.filter(function(d){ return d.date === D.day; });
+  var docs = dayDocs.filter(function(d){ return D.branch === "all" || d.branch === D.branch; });
+  if(docs.length) cur = docs[0].currency || "LBP";
+  if(!docs.length){ main.innerHTML = html + '<div class="empty">'+(isToday ? t("dlvDayEmptyToday") : t("dlvDayEmpty"))+'</div></div>' + monthBtn; dlvWire(); return; }
+
+  var A = dlvAgg(docs);
+  html += '<div class="stat-row">' +
+    '<div class="stat"><b class="m-ltr">'+esc(dlvMoney(A.t,cur))+'</b><span>'+t("dlvTotal")+'</span></div>' +
+    '<div class="stat"><b>'+A.c+'</b><span>'+t("dlvOrders")+'</span></div>' +
+    '<div class="stat"><b class="m-ltr">'+esc(dlvMoney(A.c ? A.t/A.c : 0,cur))+'</b><span>'+t("dlvAvgOrder")+'</span></div></div></div>';
+
+  if(A.dl[0]){
+    var b0 = A.dl[0];
+    html += '<div class="card dlv-hero"><div class="dlv-hero-k">★ '+t("dlvTopDriverDay")+'</div><div class="dlv-hero-n">'+esc(b0.n)+'</div>' +
+      '<div class="dlv-hero-v"><span class="m-ltr">'+esc(dlvMoney(b0.t,cur))+'</span> · '+b0.c+' '+t("dlvOrdersWord")+(b0.br.length && D.branch==="all" && bnames.length>1 ? ' · '+esc(b0.br.join("، ")) : '')+'</div></div>';
+  }
+
+  var st = Math.max(1, A.am.t + A.pm.t), win = A.am.c === A.pm.c ? (A.am.t >= A.pm.t ? "am" : "pm") : (A.am.c > A.pm.c ? "am" : "pm");
+  html += '<div class="card"><div class="section-title">'+t("dlvAmPm")+'</div>' +
+    (A.am.c && A.pm.c ? '<div class="section-sub">'+(win==="am" ? t("dlvAmWon") : t("dlvPmWon"))+'</div>' : '') +
+    '<div class="dlv-split"><i class="am" style="width:'+(A.am.t/st*100)+'%"></i><i class="pm" style="width:'+(A.pm.t/st*100)+'%"></i></div>' +
+    '<div class="dlv-row"><span class="nm">☀︎ '+t("dlvMorning")+'</span><span></span><span class="val"><b class="m-ltr">'+esc(dlvMoney(A.am.t,cur))+'</b><small>'+A.am.c+' '+t("dlvOrdersWord")+'</small></span></div>' +
+    '<div class="dlv-row"><span class="nm">☾ '+t("dlvNight")+'</span><span></span><span class="val"><b class="m-ltr">'+esc(dlvMoney(A.pm.t,cur))+'</b><small>'+A.pm.c+' '+t("dlvOrdersWord")+'</small></span></div></div>';
+
+  if(D.branch === "all" && bnames.length > 1){
+    var per = bnames.map(function(b){ return {n:b, a:dlvAgg(dayDocs.filter(function(d){ return d.branch === b; }))}; });
+    var lead = per.slice().sort(function(x,y){ return y.a.t - x.a.t; })[0];
+    html += '<div class="card"><div class="section-title">'+t("dlvCompare")+'</div>' +
+      (lead && lead.a.t ? '<div class="section-sub">'+t("dlvLeads")+': <b>'+esc(lead.n)+'</b></div>' : '') +
+      '<div class="dlv-cmp">' + per.map(function(x){
+        var a = x.a, top = a.dl[0];
+        return '<div class="dlv-cmp-col'+(lead===x && a.t?" lead":"")+'"><div class="dlv-cmp-h">'+esc(x.n)+'</div>' +
+          '<div class="dlv-cmp-big m-ltr">'+esc(dlvMoney(a.t,cur))+'</div><div class="dlv-cmp-s">'+a.c+' '+t("dlvOrdersWord")+'</div>' +
+          '<div class="dlv-cmp-l"><span>☀︎ '+t("dlvMorning")+'</span><span class="m-ltr">'+esc(dlvMoney(a.am.t,cur))+'</span></div>' +
+          '<div class="dlv-cmp-l"><span>☾ '+t("dlvNight")+'</span><span class="m-ltr">'+esc(dlvMoney(a.pm.t,cur))+'</span></div>' +
+          '<div class="dlv-cmp-l"><span>★</span><span>'+(top ? esc(top.n)+' ('+top.c+')' : '—')+'</span></div>' +
+          '<div class="dlv-cmp-l"><span>'+t("dlvShifts")+'</span><span>'+a.shifts+'/2</span></div></div>';
+      }).join("") + '</div></div>';
+  }
+
+  var dmax = Math.max.apply(null, A.dl.map(function(x){ return x.t; }).concat([1]));
+  html += '<div class="card"><div class="section-title">'+t("dlvDriversDay")+'</div>' +
+    A.dl.map(function(x,i){ return '<div class="dlv-row'+(i===0?" top":"")+'"><span class="nm">'+esc(x.n)+(D.branch==="all" && bnames.length>1 && x.br.length ? '<small class="dlv-br">'+esc(x.br.join("، "))+'</small>' : '')+'</span><span class="dlv-track"><i style="width:'+(x.t/dmax*100)+'%"></i></span>' +
+      '<span class="val"><b class="m-ltr">'+esc(dlvMoney(x.t,cur))+'</b><small>'+x.c+' '+t("dlvOrdersWord")+'</small></span></div>'; }).join("") + '</div>';
+
+  var hs = Object.keys(A.hours).map(Number);
+  if(hs.length){
+    var order = []; for(var h=7; h<31; h++) order.push(h%24);
+    var used = order.filter(function(h){ return A.hours[h]; }), first = order.indexOf(used[0]), last = order.indexOf(used[used.length-1]);
+    var span = order.slice(first, last+1), hmax = Math.max.apply(null, span.map(function(h){ return A.hours[h] ? A.hours[h].c : 0; }).concat([1]));
+    html += '<div class="card"><div class="section-title">'+t("dlvByHour")+'</div><div class="dlv-info" id="dlvInfo"></div><div class="dlv-bars dlv-hbars" id="dlvBars">' +
+      span.map(function(h){ var x = A.hours[h] || {t:0,c:0}; return '<i class="'+(x.c?"":"zero")+(x.c===hmax?" peak":"")+'" style="height:'+(x.c/hmax*100)+'%" data-info="'+esc(("0"+h).slice(-2)+":00 · "+x.c+" "+t("dlvOrdersWord")+" · "+dlvMoney(x.t,cur))+'"></i>'; }).join("") +
+      '</div><div class="dlv-axis"><span class="m-ltr">'+("0"+span[0]).slice(-2)+':00</span><span class="m-ltr">'+("0"+span[span.length-1]).slice(-2)+':00</span></div></div>';
+  }
+
+  var ar = Object.keys(A.areas).map(function(k){ return {n:k, t:A.areas[k].t, c:A.areas[k].c}; }).sort(function(a,b){ return b.c - a.c || b.t - a.t; }).slice(0,5);
+  if(ar.length){
+    var amax = Math.max.apply(null, ar.map(function(x){ return x.c; }).concat([1]));
+    html += '<div class="card"><div class="section-title">'+t("dlvTopAreas")+'</div>' +
+      ar.map(function(x){ return '<div class="dlv-row"><span class="nm">'+esc(x.n)+'</span><span class="dlv-track"><i style="width:'+(x.c/amax*100)+'%"></i></span><span class="val"><b>'+x.c+' '+t("dlvOrdersWord")+'</b><small class="m-ltr">'+esc(dlvMoney(x.t,cur))+'</small></span></div>'; }).join("") + '</div>';
+  }
+
+  html += dlvShiftListHtml(docs, cur) + monthBtn;
+  main.innerHTML = html;
+  dlvWire();
+}
+function dlvShiftListHtml(docs, cur){
+  var D = S.dlv;
+  var list = docs.slice().sort(function(a,b){ return (b.date+(b.shift==="pm"?"1":"0")).localeCompare(a.date+(a.shift==="pm"?"1":"0")); });
+  return '<div class="card"><div class="section-title">'+t("dlvShiftList")+'</div><div class="section-sub">'+t("dlvTapHint")+'</div>' +
+    list.map(function(d){
+      var open = D.open === d.id;
+      return '<div class="dlv-shift" data-dlv-open="'+esc(d.id)+'"><div class="dlv-shift-head">' +
+        '<b>'+esc(d.date)+'</b><span class="badge '+(d.shift==="pm"?"badge-neutral":"badge-pending")+'">'+(d.shift==="pm"?t("dlvNight"):t("dlvMorning"))+'</span>' +
+        '<span>'+esc(d.branch||"")+'</span>' + (d.staff ? '<span style="color:var(--ink-soft)">'+t("dlvStaff")+': '+esc(d.staff)+'</span>' : '') +
+        '<span class="amt"><span class="m-ltr">'+esc(dlvMoney(d.total, d.currency||cur))+'</span> · '+(+d.count||0)+'</span></div>' +
+        (open ? '<table><thead><tr><th>'+t("dlvTime")+'</th><th>'+t("dlvDrivers")+'</th><th>'+t("dlvCustomer")+'</th><th>'+t("dlvArea")+'</th><th>'+t("dlvCharge")+'</th></tr></thead><tbody>' +
+          (d.orders||[]).map(function(o){ return '<tr><td>'+esc(o.time)+'</td><td>'+esc(o.driver)+'</td><td>'+esc(o.customer)+'</td><td>'+esc(o.area||"—")+'</td><td class="m-ltr">'+esc(dlvMoney(o.charge, d.currency||cur))+'</td></tr>'; }).join("") +
+          '</tbody></table>' : '') + '</div>';
+    }).join("") + '</div>';
+}
 function renderDelivery(){
-  var main = document.getElementById("main");
+  if(!S.dlv.day){ S.dlv.day = dlvTodayStr(); if(S.dlv.day.slice(0,7) !== S.dlv.month){ S.dlv.month = S.dlv.day.slice(0,7); stopDelivery(); } }
   subscribeDelivery();
+  if(S.dlv.view === "month") renderDeliveryMonth(); else renderDeliveryDay();
+}
+function renderDeliveryMonth(){
+  var main = document.getElementById("main");
   var D = S.dlv, cur = "LBP";
   var nav = '<div class="dlv-nav"><button type="button" id="dlvPrev" aria-label="prev">'+(S.lang==="ar"?"›":"‹")+'</button>' +
     '<b>'+esc(dlvMonthLabel(D.month))+'</b>' +
     '<button type="button" id="dlvNext" aria-label="next" '+(D.month>=dlvMonthNow()?"disabled":"")+'>'+(S.lang==="ar"?"‹":"›")+'</button></div>';
-  var html = '<div class="card"><div class="section-title">'+t("dlvTitle")+'</div><div class="section-sub">'+t("dlvSub")+'</div>'+nav;
+  var html = '<button type="button" class="btn btn-secondary dlv-month-btn dlv-back" id="dlvDayBtn">'+(S.lang==="ar"?"→ ":"← ")+t("dlvBackToDay")+'</button><div class="card"><div class="section-title">'+t("dlvMonthTitle")+'</div><div class="section-sub">'+t("dlvSub")+'</div>'+nav;
   if(!D.loaded){ main.innerHTML = html + '<div class="empty">'+t("loading")+'</div></div>'; dlvWire(); return; }
   if(D.error){ main.innerHTML = html + '<div class="empty">'+t("dlvNoAccess")+'</div></div>'; dlvWire(); return; }
 
@@ -3019,18 +3053,7 @@ function renderDelivery(){
       bl.map(function(x){ return '<div class="dlv-row"><span class="nm">'+esc(x.n)+'</span><span class="dlv-track"><i style="width:'+(x.t/bmax*100)+'%"></i></span><span class="val"><b class="m-ltr">'+esc(dlvMoney(x.t,cur))+'</b><small>'+x.c+' '+t("dlvOrdersWord")+'</small></span></div>'; }).join("") + '</div>';
   }
 
-  var list = docs.slice().sort(function(a,b){ return (b.date+(b.shift==="pm"?"1":"0")).localeCompare(a.date+(a.shift==="pm"?"1":"0")); });
-  html += '<div class="card"><div class="section-title">'+t("dlvShiftList")+'</div><div class="section-sub">'+t("dlvTapHint")+'</div>' +
-    list.map(function(d){
-      var open = D.open === d.id;
-      return '<div class="dlv-shift" data-dlv-open="'+esc(d.id)+'"><div class="dlv-shift-head">' +
-        '<b>'+esc(d.date)+'</b><span class="badge '+(d.shift==="pm"?"badge-neutral":"badge-pending")+'">'+(d.shift==="pm"?t("dlvNight"):t("dlvMorning"))+'</span>' +
-        '<span>'+esc(d.branch||"")+'</span>' + (d.staff ? '<span style="color:var(--ink-soft)">'+t("dlvStaff")+': '+esc(d.staff)+'</span>' : '') +
-        '<span class="amt"><span class="m-ltr">'+esc(dlvMoney(d.total, d.currency||cur))+'</span> · '+(+d.count||0)+'</span></div>' +
-        (open ? '<table><thead><tr><th>'+t("dlvTime")+'</th><th>'+t("dlvDrivers")+'</th><th>'+t("dlvCustomer")+'</th><th>'+t("dlvArea")+'</th><th>'+t("dlvCharge")+'</th></tr></thead><tbody>' +
-          (d.orders||[]).map(function(o){ return '<tr><td>'+esc(o.time)+'</td><td>'+esc(o.driver)+'</td><td>'+esc(o.customer)+'</td><td>'+esc(o.area||"—")+'</td><td class="m-ltr">'+esc(dlvMoney(o.charge, d.currency||cur))+'</td></tr>'; }).join("") +
-          '</tbody></table>' : '') + '</div>';
-    }).join("") + '</div>';
+  html += dlvShiftListHtml(docs, cur);
 
   main.innerHTML = html;
   dlvWire();
@@ -3040,6 +3063,13 @@ function dlvWire(){
   if(pv) pv.onclick = function(){ dlvShiftMonth(-1); };
   if(nx) nx.onclick = function(){ if(S.dlv.month < dlvMonthNow()) dlvShiftMonth(1); };
   if(br) br.onchange = function(){ S.dlv.branch = this.value; renderDelivery(); };
+  var dp = document.getElementById("dlvDPrev"), dn = document.getElementById("dlvDNext"), tt = document.getElementById("dlvToToday");
+  if(dp) dp.onclick = function(){ dlvShiftDay(-1); };
+  if(dn) dn.onclick = function(){ dlvShiftDay(1); };
+  if(tt) tt.onclick = function(e){ e.preventDefault(); dlvSetDay(dlvTodayStr()); };
+  var mb = document.getElementById("dlvMonthBtn"), db = document.getElementById("dlvDayBtn");
+  if(mb) mb.onclick = function(){ S.dlv.view = "month"; S.dlv.open = null; renderDelivery(); window.scrollTo(0,0); };
+  if(db) db.onclick = function(){ S.dlv.view = "day"; S.dlv.open = null; dlvSetDay(dlvTodayStr()); window.scrollTo(0,0); };
   var bars = document.getElementById("dlvBars"), info = document.getElementById("dlvInfo");
   if(bars && info){
     var show = function(e){ var el = e.target.closest ? e.target.closest("[data-info]") : null; if(el) info.textContent = el.getAttribute("data-info"); };
@@ -3206,33 +3236,6 @@ function createAccount(){
 }
 
 /* ================= DELETE CONFIRM ================= */
-
-/* ================= IMAGE LIGHTBOX (tap any product photo to zoom) ================= */
-
-function openImageLightbox(url){
-  var host = document.getElementById("imgLightboxHost");
-  host.innerHTML =
-    '<div class="img-lightbox-overlay" id="imgLightboxOverlay">' +
-      '<button type="button" class="img-lightbox-close" id="imgLightboxCloseBtn">'+ICONS.close+'</button>' +
-      '<img src="'+esc(url)+'" alt="">' +
-    '</div>';
-  document.getElementById("imgLightboxCloseBtn").onclick = closeImageLightbox;
-  document.getElementById("imgLightboxOverlay").onclick = function(e){
-    if(e.target.id === "imgLightboxOverlay") closeImageLightbox();
-  };
-}
-function closeImageLightbox(){
-  document.getElementById("imgLightboxHost").innerHTML = "";
-}
-// Delegated listener: any element with data-img-zoom="<url>" anywhere in the
-// app opens that image full-screen — no need to wire this in every render().
-document.addEventListener("click", function(e){
-  var el = e.target.closest && e.target.closest("[data-img-zoom]");
-  if(!el) return;
-  e.stopPropagation();
-  e.preventDefault();
-  openImageLightbox(el.getAttribute("data-img-zoom"));
-}, true); // capture phase: must intercept before a wrapping card's own click/toggle handler fires
 
 /* ================= ACCOUNT / CHANGE PASSWORD ================= */
 
@@ -3599,7 +3602,7 @@ function renderTrackedDashboard(){
         var d = computeDaysLeft(l.expiryDate);
         var tag = daysLeftTag(d);
         return '<div class="alert-row">' +
-          (l.image ? '<img class="item-thumb" src="'+esc(l.image)+'" data-img-zoom="'+esc(l.image)+'">' : '<div class="item-thumb"></div>') +
+          (l.image ? '<img class="item-thumb" src="'+esc(l.image)+'">' : '<div class="item-thumb"></div>') +
           '<div style="flex:1; min-width:0;"><b style="font-size:13px; display:block;">'+esc(l.productName)+'</b>' +
           '<span class="hint">'+esc(companyName(l.company))+' · '+esc(l.qty)+'</span></div>' +
           '<span class="badge '+tag.cls+'">'+tag.label+'</span>' +
@@ -3702,7 +3705,7 @@ function trackedItemCard(l){
   var d = computeDaysLeft(l.expiryDate);
   var tag = daysLeftTag(d);
   var head = '<div class="log-head" data-ttoggle="'+l.id+'">' +
-    (l.image ? '<img class="item-thumb" src="'+esc(l.image)+'" data-img-zoom="'+esc(l.image)+'">' : '<div class="item-thumb"></div>') +
+    (l.image ? '<img class="item-thumb" src="'+esc(l.image)+'">' : '<div class="item-thumb"></div>') +
     '<div class="info" style="flex:1; min-width:0;">' +
       '<b>'+esc(l.productName)+'</b>' +
       '<span>'+esc(companyName(l.company))+' · '+esc(l.qty)+'</span>' +
@@ -3836,90 +3839,17 @@ function closeScanner(){
 }
 
 function stopCameraScan(){
-  if(!S.scanTarget) return;
-  if(S.scanTarget.nativeRAF){
-    cancelAnimationFrame(S.scanTarget.nativeRAF);
-    S.scanTarget.nativeRAF = null;
-  }
-  if(S.scanTarget.nativeStream){
-    try{ S.scanTarget.nativeStream.getTracks().forEach(function(tr){ tr.stop(); }); }catch(e){}
-    S.scanTarget.nativeStream = null;
-  }
-  if(S.scanTarget.qr){
-    var qr = S.scanTarget.qr;
-    S.scanTarget.qr = null;
-    try{
-      qr.stop().then(function(){
-        try{ qr.clear(); }catch(e){}
-      }).catch(function(){});
-    }catch(e){}
-  }
+  if(!S.scanTarget || !S.scanTarget.qr) return;
+  var qr = S.scanTarget.qr;
+  S.scanTarget.qr = null;
+  try{
+    qr.stop().then(function(){
+      try{ qr.clear(); }catch(e){}
+    }).catch(function(){});
+  }catch(e){}
 }
-
-var SCAN_BARCODE_FORMATS = ["ean_13","ean_8","upc_a","upc_e","code_128","code_39","itf","qr_code"];
 
 function startCameraScan(){
-  // Prefer the browser's native BarcodeDetector directly — no extra library
-  // layer drawing/scaling each frame on top of it. This is the free speed
-  // win: on Chrome/Edge/Android it decodes noticeably faster than going
-  // through html5-qrcode, which still does its own frame handling even
-  // when it delegates the actual detection to this same native API.
-  // Safari (iOS) has no BarcodeDetector at all, so it always falls back
-  // to html5-qrcode below — that gap is a platform limit, not ours.
-  if("BarcodeDetector" in window){
-    startNativeBarcodeScan();
-  } else {
-    startHtml5QrcodeScan();
-  }
-}
-
-function startNativeBarcodeScan(){
-  var host = document.getElementById("qrReaderDiv");
-  var video = document.createElement("video");
-  video.setAttribute("playsinline", "true");
-  video.muted = true;
-  host.innerHTML = "";
-  host.appendChild(video);
-
-  navigator.mediaDevices.getUserMedia({
-    video:{facingMode:{ideal:"environment"}, width:{ideal:1280}, height:{ideal:720}}
-  }).then(function(stream){
-    if(!S.scanTarget){ stream.getTracks().forEach(function(tr){ tr.stop(); }); return; }
-    S.scanTarget.nativeStream = stream;
-    video.srcObject = stream;
-    return video.play();
-  }).then(function(){
-    if(!S.scanTarget) return;
-    var detector = new BarcodeDetector({formats: SCAN_BARCODE_FORMATS});
-    var tick = function(){
-      if(!S.scanTarget || !S.scanTarget.nativeStream) return;
-      detector.detect(video).then(function(codes){
-        if(!S.scanTarget) return;
-        if(codes && codes.length){
-          var value = codes[0].rawValue;
-          stopCameraScan();
-          handleScannedBarcode(value);
-          return;
-        }
-        S.scanTarget.nativeRAF = requestAnimationFrame(tick);
-      }).catch(function(){
-        if(S.scanTarget) S.scanTarget.nativeRAF = requestAnimationFrame(tick);
-      });
-    };
-    S.scanTarget.nativeRAF = requestAnimationFrame(tick);
-  }).catch(function(){
-    // Camera denied, or BarcodeDetector construction failed for an
-    // unsupported format on this device — release anything the native
-    // path already opened, then fall back to the library path instead
-    // of just giving up.
-    if(S.scanTarget){
-      stopCameraScan();
-      startHtml5QrcodeScan();
-    }
-  });
-}
-
-function startHtml5QrcodeScan(){
   if(typeof Html5Qrcode === "undefined"){
     S.scanTarget.stage = "unsupported";
     renderScanner();
@@ -3968,10 +3898,14 @@ function handleScannedBarcode(barcode){
 }
 
 function addOrderItemFromScan(barcode){
-  var finish = function(name, supplier, image){
+  var finish = function(name, supplier){
     var f = S.merchForm;
-    var row = {item:name, supplier:supplier || "", image: image || "", barcode: barcode};
-    f.orderItems.push(row);
+    var emptyIdx = -1;
+    for(var i=0;i<f.orderItems.length;i++){
+      if(!f.orderItems[i].item.trim() && !f.orderItems[i].supplier.trim()){ emptyIdx = i; break; }
+    }
+    var row = {item:name, supplier:supplier || ""};
+    if(emptyIdx !== -1){ f.orderItems[emptyIdx] = row; } else { f.orderItems.push(row); }
     closeScanner();
     toast(t("itemAddedToast"));
     renderMerchForm();
@@ -3986,15 +3920,15 @@ function addOrderItemFromScan(barcode){
             source: "openfoodfacts"
           }, {merge:true}).catch(function(){});
         }
-        finish(online.name, online.supplier, online.image);
+        finish(online.name, online.supplier);
       } else {
-        finish(barcode, "", "");
+        finish(barcode, "");
       }
     });
   };
   if(!S.db){ tryOnline(); return; }
   S.db.doc("catalog/"+encodeURIComponent(barcode)).get().then(function(snap){
-    if(snap.exists){ var d = snap.data(); finish(d.name || barcode, d.supplier || "", d.image || ""); }
+    if(snap.exists){ var d = snap.data(); finish(d.name || barcode, d.supplier || ""); }
     else { tryOnline(); }
   }).catch(function(){ tryOnline(); });
 }
@@ -4091,7 +4025,7 @@ function renderScanner(){
   } else if(stage === "form"){
     var tf = S.trackForm;
     var photoHtml = tf.image ?
-      '<div class="photo-thumb" style="width:80px; height:80px;"><img src="'+esc(tf.image.url)+'" alt="" data-img-zoom="'+esc(tf.image.url)+'"><button class="rm" type="button" id="trackImgRm">'+ICONS.close+'</button></div>' :
+      '<div class="photo-thumb" style="width:80px; height:80px;"><img src="'+esc(tf.image.url)+'" alt=""><button class="rm" type="button" id="trackImgRm">'+ICONS.close+'</button></div>' :
       (S.canWriteAssets ? '<label class="photo-add" style="width:80px; height:80px;">'+ICONS.plus+'<input type="file" accept="image/*" capture="environment" id="trackImgAdd"></label>' : '');
     html += '<div style="flex:1; overflow-y:auto;">' +
       '<div class="scanner-form">' +
@@ -4257,11 +4191,11 @@ document.getElementById("logoutBtn").onclick = function(){
   stopDelivery();
   if(S.auth) S.auth.signOut(); // onAuthStateChanged picks this up and clears S.currentUser
 };
-document.getElementById("deptHandoverBtn").onclick = function(){ S.appMode = "handover"; S.view = "form"; render(); playSectionTransition(); };
-document.getElementById("deptMerchBtn").onclick = function(){ S.appMode = "merch"; S.view = "form"; render(); playSectionTransition(); };
-document.getElementById("deptAccountsBtn").onclick = function(){ S.appMode = "accounts"; render(); playSectionTransition(); };
-document.getElementById("deptDeliveryBtn").onclick = function(){ S.appMode = "delivery"; render(); playSectionTransition(); };
-document.getElementById("deptExpiryBtn").onclick = function(){ S.appMode = "expiry"; S.view = "form"; logActivity("view"); render(); playSectionTransition(); };
+document.getElementById("deptHandoverBtn").onclick = function(){ S.appMode = "handover"; S.view = "form"; render(); };
+document.getElementById("deptMerchBtn").onclick = function(){ S.appMode = "merch"; S.view = "form"; render(); };
+document.getElementById("deptAccountsBtn").onclick = function(){ S.appMode = "accounts"; render(); };
+document.getElementById("deptDeliveryBtn").onclick = function(){ S.appMode = "delivery"; render(); };
+document.getElementById("deptExpiryBtn").onclick = function(){ S.appMode = "expiry"; S.view = "form"; logActivity("view"); render(); };
 
 function resolvePhotoUrls(doc){
   ["cash","inventory","cleanliness"].forEach(function(k){
