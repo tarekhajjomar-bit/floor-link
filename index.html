@@ -3836,17 +3836,90 @@ function closeScanner(){
 }
 
 function stopCameraScan(){
-  if(!S.scanTarget || !S.scanTarget.qr) return;
-  var qr = S.scanTarget.qr;
-  S.scanTarget.qr = null;
-  try{
-    qr.stop().then(function(){
-      try{ qr.clear(); }catch(e){}
-    }).catch(function(){});
-  }catch(e){}
+  if(!S.scanTarget) return;
+  if(S.scanTarget.nativeRAF){
+    cancelAnimationFrame(S.scanTarget.nativeRAF);
+    S.scanTarget.nativeRAF = null;
+  }
+  if(S.scanTarget.nativeStream){
+    try{ S.scanTarget.nativeStream.getTracks().forEach(function(tr){ tr.stop(); }); }catch(e){}
+    S.scanTarget.nativeStream = null;
+  }
+  if(S.scanTarget.qr){
+    var qr = S.scanTarget.qr;
+    S.scanTarget.qr = null;
+    try{
+      qr.stop().then(function(){
+        try{ qr.clear(); }catch(e){}
+      }).catch(function(){});
+    }catch(e){}
+  }
 }
 
+var SCAN_BARCODE_FORMATS = ["ean_13","ean_8","upc_a","upc_e","code_128","code_39","itf","qr_code"];
+
 function startCameraScan(){
+  // Prefer the browser's native BarcodeDetector directly — no extra library
+  // layer drawing/scaling each frame on top of it. This is the free speed
+  // win: on Chrome/Edge/Android it decodes noticeably faster than going
+  // through html5-qrcode, which still does its own frame handling even
+  // when it delegates the actual detection to this same native API.
+  // Safari (iOS) has no BarcodeDetector at all, so it always falls back
+  // to html5-qrcode below — that gap is a platform limit, not ours.
+  if("BarcodeDetector" in window){
+    startNativeBarcodeScan();
+  } else {
+    startHtml5QrcodeScan();
+  }
+}
+
+function startNativeBarcodeScan(){
+  var host = document.getElementById("qrReaderDiv");
+  var video = document.createElement("video");
+  video.setAttribute("playsinline", "true");
+  video.muted = true;
+  host.innerHTML = "";
+  host.appendChild(video);
+
+  navigator.mediaDevices.getUserMedia({
+    video:{facingMode:{ideal:"environment"}, width:{ideal:1280}, height:{ideal:720}}
+  }).then(function(stream){
+    if(!S.scanTarget){ stream.getTracks().forEach(function(tr){ tr.stop(); }); return; }
+    S.scanTarget.nativeStream = stream;
+    video.srcObject = stream;
+    return video.play();
+  }).then(function(){
+    if(!S.scanTarget) return;
+    var detector = new BarcodeDetector({formats: SCAN_BARCODE_FORMATS});
+    var tick = function(){
+      if(!S.scanTarget || !S.scanTarget.nativeStream) return;
+      detector.detect(video).then(function(codes){
+        if(!S.scanTarget) return;
+        if(codes && codes.length){
+          var value = codes[0].rawValue;
+          stopCameraScan();
+          handleScannedBarcode(value);
+          return;
+        }
+        S.scanTarget.nativeRAF = requestAnimationFrame(tick);
+      }).catch(function(){
+        if(S.scanTarget) S.scanTarget.nativeRAF = requestAnimationFrame(tick);
+      });
+    };
+    S.scanTarget.nativeRAF = requestAnimationFrame(tick);
+  }).catch(function(){
+    // Camera denied, or BarcodeDetector construction failed for an
+    // unsupported format on this device — release anything the native
+    // path already opened, then fall back to the library path instead
+    // of just giving up.
+    if(S.scanTarget){
+      stopCameraScan();
+      startHtml5QrcodeScan();
+    }
+  });
+}
+
+function startHtml5QrcodeScan(){
   if(typeof Html5Qrcode === "undefined"){
     S.scanTarget.stage = "unsupported";
     renderScanner();
