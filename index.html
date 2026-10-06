@@ -6,7 +6,7 @@
 <title>Floor Link — Retail Operations</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&family=Baloo+2:wght@600;700&family=Baloo+Bhaijaan+2:wght@600;700&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Cairo:wght@600;700;800&family=Pacifico&family=El+Messiri:wght@600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
 <link rel="manifest" href="manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -66,7 +66,7 @@
   --radius-sm:12px;
   --shadow-sm:0 1px 2px rgba(20,20,16,.05), 0 1px 1px rgba(20,20,16,.04);
   --shadow-md:0 2px 6px rgba(20,20,16,.06), 0 8px 20px -8px rgba(20,20,16,.10);
-  --ease:cubic-bezier(.2,.7,.3,1);
+  --ease:cubic-bezier(.2,.8,.2,1);
   box-sizing:border-box;
   padding-top:env(safe-area-inset-top,0px);
   padding-bottom:env(safe-area-inset-bottom,0px);
@@ -94,9 +94,16 @@ body{
   overscroll-behavior:none; touch-action:pan-y;
 }
 [dir="rtl"] body{font-family:'IBM Plex Sans Arabic','IBM Plex Sans',system-ui,sans-serif;}
-.display-font{font-family:'Baloo 2',system-ui,sans-serif; font-weight:700;}
-[dir="rtl"] .display-font{font-family:'Baloo Bhaijaan 2','Baloo 2',system-ui,sans-serif;}
-.script-font{font-family:'Caveat',cursive; font-weight:700;}
+/* Display type matches each brand's own site: Shoppies = Bricolage Grotesque (Cairo
+   for Arabic, since Bricolage has no Arabic glyphs); Omar = El Messiri, which is
+   Arabic-first and covers both. script-font is Shoppies' Pacifico wordmark — reserved
+   for one deliberate hero moment (the login screen), not everyday headers, since a
+   script face stops being legible at operational sizes. */
+.display-font{font-family:'Bricolage Grotesque',system-ui,sans-serif; font-weight:700;}
+[dir="rtl"] .display-font{font-family:'Cairo',system-ui,sans-serif; font-weight:800;}
+:root[data-brand="omar"] .display-font{font-family:'El Messiri',system-ui,sans-serif; font-weight:700;}
+.script-font{font-family:'Pacifico',cursive; font-weight:400;}
+.serif-accent{font-family:'Instrument Serif',serif; font-style:italic;}
 button,input,select,textarea{font-family:inherit; color:inherit;}
 h1,h2,h3,p{margin:0;}
 
@@ -113,10 +120,13 @@ h1,h2,h3,p{margin:0;}
   mask:radial-gradient(circle at 10px 0, transparent 9px, #000 9.5px) repeat-x;
   -webkit-mask-size:20px 16px; mask-size:20px 16px;
 }
+@keyframes flourish-bob{ 0%,100%{transform:translateY(0) rotate(-8deg);} 50%{transform:translateY(-7px) rotate(-4deg);} }
 .header-flourish{
   position:absolute; bottom:18px; inset-inline-end:-6px; width:58px; height:58px;
-  color:#F5FAF8; opacity:.16; pointer-events:none; transform:rotate(-8deg);
+  color:#F5FAF8; opacity:.16; pointer-events:none;
+  animation:flourish-bob 3.2s var(--ease) infinite;
 }
+:root[data-brand="omar"] .header-flourish{ animation:none; transform:rotate(-8deg); opacity:.12; }
 .header-flourish svg{width:100%; height:100%;}
 .header-watermark{
   position:absolute; top:-18px; inset-inline-end:-24px; width:150px; height:150px;
@@ -288,7 +298,15 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
 }
 .btn:active{transform:scale(.96);}
 .btn:disabled{opacity:.45; cursor:not-allowed; box-shadow:none;}
-.btn-primary{background:var(--teal); color:#fff; box-shadow:0 2px 10px -2px color-mix(in srgb, var(--teal) 55%, transparent);}
+.btn-primary{
+  background:var(--teal); color:#fff; box-shadow:0 2px 10px -2px color-mix(in srgb, var(--teal) 55%, transparent);
+  position:relative; overflow:hidden; isolation:isolate;
+}
+.btn-primary::before{
+  content:""; position:absolute; inset:0; z-index:-1; border-radius:inherit;
+  background:var(--teal-deep); transform:translateY(101%); transition:transform .45s var(--ease);
+}
+.btn-primary:active::before{transform:translateY(0);}
 .btn-primary:disabled{opacity:.45; box-shadow:none;}
 .btn-secondary{background:var(--paper); color:var(--ink); border:1.5px solid var(--line);}
 
