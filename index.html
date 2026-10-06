@@ -274,6 +274,10 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
 }
 .photo-thumb .rm:active{transform:scale(.88);}
 .photo-thumb .rm svg{width:9px; height:9px;}
+.photo-thumb.up::after{content:""; position:absolute; inset:0; background:rgba(0,0,0,.35) ; pointer-events:none;}
+.photo-thumb.up::before{content:""; position:absolute; z-index:1; top:50%; left:50%; width:20px; height:20px; margin:-10px 0 0 -10px; border-radius:50%; border:2.5px solid rgba(255,255,255,.4); border-top-color:#fff; animation:ph-spin .8s linear infinite; pointer-events:none;}
+@keyframes ph-spin{to{transform:rotate(360deg);}}
+.photo-thumb .retry{position:absolute; inset:0; z-index:1; border:0; background:rgba(180,40,30,.72); color:#fff; font-size:22px; font-weight:700; cursor:pointer;}
 .photo-add{
   width:66px; height:66px; border-radius:12px; border:1.5px dashed var(--line); background:var(--paper);
   display:flex; align-items:center; justify-content:center; color:var(--ink-soft); cursor:pointer;
@@ -737,6 +741,7 @@ en:{
   reqCheckBoxes:"Boxes present and filled", reqCheckBags:"Bags available",
   yesLabel:"Yes", noLabel:"No",
   requiredTag:"Required", reqPhotoMissing:"Add a photo for: ",
+  photoUpFailed:"A photo didn't upload. Tap ↻ on it to try again.", photosStillUploading:"Photos are still uploading. Wait a moment, then submit.",
   reqPhotosBlocked:"Photo upload needs edit access on this device, so these required photos can't be captured here. Ask an editor to submit this handover, or open it from a device with edit access.",
   deptHandoverLabel:"Shift Handover", deptMerchLabel:"Merchandising",
   merchTabNew:"New Report", merchTabLog:"Merch Log",
@@ -1005,6 +1010,7 @@ ar:{
   reqCheckBoxes:"العلب موجودة ومعبية", reqCheckBags:"الأكياس متوفرة",
   yesLabel:"نعم", noLabel:"لا",
   requiredTag:"إلزامي", reqPhotoMissing:"أضف صورة لـ: ",
+  photoUpFailed:"لم تُرفع إحدى الصور. اضغط ↻ عليها لإعادة المحاولة.", photosStillUploading:"الصور ما زالت تُرفع. انتظر قليلاً ثم أرسل.",
   reqPhotosBlocked:"رفع الصور يتطلب صلاحية تعديل على هذا الجهاز، لذا لا يمكن التقاط هذه الصور الإلزامية من هنا. اطلب من شخص لديه صلاحية تعديل إرسال هذا التسليم، أو افتحه من جهاز لديه صلاحية تعديل.",
   deptHandoverLabel:"تسليم الوردية", deptMerchLabel:"المارشندايزينج",
   merchTabNew:"تقرير جديد", merchTabLog:"سجل المارشندايزينج",
@@ -1275,6 +1281,10 @@ function freshForm(){
   };
 }
 S.form = freshForm();
+var _draftT = null;
+document.addEventListener("input", function(e){ if(S.appMode === "handover" && S.view === "form" && e.target.closest && e.target.closest("#handoverForm")){ clearTimeout(_draftT); _draftT = setTimeout(saveFormDraft, 400); } }, true);
+document.addEventListener("change", function(e){ if(S.appMode === "handover" && S.view === "form" && e.target.closest && e.target.closest("#handoverForm")){ clearTimeout(_draftT); _draftT = setTimeout(saveFormDraft, 400); } }, true);
+document.addEventListener("click", function(e){ if(S.appMode === "handover" && S.view === "form" && e.target.closest && e.target.closest("#handoverForm [data-reqcheck], #handoverForm .chip")){ clearTimeout(_draftT); _draftT = setTimeout(saveFormDraft, 400); } }, true);
 
 function freshMerchForm(){
   var now = new Date();
@@ -1661,7 +1671,8 @@ function reqPhotoBlock(key){
   var fullKey = "req:" + key;
   var photosHtml = "";
   arr.forEach(function(p, i){
-    photosHtml += '<div class="photo-thumb"><img src="'+esc(p.url)+'" alt="" data-img-zoom="'+esc(p.url)+'">' +
+    photosHtml += '<div class="photo-thumb'+(p.pending?" up":"")+'"><img src="'+esc(p.url)+'" alt="" data-img-zoom="'+esc(p.url)+'">' +
+      (p.failed ? '<button class="retry" type="button" data-photo-retry="'+fullKey+'|'+i+'" aria-label="retry">↻</button>' : '') +
       '<button class="rm" type="button" data-photo-rm="'+fullKey+'|'+i+'">'+ICONS.close+'</button></div>';
   });
   var addHtml = "";
@@ -1703,7 +1714,8 @@ function catBlock(key, titleKey, subKey, f){
   var issSel = cat.status === "issue" ? " sel" : "";
   var photosHtml = "";
   cat.photos.forEach(function(p, i){
-    photosHtml += '<div class="photo-thumb"><img src="'+esc(p.url)+'" alt="" data-img-zoom="'+esc(p.url)+'">' +
+    photosHtml += '<div class="photo-thumb'+(p.pending?" up":"")+'"><img src="'+esc(p.url)+'" alt="" data-img-zoom="'+esc(p.url)+'">' +
+      (p.failed ? '<button class="retry" type="button" data-photo-retry="'+key+'|'+i+'" aria-label="retry">↻</button>' : '') +
       '<button class="rm" type="button" data-photo-rm="'+key+':'+i+'">'+ICONS.close+'</button></div>';
   });
   var addHtml = "";
@@ -1946,7 +1958,16 @@ function wireForm(){
       if(sep >= 0){ key = raw.slice(0, sep); idx = parseInt(raw.slice(sep+1), 10); }
       else { var parts = raw.split(":"); key = parts[0]; idx = parseInt(parts[1],10); }
       photosArrFor(key).splice(idx, 1);
+      saveFormDraft();
       renderForm();
+    };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-photo-retry]"), function(btn){
+    btn.onclick = function(e){
+      e.preventDefault(); e.stopPropagation();
+      var raw = this.getAttribute("data-photo-retry"), sep = raw.lastIndexOf("|");
+      var item = photosArrFor(raw.slice(0, sep))[parseInt(raw.slice(sep+1), 10)];
+      if(item && item.failed) startPhotoUpload(item, renderForm, saveFormDraft);
     };
   });
   Array.prototype.forEach.call(document.querySelectorAll("[data-photo-add]"), function(inp){
@@ -1963,23 +1984,82 @@ function wireForm(){
   };
 }
 
+/* Photos: each upload is tracked by its own object (not by its position in the list),
+   so a slow or failed upload can never knock out a different photo. Phone photos are
+   shrunk before upload so they go up fast on mobile data. A failed photo stays on
+   screen with a retry button instead of disappearing. */
+function shrinkPhoto(file){
+  return new Promise(function(resolve){
+    if(!file || !/^image\//.test(file.type || "image/") || /gif|svg/.test(file.type || "")){ resolve(file); return; }
+    var url = URL.createObjectURL(file), img = new Image();
+    img.onload = function(){
+      try{
+        var max = 1600, w = img.naturalWidth, h = img.naturalHeight, k = Math.min(1, max / Math.max(w, h));
+        if(k === 1 && file.size < 900000){ URL.revokeObjectURL(url); resolve(file); return; }
+        var c = document.createElement("canvas"); c.width = Math.round(w*k); c.height = Math.round(h*k);
+        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+        c.toBlob(function(blob){ URL.revokeObjectURL(url); resolve(blob && blob.size ? blob : file); }, "image/jpeg", 0.82);
+      }catch(e){ URL.revokeObjectURL(url); resolve(file); }
+    };
+    img.onerror = function(){ URL.revokeObjectURL(url); resolve(file); };
+    img.src = url;
+  });
+}
+function startPhotoUpload(item, rerender, onDone){
+  if(!S.assets) return;
+  item.pending = true; item.failed = false; rerender();
+  var tryUp = function(blob, left){
+    return S.assets.upload(blob).catch(function(err){
+      if(left > 0) return new Promise(function(r){ setTimeout(r, 1500); }).then(function(){ return tryUp(blob, left-1); });
+      throw err;
+    });
+  };
+  shrinkPhoto(item._file).then(function(blob){ return tryUp(blob, 1); }).then(function(res){
+    item.id = res.id; item.url = res.url; item.pending = false; item.failed = false; delete item._file;
+    if(onDone) onDone();
+    rerender();
+  }).catch(function(){
+    item.pending = false; item.failed = true;
+    rerender();
+    toast(t("photoUpFailed"));
+  });
+}
+function anyPhotoUploading(list){ return list.some(function(p){ return p.pending; }); }
 function uploadPhoto(catKey, file){
   if(!S.assets) return;
-  var arrRef = photosArrFor(catKey);
-  var placeholderIdx = arrRef.length;
-  var localUrl = URL.createObjectURL(file);
-  arrRef.push({url:localUrl, id:null, pending:true});
-  renderForm();
-  S.assets.upload(file).then(function(res){
-    var arr = photosArrFor(catKey);
-    var item = arr[placeholderIdx];
-    if(item && item.pending){ item.id = res.id; item.url = res.url; item.pending = false; }
-    renderForm();
-  }).catch(function(err){
-    photosArrFor(catKey).splice(placeholderIdx, 1);
-    renderForm();
-    toast(t("connError"));
-  });
+  var item = {url:URL.createObjectURL(file), id:null, pending:true, _file:file};
+  photosArrFor(catKey).push(item);
+  startPhotoUpload(item, renderForm, saveFormDraft);
+}
+
+/* Handover draft: if the phone reloads the page while the camera is open (common on
+   Android when memory is low), the form comes back with everything already filled in
+   and every photo that finished uploading. Cleared once the handover is submitted. */
+var FORM_DRAFT_KEY = "fl_handover_draft";
+function saveFormDraft(){
+  try{
+    var f = S.form, keep = function(arr){ return (arr||[]).filter(function(p){ return p.id; }).map(function(p){ return {id:p.id, url:p.url}; }); };
+    var d = JSON.parse(JSON.stringify(f, function(k, v){ return (k === "outgoingSig" || k === "incomingSig" || k === "submitting" || k === "_file") ? undefined : v; }));
+    ["cash","inventory","cleanliness"].forEach(function(c){ if(d[c]) d[c].photos = keep(f[c].photos); });
+    d.requiredPhotos = {}; REQUIRED_PHOTO_KEYS.forEach(function(k){ d.requiredPhotos[k] = keep(f.requiredPhotos[k]); });
+    localStorage.setItem(FORM_DRAFT_KEY, JSON.stringify({at:Date.now(), form:d}));
+  }catch(e){}
+}
+function clearFormDraft(){ try{ localStorage.removeItem(FORM_DRAFT_KEY); }catch(e){} }
+function restoreFormDraft(){
+  try{
+    var raw = JSON.parse(localStorage.getItem(FORM_DRAFT_KEY) || "null");
+    if(!raw || !raw.form || Date.now() - raw.at > 12*3600*1000){ clearFormDraft(); return false; }
+    var d = raw.form, f = freshForm();
+    Object.keys(f).forEach(function(k){
+      if(!(k in d) || k === "submitting" || k === "outgoingSig" || k === "incomingSig") return;
+      if(f[k] && typeof f[k] === "object" && !Array.isArray(f[k]) && d[k] && typeof d[k] === "object"){
+        Object.keys(f[k]).forEach(function(kk){ if(kk in d[k]) f[k][kk] = d[k][kk]; });
+      } else if(typeof d[k] === typeof f[k] || f[k] === null){ f[k] = d[k]; }
+    });
+    S.form = f;
+    return true;
+  }catch(e){ clearFormDraft(); return false; }
 }
 
 function canvasToUpload(which){
@@ -2002,6 +2082,9 @@ function submitHandover(){
     toast(needIncoming ? t("reqError") : t("reqErrorSolo"));
     return;
   }
+  var allPhotos = [].concat(f.cash.photos, f.inventory.photos, f.cleanliness.photos);
+  REQUIRED_PHOTO_KEYS.forEach(function(k){ allPhotos = allPhotos.concat(f.requiredPhotos[k]); });
+  if(anyPhotoUploading(allPhotos)){ toast(t("photosStillUploading")); return; }
   var missing = REQUIRED_PHOTO_KEYS.filter(function(k){
     return !f.requiredPhotos[k].some(function(p){ return p.id; });
   });
@@ -2071,6 +2154,7 @@ function submitHandover(){
 
     saveOrQueue("handovers", doc, function(queued){
       toast(queued ? t("offlineSavedToast") : t("savedToast"));
+      clearFormDraft();
       S.form = freshForm();
       applyIdentityToForms();
       S.view = "dashboard";
@@ -2314,20 +2398,9 @@ function wireDashboard(){
 
 function uploadMerchPhoto(file){
   if(!S.assets) return;
-  var arrRef = S.merchForm.display.photos;
-  var placeholderIdx = arrRef.length;
-  var localUrl = URL.createObjectURL(file);
-  arrRef.push({url:localUrl, id:null, pending:true});
-  renderMerchForm();
-  S.assets.upload(file).then(function(res){
-    var item = S.merchForm.display.photos[placeholderIdx];
-    if(item && item.pending){ item.id = res.id; item.url = res.url; item.pending = false; }
-    renderMerchForm();
-  }).catch(function(){
-    S.merchForm.display.photos.splice(placeholderIdx, 1);
-    renderMerchForm();
-    toast(t("connError"));
-  });
+  var item = {url:URL.createObjectURL(file), id:null, pending:true, _file:file};
+  S.merchForm.display.photos.push(item);
+  startPhotoUpload(item, renderMerchForm);
 }
 
 function renderMerchForm(){
@@ -2344,7 +2417,8 @@ function renderMerchForm(){
   var issSel = f.display.status === "issue" ? " sel" : "";
   var photosHtml = "";
   f.display.photos.forEach(function(p, i){
-    photosHtml += '<div class="photo-thumb"><img src="'+esc(p.url)+'" alt="" data-img-zoom="'+esc(p.url)+'">' +
+    photosHtml += '<div class="photo-thumb'+(p.pending?" up":"")+'"><img src="'+esc(p.url)+'" alt="" data-img-zoom="'+esc(p.url)+'">' +
+      (p.failed ? '<button class="retry" type="button" data-mphoto-retry="'+i+'" aria-label="retry">↻</button>' : '') +
       '<button class="rm" type="button" data-mphoto-rm="'+i+'">'+ICONS.close+'</button></div>';
   });
   var addHtml = S.canWriteAssets ?
@@ -2449,6 +2523,13 @@ function wireMerchForm(){
       renderMerchForm();
     };
   });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-mphoto-retry]"), function(btn){
+    btn.onclick = function(e){
+      e.preventDefault(); e.stopPropagation();
+      var item = f.display.photos[parseInt(this.getAttribute("data-mphoto-retry"),10)];
+      if(item && item.failed) startPhotoUpload(item, renderMerchForm);
+    };
+  });
   var addInp = document.getElementById("mPhotoAdd");
   if(addInp){
     addInp.onchange = function(){
@@ -2498,6 +2579,7 @@ function submitMerchVisit(){
     toast(t("merchReqError"));
     return;
   }
+  if(anyPhotoUploading(f.display.photos)){ toast(t("photosStillUploading")); return; }
   f.submitting = true;
   renderMerchForm();
 
@@ -4384,6 +4466,7 @@ function subscribeLogs(){
 }
 
 function boot(){
+  restoreFormDraft();
   setLang(S.lang);
   loadQueue();
   updateSyncBanner();
