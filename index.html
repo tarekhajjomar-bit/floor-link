@@ -41,7 +41,7 @@
 <script>
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
-      navigator.serviceWorker.register("sw.js").catch(function () {});
+      navigator.serviceWorker.register("sw.js").then(function (r) { try { r.update(); } catch (e) {} }).catch(function () {});
     });
   }
 </script>
@@ -277,6 +277,23 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
 .photo-thumb.up::after{content:""; position:absolute; inset:0; background:rgba(0,0,0,.35) ; pointer-events:none;}
 .photo-thumb.up::before{content:""; position:absolute; z-index:1; top:50%; left:50%; width:20px; height:20px; margin:-10px 0 0 -10px; border-radius:50%; border:2.5px solid rgba(255,255,255,.4); border-top-color:#fff; animation:ph-spin .8s linear infinite; pointer-events:none;}
 @keyframes ph-spin{to{transform:rotate(360deg);}}
+#flCam{position:fixed; inset:0; z-index:9999; background:#000; display:flex; flex-direction:column; color:#fff; font-family:inherit;}
+#flCam .cam-top{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:calc(env(safe-area-inset-top) + 12px) 16px 10px;}
+#flCam .cam-title{font-weight:700; font-size:16px;}
+#flCam .cam-count{font-size:13px; opacity:.85;}
+#flCam .cam-view{position:relative; flex:1; min-height:0; display:flex; align-items:center; justify-content:center; overflow:hidden;}
+#flCam video{width:100%; height:100%; object-fit:contain; background:#000;}
+#flCam .cam-flash{position:absolute; inset:0; background:#fff; opacity:0; pointer-events:none; transition:opacity .25s;}
+#flCam .cam-flash.on{opacity:.85; transition:none;}
+#flCam .cam-msg{padding:24px; text-align:center; line-height:1.6;}
+#flCam .cam-strip{display:flex; gap:6px; padding:8px 16px; min-height:56px; overflow-x:auto;}
+#flCam .cam-strip img{width:48px; height:48px; object-fit:cover; border-radius:8px; border:2px solid rgba(255,255,255,.6); flex:none;}
+#flCam .cam-bar{display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:12px; padding:10px 18px calc(env(safe-area-inset-bottom) + 18px);}
+#flCam .cam-btn{border:1.5px solid rgba(255,255,255,.55); background:rgba(255,255,255,.08); color:#fff; border-radius:999px; padding:10px 16px; font:inherit; font-weight:600; font-size:14px; cursor:pointer; justify-self:start;}
+#flCam .cam-done{justify-self:end; background:#fff; color:#000; border-color:#fff;}
+#flCam .cam-shot{width:74px; height:74px; border-radius:50%; border:4px solid #fff; background:rgba(255,255,255,.25); cursor:pointer; padding:0;}
+#flCam .cam-shot:active{transform:scale(.92); background:#fff;}
+#flCam .cam-shot:disabled{opacity:.35;}
 .photo-thumb .retry{position:absolute; inset:0; z-index:1; border:0; background:rgba(180,40,30,.72); color:#fff; font-size:22px; font-weight:700; cursor:pointer;}
 .photo-add{
   width:66px; height:66px; border-radius:12px; border:1.5px dashed var(--line); background:var(--paper);
@@ -742,6 +759,7 @@ en:{
   yesLabel:"Yes", noLabel:"No",
   requiredTag:"Required", reqPhotoMissing:"Add a photo for: ",
   photoUpFailed:"A photo didn't upload. Tap ↻ on it to try again.", photosStillUploading:"Photos are still uploading. Wait a moment, then submit.",
+  camGallery:"Gallery", camShoot:"Take photo", camDone:"Done", camTaken:"taken", camUnavailable:"The camera couldn't open inside the app. Allow camera access, or use the phone camera.", camUsePhone:"Use phone camera",
   reqPhotosBlocked:"Photo upload needs edit access on this device, so these required photos can't be captured here. Ask an editor to submit this handover, or open it from a device with edit access.",
   deptHandoverLabel:"Shift Handover", deptMerchLabel:"Merchandising",
   merchTabNew:"New Report", merchTabLog:"Merch Log",
@@ -1011,6 +1029,7 @@ ar:{
   yesLabel:"نعم", noLabel:"لا",
   requiredTag:"إلزامي", reqPhotoMissing:"أضف صورة لـ: ",
   photoUpFailed:"لم تُرفع إحدى الصور. اضغط ↻ عليها لإعادة المحاولة.", photosStillUploading:"الصور ما زالت تُرفع. انتظر قليلاً ثم أرسل.",
+  camGallery:"المعرض", camShoot:"التقاط", camDone:"تم", camTaken:"صور", camUnavailable:"لم تفتح الكاميرا داخل التطبيق. اسمح باستخدام الكاميرا، أو استعمل كاميرا التلفون.", camUsePhone:"كاميرا التلفون",
   reqPhotosBlocked:"رفع الصور يتطلب صلاحية تعديل على هذا الجهاز، لذا لا يمكن التقاط هذه الصور الإلزامية من هنا. اطلب من شخص لديه صلاحية تعديل إرسال هذا التسليم، أو افتحه من جهاز لديه صلاحية تعديل.",
   deptHandoverLabel:"تسليم الوردية", deptMerchLabel:"المارشندايزينج",
   merchTabNew:"تقرير جديد", merchTabLog:"سجل المارشندايزينج",
@@ -2024,11 +2043,103 @@ function startPhotoUpload(item, rerender, onDone){
     toast(t("photoUpFailed"));
   });
 }
+/* In-app camera. Opening the phone's camera app sends the browser to the background,
+   and phones low on memory then close and reload the page, wiping photos taken earlier.
+   This camera runs inside the page, so the page never leaves the screen. If the camera
+   can't open here, it falls back to the phone's own camera / gallery picker. */
+var CAM = null, CAM_BYPASS = false;
+function camAdd(target, file){
+  if(target === "merch") uploadMerchPhoto(file); else uploadPhoto(target, file);
+}
+function camClose(){
+  if(!CAM) return;
+  try{ if(CAM.stream) CAM.stream.getTracks().forEach(function(tr){ tr.stop(); }); }catch(e){}
+  if(CAM.el && CAM.el.parentNode) CAM.el.parentNode.removeChild(CAM.el);
+  CAM = null;
+}
+function camFallback(input){
+  camClose();
+  CAM_BYPASS = true;
+  try{ input.click(); }finally{ setTimeout(function(){ CAM_BYPASS = false; }, 0); }
+}
+function camGallery(target){
+  var inp = document.createElement("input");
+  inp.type = "file"; inp.accept = "image/*"; inp.multiple = true; inp.style.display = "none";
+  inp.onchange = function(){
+    Array.prototype.slice.call(this.files || []).forEach(function(file){ camAdd(target, file); });
+    if(inp.parentNode) inp.parentNode.removeChild(inp);
+  };
+  document.body.appendChild(inp);
+  inp.click();
+}
+function camOpen(target, title, input){
+  camClose();
+  var el = document.createElement("div");
+  el.id = "flCam";
+  el.innerHTML = '<div class="cam-top"><span class="cam-title">'+esc(title)+'</span><span class="cam-count" id="camCount"></span></div>' +
+    '<div class="cam-view"><video id="camVideo" playsinline muted autoplay></video><div class="cam-flash" id="camFlash"></div></div>' +
+    '<div class="cam-strip" id="camStrip"></div>' +
+    '<div class="cam-bar"><button type="button" class="cam-btn" id="camGal">'+t("camGallery")+'</button>' +
+    '<button type="button" class="cam-shot" id="camShot" aria-label="'+esc(t("camShoot"))+'" disabled></button>' +
+    '<button type="button" class="cam-btn cam-done" id="camDone">'+t("camDone")+'</button></div>';
+  document.body.appendChild(el);
+  CAM = {el:el, stream:null, n:0};
+  var me = CAM, video = el.querySelector("#camVideo"), shot = el.querySelector("#camShot");
+  el.querySelector("#camDone").onclick = camClose;
+  el.querySelector("#camGal").onclick = function(){ camClose(); camGallery(target); };
+  var fail = function(){
+    if(CAM !== me) return;
+    el.querySelector(".cam-view").innerHTML = '<div class="cam-msg">'+t("camUnavailable")+'<br><br><button type="button" class="cam-btn" id="camNative">'+t("camUsePhone")+'</button></div>';
+    el.querySelector("#camNative").onclick = function(){ camFallback(input); };
+  };
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ fail(); return; }
+  navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}, width:{ideal:1920}, height:{ideal:1080}}, audio:false}).then(function(stream){
+    if(CAM !== me){ stream.getTracks().forEach(function(tr){ tr.stop(); }); return; }
+    me.stream = stream; video.srcObject = stream;
+    var ready = function(){ if(video.videoWidth) shot.disabled = false; };
+    video.onloadedmetadata = ready; video.onplaying = ready;
+    var p = video.play(); if(p && p.catch) p.catch(function(){});
+  }).catch(fail);
+  shot.onclick = function(){
+    if(!video.videoWidth) return;
+    var w = video.videoWidth, h = video.videoHeight, k = Math.min(1, 1600 / Math.max(w, h));
+    var c = document.createElement("canvas"); c.width = Math.round(w*k); c.height = Math.round(h*k);
+    c.getContext("2d").drawImage(video, 0, 0, c.width, c.height);
+    var fl = el.querySelector("#camFlash"); fl.classList.add("on"); setTimeout(function(){ fl.classList.remove("on"); }, 60);
+    c.toBlob(function(blob){
+      if(!blob) return;
+      var file;
+      try{ file = new File([blob], "photo-"+Date.now()+".jpg", {type:"image/jpeg"}); }catch(e){ file = blob; }
+      camAdd(target, file);
+      me.n++;
+      var im = document.createElement("img"); im.src = URL.createObjectURL(blob);
+      var strip = el.querySelector("#camStrip"); strip.appendChild(im); strip.scrollLeft = strip.scrollWidth;
+      el.querySelector("#camCount").textContent = me.n + " " + t("camTaken");
+    }, "image/jpeg", 0.85);
+  };
+}
+document.addEventListener("click", function(e){
+  if(CAM_BYPASS || !e.target.closest) return;
+  var lab = e.target.closest(".photo-add");
+  if(!lab) return;
+  var input = lab.querySelector("input[data-photo-add], input#mPhotoAdd");
+  if(!input) return;
+  e.preventDefault(); e.stopPropagation();
+  var target, title;
+  if(input.id === "mPhotoAdd"){ target = "merch"; title = t("displayTitle"); }
+  else {
+    target = input.getAttribute("data-photo-add");
+    title = target.indexOf("req:") === 0 ? t(target.slice(4)) : t(target);
+  }
+  camOpen(target, title, input);
+}, true);
+
 function anyPhotoUploading(list){ return list.some(function(p){ return p.pending; }); }
 function uploadPhoto(catKey, file){
   if(!S.assets) return;
   var item = {url:URL.createObjectURL(file), id:null, pending:true, _file:file};
   photosArrFor(catKey).push(item);
+  saveFormDraft();
   startPhotoUpload(item, renderForm, saveFormDraft);
 }
 
