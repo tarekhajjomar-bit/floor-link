@@ -729,7 +729,7 @@ en:{
   statPending:"Awaiting sign-off", statIssues:"Issues flagged", statTotal:"Logged",
   noResults:"No handovers match these filters yet.",
   loading:"Loading shift history…",
-  pendingBadge:"Pending", approvedBadge:"Approved", issuesBadge:"Issues flagged",
+  pendingBadge:"Pending", approvedBadge:"Approved", issuesBadge:"Issues flagged", reviewedBadge:"Reviewed",
   viewDetails:"Details", hideDetails:"Hide",
   markReviewed:"Mark reviewed", reviewed:"Reviewed by manager",
   mgrNotePh:"Add a resolution note (visible to staff)…",
@@ -999,7 +999,7 @@ ar:{
   statPending:"بانتظار التوقيع", statIssues:"مشاكل موسومة", statTotal:"مسجّل",
   noResults:"لا توجد عمليات تسليم مطابقة لهذه الفلاتر.",
   loading:"جارِ تحميل سجل الورديات…",
-  pendingBadge:"قيد الانتظار", approvedBadge:"مكتمل", issuesBadge:"مشاكل موسومة",
+  pendingBadge:"قيد الانتظار", approvedBadge:"مكتمل", issuesBadge:"مشاكل موسومة", reviewedBadge:"تمت المراجعة",
   viewDetails:"التفاصيل", hideDetails:"إخفاء",
   markReviewed:"وضع علامة تمت المراجعة", reviewed:"روجعت من المدير",
   mgrNotePh:"أضف ملاحظة حل المشكلة (تظهر للموظفين)…",
@@ -2276,9 +2276,12 @@ function submitHandover(){
 }
 
 /* ================= DASHBOARD VIEW ================= */
+/* Once the manager marks a handover as reviewed, that is the status everyone sees
+   (manager and the supervisor who filed it), instead of the original pending/issues. */
+function logStatus(l){ return l && l.managerReviewed ? "reviewed" : ((l && l.status) || "pending"); }
 function statusBadge(status){
-  var cls = status === "issues" ? "badge-issues" : status === "approved" ? "badge-approved" : "badge-pending";
-  var label = status === "issues" ? t("issuesBadge") : status === "approved" ? t("approvedBadge") : t("pendingBadge");
+  var cls = status === "issues" ? "badge-issues" : (status === "approved" || status === "reviewed") ? "badge-approved" : "badge-pending";
+  var label = status === "issues" ? t("issuesBadge") : status === "reviewed" ? "✓ "+t("reviewedBadge") : status === "approved" ? t("approvedBadge") : t("pendingBadge");
   return '<span class="badge '+cls+'">'+label+'</span>';
 }
 
@@ -2296,7 +2299,7 @@ function filteredLogs(){
   return S.logs.filter(function(l){
     if(!isManagerUser() && (!S.currentUser || l.submittedByUserId !== S.currentUser.id)) return false;
     if(S.filters.company && l.company !== S.filters.company) return false;
-    if(S.filters.status && l.status !== S.filters.status) return false;
+    if(S.filters.status && logStatus(l) !== S.filters.status) return false;
     if(cutoff && new Date(l.createdAt) < cutoff) return false;
     return true;
   });
@@ -2328,8 +2331,8 @@ function renderDashboard(){
   var companyOpts = '<option value="">'+t("filterAll")+'</option>' + COMPANIES.map(function(c){
     return '<option value="'+c.id+'"'+(S.filters.company===c.id?" selected":"")+'>'+esc(S.lang==="ar"?c.ar:c.en)+'</option>';
   }).join("");
-  var statusOpts = ['','pending','issues','approved'].map(function(s){
-    var lbl = s === "" ? t("filterAllStatus") : s === "pending" ? t("pendingBadge") : s === "issues" ? t("issuesBadge") : t("approvedBadge");
+  var statusOpts = ['','pending','issues','approved','reviewed'].map(function(s){
+    var lbl = s === "" ? t("filterAllStatus") : s === "pending" ? t("pendingBadge") : s === "issues" ? t("issuesBadge") : s === "reviewed" ? t("reviewedBadge") : t("approvedBadge");
     return '<option value="'+s+'"'+(S.filters.status===s?" selected":"")+'>'+lbl+'</option>';
   }).join("");
   var rangeOpts = [["today",t("today")],["7",t("last7")],["30",t("last30")],["all",t("allTime")]].map(function(r){
@@ -2343,8 +2346,8 @@ function renderDashboard(){
   '</div>';
 
   var list = filteredLogs();
-  var pendingCount = list.filter(function(l){ return l.status === "pending"; }).length;
-  var issuesCount = list.filter(function(l){ return l.status === "issues"; }).length;
+  var pendingCount = list.filter(function(l){ return logStatus(l) === "pending"; }).length;
+  var issuesCount = list.filter(function(l){ return logStatus(l) === "issues"; }).length;
   html += '<div class="stat-row">' +
     '<div class="stat"><b>'+list.length+'</b><span>'+t("statTotal")+'</span></div>' +
     '<div class="stat"><b>'+pendingCount+'</b><span>'+t("statPending")+'</span></div>' +
@@ -2375,7 +2378,7 @@ function logCard(l){
       '<b>'+esc(companyName(l.company))+'</b>' +
       '<span>'+shiftLbl+' · '+fmtDate(l.date)+' · '+esc(l.time||"")+'</span>' +
     '</div>' +
-    '<div class="log-head-right">'+statusBadge(l.status)+'<span class="log-chevron">'+ICONS.chevron+'</span></div>' +
+    '<div class="log-head-right">'+statusBadge(logStatus(l))+'<span class="log-chevron">'+ICONS.chevron+'</span></div>' +
   '</div>';
 
   var body = "";
@@ -2447,8 +2450,9 @@ function logCard(l){
       body += '<button type="button" class="link-btn" data-savenote="'+l.id+'">'+t("saveNote")+'</button>';
       body += '<button type="button" class="btn btn-danger" data-delete-log="'+l.id+'" style="margin-top:10px;">'+ICONS.trash+' '+t("deleteEntry")+'</button>';
       body += '</div>';
-    } else if(l.managerNote){
-      body += '<div class="mgr-box"><b class="hint">'+t("reviewed")+'</b><p class="log-note">'+esc(l.managerNote)+'</p></div>';
+    } else if(l.managerReviewed || l.managerNote){
+      body += '<div class="mgr-box">'+(l.managerReviewed ? '<span class="badge badge-approved">✓ '+t("reviewed")+'</span>' : '')+
+        (l.managerNote ? '<p class="log-note">'+esc(l.managerNote)+'</p>' : '')+'</div>';
     }
 
     body += '</div>';
