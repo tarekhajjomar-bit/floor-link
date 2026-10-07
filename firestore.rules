@@ -2,21 +2,14 @@ rules_version = '2';
 
 // Floor Link — role-based Firestore rules (Firebase Auth + Custom Claims).
 //
-// The role claim is set by a scheduled GitHub Action (not a Cloud Function —
-// see /scripts/sync-roles.js), reading the "role" field already present on
-// each /users/{uid} document and writing it to that user's Auth token as a
-// custom claim. There's a short delay (a few minutes, per the sync
-// schedule) between changing someone's role and that change taking effect
-// here — that's expected, not a bug.
-//
-// Collections NOT mentioned below (handovers, merch_visits, catalog,
-// quick_shortages, settings, fcm_tokens) keep today's simple behavior:
-// open to any signed-in user, no role distinction yet.
-//
-// delivery_shifts: written by the offline branch delivery book
-// (shoppies-delivery.html), signed in as an account whose role is
-// "delivery". Only admins can read them. Delivery accounts can do
-// nothing else in the database.
+// The "role" claim is set by a scheduled GitHub Action (scripts/sync-roles.js)
+// from the "role" field on each /users/{uid} document, with a few minutes'
+// delay. The read-only "viewer" role is checked from the /users document
+// directly (not the claim), so a new viewer is limited from their very first
+// sign-in, and the branches they may see come from that same document:
+//   companies:        ["omar_mina", "omar_abrin", ...]   (handover, merch, expiry, shortages)
+//   deliveryBranches: ["<branch name exactly as the delivery book writes it>", ...]
+// The manager ticks both lists in the app's Accounts screen.
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -27,14 +20,42 @@ service cloud.firestore {
     function isAdmin() {
       return isSignedIn() && request.auth.token.role == 'admin';
     }
-    function isDelivery() {
-      return isSignedIn() && request.auth.token.role == 'delivery';
-    }
     function isOwner(uid) {
       return isSignedIn() && request.auth.uid == uid;
     }
 
+    function myDocPath() {
+      return /databases/$(database)/documents/users/$(request.auth.uid);
+    }
+    function myRole() {
+      return exists(myDocPath()) ? get(myDocPath()).data.get('role', '') : '';
+    }
+    function isViewer() {
+      return isSignedIn() && myRole() == 'viewer';
+    }
+    // Manager by claim, or by the users document (covers older "manager" accounts
+    // and the minutes before the claim sync runs).
+    function isManager() {
+      return isAdmin() || (isSignedIn() && myRole() in ['admin', 'manager']);
+    }
+    function viewerCompanies() {
+      return get(myDocPath()).data.get('companies', []);
+    }
+    function viewerDeliveryBranches() {
+      return get(myDocPath()).data.get('deliveryBranches', []);
+    }
+    // Everyone signed in reads as before; a viewer only reads its own branches.
+    function canReadCompany(company) {
+      return isSignedIn() && (!isViewer() || company in viewerCompanies());
+    }
+    // A viewer never writes anything.
+    function canWrite() {
+      return isSignedIn() && !isViewer();
+    }
+
     // ---------------- users ----------------
+    // Unchanged. (Note: the catch-all at the bottom still also covers /users,
+    // exactly as before — see the note there.)
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
       allow create: if isOwner(userId)
@@ -45,20 +66,52 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // ---------------- handovers / merch_visits / quick_shortages ----------------
+    match /handovers/{docId} {
+      allow read: if canReadCompany(resource.data.company);
+      allow write: if canWrite();
+    }
+    match /merch_visits/{docId} {
+      allow read: if canReadCompany(resource.data.company);
+      allow write: if canWrite();
+    }
+    match /quick_shortages/{docId} {
+      allow read: if canReadCompany(resource.data.company);
+      allow write: if canWrite();
+    }
+
     // ---------------- expiry_items ----------------
+    // Any signed-in employee can read, create, and make ordinary edits
+    // (quantity, category). Only a manager can touch the two fields that
+    // remove an item from view: "status" and "deletedInfo". A viewer only
+    // reads its own branches.
     match /expiry_items/{itemId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn()
+      allow read: if canReadCompany(resource.data.company);
+
+      allow create: if canWrite()
                     && request.resource.data.createdBy.userId == request.auth.uid
                     && request.resource.data.status == 'active';
-      allow update: if isAdmin()
-                    || (isSignedIn()
+
+      allow update: if isManager()
+                    || (canWrite()
                         && !request.resource.data.diff(resource.data)
                               .affectedKeys().hasAny(['status', 'deletedInfo']));
-      allow delete: if isAdmin();
+
+      allow delete: if isManager();
+    }
+
+    // ---------------- delivery_shifts ----------------
+    // Written by the branch delivery books. Read by managers, by the delivery
+    // books themselves, and by a viewer for the delivery books ticked on its account.
+    match /delivery_shifts/{docId} {
+      allow read: if isManager()
+                  || (isSignedIn() && myRole() == 'delivery')
+                  || (isViewer() && resource.data.branch in viewerDeliveryBranches());
+      allow write: if canWrite();
     }
 
     // ---------------- activity_log ----------------
+    // Unchanged. Append-only; only admins read it.
     match /activity_log/{logId} {
       allow create: if isSignedIn()
                     && request.resource.data.userId == request.auth.uid;
@@ -67,22 +120,18 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // ---------------- delivery_shifts ----------------
-    // Branch delivery books send one document per branch / day / shift.
-    // A delivery account may create or re-send its own shifts, never read.
-    match /delivery_shifts/{shiftId} {
-      allow read, delete: if isAdmin();
-      allow create, update: if isDelivery()
-                            && request.resource.data.by == request.auth.uid;
-    }
-
-    // ---------------- everything else (unchanged scope for now) ----------------
-    // Same as before for every collection, except: delivery accounts are kept
-    // out, and delivery_shifts is never opened up by this catch-all.
+    // ---------------- everything else ----------------
+    // Same open-to-signed-in behavior as before for every other collection
+    // (catalog, settings, fcm_tokens, users, activity_log, ...), EXCEPT:
+    //  - the five collections above are left to their own rules (previously
+    //    this catch-all also matched them and overrode their limits), and
+    //  - a viewer can only read catalog and settings here, and can't write.
     match /{collection}/{document=**} {
-      allow read, write: if isSignedIn()
-                         && !isDelivery()
-                         && collection != 'delivery_shifts';
+      allow read: if isSignedIn()
+                  && !(collection in ['handovers', 'merch_visits', 'quick_shortages', 'expiry_items', 'delivery_shifts'])
+                  && (!isViewer() || collection in ['catalog', 'settings']);
+      allow write: if canWrite()
+                   && !(collection in ['handovers', 'merch_visits', 'quick_shortages', 'expiry_items', 'delivery_shifts']);
     }
   }
 }
