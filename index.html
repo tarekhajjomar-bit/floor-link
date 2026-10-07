@@ -807,6 +807,8 @@ en:{
 
   deptExpiryLabel:"Expiry Control",
   deptDeliveryLabel:"Delivery", roleDelivery:"Delivery book (branch)",
+  roleViewer:"Viewer (read-only)", viewerBranchesLabel:"Branches this viewer can see", viewerDeliveryLabel:"Delivery books this viewer can see",
+  viewerDeliveryHint:"Names come from the delivery shifts already handed over.", viewerDeliveryNone:"No delivery shifts handed over yet.", viewerNeedBranch:"Pick at least one branch for this viewer.",
   deliveryOnlyAccount:"This account is only for the delivery book on branch computers. It can't open Floor Link.",
   dlvTitle:"Delivery cash", dlvSub:"Shifts handed over from the branch delivery books. Only managers can see this page.",
   dlvAllBranches:"All branches", dlvTotal:"Total", dlvOrders:"Orders", dlvShifts:"Shifts", dlvAvgDay:"Daily average",
@@ -1077,6 +1079,8 @@ ar:{
 
   deptExpiryLabel:"التحكم بالصلاحية",
   deptDeliveryLabel:"الدليفري", roleDelivery:"دفتر الدليفري (فرع)",
+  roleViewer:"مشاهد (عرض فقط)", viewerBranchesLabel:"الفروع اللي بيشوفها هالحساب", viewerDeliveryLabel:"دفاتر الدليفري اللي بيشوفها",
+  viewerDeliveryHint:"الأسماء مأخوذة من شفتات الدليفري اللي انسلّمت.", viewerDeliveryNone:"ما في شفتات دليفري مسلّمة لسا.", viewerNeedBranch:"اختار فرع واحد على الأقل لهالحساب.",
   deliveryOnlyAccount:"هذا الحساب مخصص لدفتر الدليفري على كمبيوترات الفروع فقط، ولا يمكنه فتح فلور لينك.",
   dlvTitle:"كاش الدليفري", dlvSub:"الشفتات المسلّمة من دفاتر الدليفري في الفروع. هذه الصفحة للمدير فقط.",
   dlvAllBranches:"كل الفروع", dlvTotal:"المجموع", dlvOrders:"الطلبيات", dlvShifts:"الشفتات", dlvAvgDay:"معدّل اليوم",
@@ -1332,6 +1336,11 @@ try{
 }catch(e){}
 
 function isManagerUser(){ return !!(S.currentUser && (S.currentUser.role === "manager" || S.currentUser.role === "admin")); }
+// Read-only "viewer" role: sees the dashboards (handover, merch, expiry, delivery) for its own branches only.
+function isViewerUser(){ return !!(S.currentUser && S.currentUser.role === "viewer"); }
+function viewerCompanies(){ var c = (S.currentUser && S.currentUser.companies) || []; return c.filter(function(id){ return COMPANIES.some(function(x){ return x.id === id; }); }); }
+function viewerDeliveryBranches(){ return ((S.currentUser && S.currentUser.deliveryBranches) || []).slice(0, 30); }
+function visibleCompanies(){ return isViewerUser() ? COMPANIES.filter(function(c){ return viewerCompanies().indexOf(c.id) !== -1; }) : COMPANIES; }
 
 function updateUserChip(){
   var chip = document.getElementById("userChip");
@@ -1349,11 +1358,11 @@ function updateDeptSwitch(){
   var dv = document.getElementById("deptDeliveryBtn");
   if(!S.currentUser) return;
   var role = S.currentUser.role;
-  var canHandover = role === "manager" || role === "admin" || role === "supervisor";
-  var canMerch = role === "manager" || role === "admin" || role === "merchandiser";
+  var canHandover = role === "manager" || role === "admin" || role === "supervisor" || role === "viewer";
+  var canMerch = role === "manager" || role === "admin" || role === "merchandiser" || role === "viewer";
   var canAccounts = role === "manager" || role === "admin";
   var canExpiry = true;
-  var canDelivery = role === "manager" || role === "admin";
+  var canDelivery = role === "manager" || role === "admin" || role === "viewer";
   dv.style.display = canDelivery ? "" : "none";
   dv.textContent = t("deptDeliveryLabel");
   dv.classList.toggle("active", S.appMode === "delivery");
@@ -1374,7 +1383,7 @@ function updateDeptSwitch(){
   var tf = document.getElementById("tabForm");
   var td = document.getElementById("tabDash");
   var sub = document.getElementById("subtabbar");
-  if(S.appMode === "accounts" || S.appMode === "delivery"){
+  if(S.appMode === "accounts" || S.appMode === "delivery" || isViewerUser()){
     sub.style.display = "none";
   } else {
     sub.style.display = "";
@@ -1520,7 +1529,7 @@ function notifDismissedKey(){ return "sh_notif_dismissed"; }
 function updateNotifBanner(){
   var el = document.getElementById("notifBanner");
   if(!el) return;
-  if(!S.currentUser){ el.style.display = "none"; return; }
+  if(!S.currentUser || isViewerUser()){ el.style.display = "none"; return; }
   if(!("Notification" in window) || !("serviceWorker" in navigator)){ el.style.display = "none"; return; }
   var perm = Notification.permission;
   var dismissed = false;
@@ -1580,7 +1589,7 @@ function requestNotificationPermission(){
 }
 
 function fetchAndSaveFcmToken(silent){
-  if(!S.currentUser || !S.db) return;
+  if(!S.currentUser || !S.db || isViewerUser()) return;
   if(typeof firebase === "undefined" || !firebase.messaging || !firebase.messaging.isSupported || !firebase.messaging.isSupported()){
     return;
   }
@@ -2297,7 +2306,7 @@ function rangeCutoff(){
 function filteredLogs(){
   var cutoff = rangeCutoff();
   return S.logs.filter(function(l){
-    if(!isManagerUser() && (!S.currentUser || l.submittedByUserId !== S.currentUser.id)) return false;
+    if(!isManagerUser() && !isViewerUser() && (!S.currentUser || l.submittedByUserId !== S.currentUser.id)) return false;
     if(S.filters.company && l.company !== S.filters.company) return false;
     if(S.filters.status && logStatus(l) !== S.filters.status) return false;
     if(cutoff && new Date(l.createdAt) < cutoff) return false;
@@ -2308,7 +2317,7 @@ function filteredLogs(){
 function renderDashboard(){
   var html = "";
 
-  if(isManagerUser()){
+  if(isManagerUser() || isViewerUser()){
     var openShortages = S.quickShortages.filter(function(s){ return !s.resolved; });
     html += '<div class="card">' +
       '<div class="section-title">'+t("quickShortagesTitle")+'</div>';
@@ -2321,14 +2330,14 @@ function renderDashboard(){
         return '<div class="alert-row">' +
           '<div style="flex:1; min-width:0;"><b style="font-size:13.5px; display:block;">'+esc(s.item)+'</b>' +
           '<span class="hint">'+esc(companyName(s.company))+' · '+esc(s.fullName||"")+' · '+fmtDateTime(s.createdAt)+'</span></div>' +
-          '<button type="button" class="link-btn" data-resolve-shortage="'+s.id+'">'+t("quickShortageResolveBtn")+'</button>' +
+          (isViewerUser() ? '' : '<button type="button" class="link-btn" data-resolve-shortage="'+s.id+'">'+t("quickShortageResolveBtn")+'</button>') +
         '</div>';
       }).join("");
     }
     html += '</div>';
   }
 
-  var companyOpts = '<option value="">'+t("filterAll")+'</option>' + COMPANIES.map(function(c){
+  var companyOpts = '<option value="">'+t("filterAll")+'</option>' + visibleCompanies().map(function(c){
     return '<option value="'+c.id+'"'+(S.filters.company===c.id?" selected":"")+'>'+esc(S.lang==="ar"?c.ar:c.en)+'</option>';
   }).join("");
   var statusOpts = ['','pending','issues','approved','reviewed'].map(function(s){
@@ -2758,7 +2767,7 @@ function merchRangeCutoff(){
 function filteredMerchLogs(){
   var cutoff = merchRangeCutoff();
   return S.merchLogs.filter(function(l){
-    if(!isManagerUser() && (!S.currentUser || l.submittedByUserId !== S.currentUser.id)) return false;
+    if(!isManagerUser() && !isViewerUser() && (!S.currentUser || l.submittedByUserId !== S.currentUser.id)) return false;
     if(S.merchFilters.company && l.company !== S.merchFilters.company) return false;
     if(S.merchFilters.status === "ok" && (l.display||{}).status !== "ok") return false;
     if(S.merchFilters.status === "issue" && (l.display||{}).status !== "issue") return false;
@@ -2768,7 +2777,7 @@ function filteredMerchLogs(){
 }
 
 function renderMerchDashboard(){
-  var companyOpts = '<option value="">'+t("filterAll")+'</option>' + COMPANIES.map(function(c){
+  var companyOpts = '<option value="">'+t("filterAll")+'</option>' + visibleCompanies().map(function(c){
     return '<option value="'+c.id+'"'+(S.merchFilters.company===c.id?" selected":"")+'>'+esc(S.lang==="ar"?c.ar:c.en)+'</option>';
   }).join("");
   var statusOpts = [["","merchFilterAllStatus"],["ok","merchFilterOk"],["issue","merchFilterIssue"]].map(function(s){
@@ -2991,6 +3000,12 @@ function describeAuthError(err){
 
 function routeAfterAuth(){
   var role = S.currentUser.role;
+  if(role === "viewer"){
+    S.appMode = "handover";
+    S.view = "dashboard";
+    subscribeViewerData();
+    return;
+  }
   S.appMode = role === "merchandiser" ? "merch" : "handover";
   S.view = "form";
   applyIdentityToForms();
@@ -3149,6 +3164,25 @@ function stopDelivery(){ if(S.dlv.unsub){ try{ S.dlv.unsub(); }catch(e){} S.dlv.
 function subscribeDelivery(){
   if(!S.db || S.dlv.unsub) return;
   S.dlv.loaded = false; S.dlv.error = false;
+  if(isViewerUser()){
+    // One listener per allowed delivery book, so the Firestore rules can verify each query.
+    var names = viewerDeliveryBranches(), parts = {}, unsubs = [];
+    S.dlv.docs = [];
+    if(!names.length){ S.dlv.loaded = true; S.dlv.unsub = function(){}; return; }
+    names.forEach(function(b){
+      unsubs.push(S.db.collection("delivery_shifts").where("month","==",S.dlv.month).where("branch","==",b).onSnapshot(function(snap){
+        parts[b] = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data() || {}); });
+        S.dlv.docs = [].concat.apply([], Object.keys(parts).map(function(k){ return parts[k]; }));
+        S.dlv.loaded = true; S.dlv.error = false;
+        if(S.appMode === "delivery") renderDelivery();
+      }, function(){
+        S.dlv.loaded = true; S.dlv.error = true;
+        if(S.appMode === "delivery") renderDelivery();
+      }));
+    });
+    S.dlv.unsub = function(){ unsubs.forEach(function(u){ try{ u(); }catch(e){} }); };
+    return;
+  }
   S.dlv.unsub = S.db.collection("delivery_shifts").where("month","==",S.dlv.month).onSnapshot(function(snap){
     S.dlv.docs = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data() || {}); });
     S.dlv.loaded = true; S.dlv.error = false;
@@ -3413,7 +3447,7 @@ function dlvWire(){
 /* ================= ACCOUNTS ================= */
 
 function freshNewAccountForm(){
-  return {fullName:"", email:"", password:"", role:"supervisor", department:"", company:""};
+  return {fullName:"", email:"", password:"", role:"supervisor", department:"", company:"", companies:["omar_mina","omar_abrin"], deliveryBranches:[]};
 }
 
 function renderAccounts(){
@@ -3424,7 +3458,7 @@ function renderAccounts(){
 
   if(S.newAccountForm){
     var nf = S.newAccountForm;
-    var roleOpts2 = ["supervisor","merchandiser","admin","delivery"].map(function(r){
+    var roleOpts2 = ["supervisor","merchandiser","admin","delivery","viewer"].map(function(r){
       return '<option value="'+r+'"'+(nf.role===r?" selected":"")+'>'+roleBadgeLabel(r)+'</option>';
     }).join("");
     html += '<div class="divider-note">' +
@@ -3442,6 +3476,7 @@ function renderAccounts(){
         '<option value="">'+t("merchCompanyPh")+'</option>' +
         COMPANIES.map(function(c){ return '<option value="'+c.id+'"'+(nf.company===c.id?" selected":"")+'>'+esc(S.lang==="ar"?c.ar:c.en)+'</option>'; }).join("") +
       '</select></div>' : '') +
+      (nf.role === "viewer" ? viewerAccessHtml("__new", nf.companies, nf.deliveryBranches) : '') +
       '<div class="chip-row">' +
         '<button type="button" class="btn btn-primary" id="createAcctBtn" style="width:auto; padding-inline:18px;">'+t("createBtn")+'</button>' +
         '<button type="button" class="btn btn-secondary" id="cancelAcctBtn" style="width:auto; padding-inline:18px;">'+t("cancelBtn")+'</button>' +
@@ -3465,7 +3500,7 @@ function renderAccounts(){
 }
 
 function roleBadgeLabel(role){
-  return (role==="manager"||role==="admin")?t("roleManagerOpt"):role==="merchandiser"?t("roleMerchandiser"):role==="delivery"?t("roleDelivery"):t("roleSupervisor");
+  return (role==="manager"||role==="admin")?t("roleManagerOpt"):role==="merchandiser"?t("roleMerchandiser"):role==="delivery"?t("roleDelivery"):role==="viewer"?t("roleViewer"):t("roleSupervisor");
 }
 
 function deptLabel(deptId){
@@ -3474,7 +3509,7 @@ function deptLabel(deptId){
 }
 
 function acctRow(u){
-  var roleOpts = ["supervisor","merchandiser","admin","delivery"].map(function(r){
+  var roleOpts = ["supervisor","merchandiser","admin","delivery","viewer"].map(function(r){
     return '<option value="'+r+'"'+(u.role===r?" selected":"")+'>'+roleBadgeLabel(r)+'</option>';
   }).join("");
   var lastLogin = u.lastLoginAt ? fmtDateTime(u.lastLoginAt) : t("neverLoggedIn");
@@ -3486,6 +3521,7 @@ function acctRow(u){
       (u.role === "merchandiser" && u.department ? '<span>'+t("colDepartment")+': '+esc(deptLabel(u.department))+'</span>' : '') +
       ((u.role === "merchandiser" || u.role === "supervisor") && u.company ? '<span>'+t("company")+': '+esc(companyName(u.company))+'</span>' : '') +
       '<span>'+t("colLastLogin")+': '+lastLogin+'</span>' +
+      (u.role === "viewer" ? viewerAccessHtml(u.id, u.companies || [], u.deliveryBranches || []) : '') +
     '</div>' +
     '<div class="acct-actions">' +
       '<select class="acct-role-select" data-role-select="'+u.id+'"'+(isSelf?" disabled":"")+'>'+roleOpts+'</select>' +
@@ -3498,7 +3534,53 @@ function acctRow(u){
   '</div>';
 }
 
+// Branch / delivery-book checkboxes for a viewer account (new-account form or existing row).
+function loadDeliveryBranchNames(){
+  if(S.dlvBranchNames || !S.db) return;
+  S.dlvBranchNames = [];
+  S.db.collection("delivery_shifts").limit(500).get().then(function(snap){
+    var seen = {};
+    snap.docs.forEach(function(d){ var b = (d.data() || {}).branch; if(b) seen[b] = 1; });
+    S.dlvBranchNames = Object.keys(seen).sort();
+    if(S.appMode === "accounts") renderAccounts();
+  }).catch(function(){});
+}
+function viewerAccessHtml(id, companies, branches){
+  loadDeliveryBranchNames();
+  var names = (S.dlvBranchNames || []).slice();
+  (branches || []).forEach(function(b){ if(names.indexOf(b) === -1) names.push(b); });
+  var coHtml = COMPANIES.map(function(c){
+    return '<label class="ack-row" style="margin-top:4px;"><input type="checkbox" data-viewer-co="'+esc(id)+'|'+c.id+'"'+(companies.indexOf(c.id) !== -1 ? " checked" : "")+'><span>'+esc(S.lang==="ar"?c.ar:c.en)+'</span></label>';
+  }).join("");
+  var brHtml = names.length ? names.map(function(b){
+    return '<label class="ack-row" style="margin-top:4px;"><input type="checkbox" data-viewer-br="'+esc(id)+'" value="'+esc(b)+'"'+((branches || []).indexOf(b) !== -1 ? " checked" : "")+'><span>'+esc(b)+'</span></label>';
+  }).join("") : '<p class="hint">'+t("viewerDeliveryNone")+'</p>';
+  return '<div class="field" style="margin-top:8px;"><label>'+t("viewerBranchesLabel")+'</label>'+coHtml+'</div>' +
+    '<div class="field"><label>'+t("viewerDeliveryLabel")+'</label>'+brHtml+'<p class="hint">'+t("viewerDeliveryHint")+'</p></div>';
+}
+function wireViewerAccess(){
+  Array.prototype.forEach.call(document.querySelectorAll("[data-viewer-co]"), function(cb){
+    cb.onchange = function(){
+      var parts = this.getAttribute("data-viewer-co").split("|"), id = parts[0];
+      var list = Array.prototype.filter.call(document.querySelectorAll('[data-viewer-co^="'+id+'|"]'), function(x){ return x.checked; })
+        .map(function(x){ return x.getAttribute("data-viewer-co").split("|")[1]; });
+      if(id === "__new"){ S.newAccountForm.companies = list; return; }
+      S.db.doc("users/"+id).update({companies: list}).then(function(){ toast(t("accountUpdated")); }).catch(function(){ toast(t("connError")); });
+    };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-viewer-br]"), function(cb){
+    cb.onchange = function(){
+      var id = this.getAttribute("data-viewer-br");
+      var list = Array.prototype.filter.call(document.querySelectorAll("[data-viewer-br]"), function(x){ return x.getAttribute("data-viewer-br") === id && x.checked; })
+        .map(function(x){ return x.value; });
+      if(id === "__new"){ S.newAccountForm.deliveryBranches = list; return; }
+      S.db.doc("users/"+id).update({deliveryBranches: list}).then(function(){ toast(t("accountUpdated")); }).catch(function(){ toast(t("connError")); });
+    };
+  });
+}
+
 function wireAccounts(){
+  wireViewerAccess();
   var openBtn = document.getElementById("openNewAcctBtn");
   if(openBtn) openBtn.onclick = function(){ S.newAccountForm = freshNewAccountForm(); S.accountsError=""; renderAccounts(); };
   var cancelBtn = document.getElementById("cancelAcctBtn");
@@ -3519,7 +3601,10 @@ function wireAccounts(){
   Array.prototype.forEach.call(document.querySelectorAll("[data-role-select]"), function(sel){
     sel.onchange = function(){
       var id = this.getAttribute("data-role-select");
-      S.db.doc("users/"+id).update({role:this.value}).then(function(){ toast(t("accountUpdated")); }).catch(function(){ toast(t("connError")); });
+      var upd = {role:this.value};
+      var target = S.users.filter(function(u){ return u.id === id; })[0];
+      if(this.value === "viewer" && target && !(target.companies && target.companies.length)){ upd.companies = ["omar_mina","omar_abrin"]; }
+      S.db.doc("users/"+id).update(upd).then(function(){ toast(t("accountUpdated")); }).catch(function(){ toast(t("connError")); });
     };
   });
   Array.prototype.forEach.call(document.querySelectorAll("[data-toggle-disable]"), function(btn){
@@ -3543,6 +3628,7 @@ function createAccount(){
   if(nf.password.length < 6){ S.accountsError = t("authErrPwShort"); renderAccounts(); return; }
   if(nf.role === "merchandiser" && !nf.department){ S.accountsError = t("authErrDeptRequired"); renderAccounts(); return; }
   if((nf.role === "merchandiser" || nf.role === "supervisor") && !nf.company){ S.accountsError = t("authErrCompanyRequired"); renderAccounts(); return; }
+  if(nf.role === "viewer" && !(nf.companies && nf.companies.length)){ S.accountsError = t("viewerNeedBranch"); renderAccounts(); return; }
 
   // Created on a SECOND, independent Firebase App instance — otherwise the
   // client SDK would sign the admin out of their own session and into the
@@ -3553,6 +3639,8 @@ function createAccount(){
       fullName: nf.fullName.trim(), role: nf.role,
       department: nf.role === "merchandiser" ? nf.department : "",
       company: (nf.role === "merchandiser" || nf.role === "supervisor") ? nf.company : "",
+      companies: nf.role === "viewer" ? nf.companies : [],
+      deliveryBranches: nf.role === "viewer" ? nf.deliveryBranches : [],
       disabled:false, createdAt: new Date().toISOString(), lastLoginAt: null
     }).then(function(){
       cred.user.sendEmailVerification().catch(function(){});
@@ -3785,7 +3873,7 @@ function daysLeftTag(days){
 var ACTIVITY_POINTS = {view:1, create:10, delete:8, qty_update:3, category_changed:3};
 
 function logActivity(action){
-  if(!S.db || !S.currentUser) return;
+  if(!S.db || !S.currentUser || isViewerUser()) return;
   var u = S.currentUser;
   S.db.collection("activity_log").add({
     userId: u.id, username: u.username || "", fullName: u.fullName, role: u.role,
@@ -3948,7 +4036,7 @@ function complianceReport(periodDays){
 function renderTrackedDashboard(){
   var html = "";
 
-  if(isManagerUser()){
+  if(isManagerUser() || isViewerUser()){
     var eList = alertItems();
     html += '<div class="card">' +
       '<div class="section-title">'+t("alertsTitle")+'</div>';
@@ -3967,6 +4055,8 @@ function renderTrackedDashboard(){
       }).join("");
     }
     html += '</div>';
+  }
+  if(isManagerUser()){
 
     html += '<div class="card">' +
       '<div class="section-title">'+t("thresholdsTitle")+'</div>' +
@@ -4016,16 +4106,16 @@ function renderTrackedDashboard(){
     html += '</div>';
   }
 
-  var companyOpts = '<option value="">'+t("expiryFilterCompany")+'</option>' + COMPANIES.map(function(c){
+  var companyOpts = '<option value="">'+t("expiryFilterCompany")+'</option>' + visibleCompanies().map(function(c){
     return '<option value="'+c.id+'"'+(S.trackFilters.company===c.id?" selected":"")+'>'+esc(S.lang==="ar"?c.ar:c.en)+'</option>';
   }).join("");
   var employeeOpts = '<option value="">'+t("filterByEmployee")+'</option>' + S.users.map(function(u){
     return '<option value="'+u.id+'"'+(S.trackFilters.employee===u.id?" selected":"")+'>'+esc(u.fullName)+'</option>';
   }).join("");
-  if(isManagerUser()){
+  if(isManagerUser() || isViewerUser()){
     html += '<div class="filters">' +
       '<select id="tfilt_company">'+companyOpts+'</select>' +
-      '<select id="tfilt_employee">'+employeeOpts+'</select>' +
+      (isManagerUser() ? '<select id="tfilt_employee">'+employeeOpts+'</select>' : '') +
     '</div>';
   }
 
@@ -4086,6 +4176,7 @@ function trackedItemCard(l){
     });
     body += '</div>';
 
+    if(!isViewerUser()){
     body += '<div class="field" style="margin-top:10px;"><input type="text" placeholder="'+t("newQtyPh")+'" id="qty_'+l.id+'"></div>';
     body += '<button type="button" class="btn btn-secondary" data-update-qty="'+l.id+'">'+t("updateQtyBtn")+'</button>';
 
@@ -4094,6 +4185,7 @@ function trackedItemCard(l){
     }).join("");
     body += '<div class="field" style="margin-top:10px;"><label>'+t("categoryLabel")+'</label><select id="cat_'+l.id+'">'+catOpts+'</select></div>';
     body += '<button type="button" class="btn btn-secondary" data-update-category="'+l.id+'">'+t("changeCategoryBtn")+'</button>';
+    }
 
     if(isManagerUser()){
       body += '<button type="button" class="btn btn-danger" data-delete-track="'+l.id+'" style="margin-top:10px;">'+ICONS.trash+' '+t("deleteProductBtn")+'</button>';
@@ -4510,6 +4602,7 @@ function render(){
     renderAuthScreen();
     return;
   }
+  if(isViewerUser()){ if(S.appMode === "accounts") S.appMode = "handover"; S.view = "dashboard"; }
   updateUserChip();
   setActiveTab();
   updateDeptSwitch();
@@ -4518,7 +4611,7 @@ function render(){
     renderAccounts();
   } else if(S.appMode === "delivery"){
     applyBrand("");
-    if(isManagerUser()) renderDelivery(); else { S.appMode = "handover"; render(); }
+    if(isManagerUser() || isViewerUser()) renderDelivery(); else { S.appMode = "handover"; render(); }
   } else if(S.appMode === "merch"){
     applyBrand(S.view === "dashboard" ? (S.merchFilters.company || S.merchForm.company) : S.merchForm.company);
     if(S.view === "form") renderMerchForm(); else renderMerchDashboard();
@@ -4542,7 +4635,8 @@ document.getElementById("logoutBtn").onclick = function(){
   S.appMode = "handover";
   S.view = "form";
   stopDelivery();
-  if(S.auth) S.auth.signOut(); // onAuthStateChanged picks this up and clears S.currentUser
+  var wasViewer = isViewerUser();
+  if(S.auth) S.auth.signOut().then(function(){ if(wasViewer) location.reload(); }); // onAuthStateChanged picks this up and clears S.currentUser
 };
 document.getElementById("deptHandoverBtn").onclick = function(){ S.appMode = "handover"; S.view = "form"; render(); playSectionTransition(); };
 document.getElementById("deptMerchBtn").onclick = function(){ S.appMode = "merch"; S.view = "form"; render(); playSectionTransition(); };
@@ -4563,6 +4657,46 @@ function resolvePhotoUrls(doc){
   if(out.outgoingSig) out.outgoingSigUrl = out.outgoingSig;
   if(out.incomingSig) out.incomingSigUrl = out.incomingSig;
   return out;
+}
+
+// Viewer accounts: the normal listeners above read whole collections, which the
+// Firestore rules refuse for a viewer. Instead, listen per allowed branch
+// (company == X) and merge, so the viewer only ever downloads its own branches.
+function subscribeViewerData(){
+  if(!S.db || S.viewerSubsStarted) return;
+  S.viewerSubsStarted = true;
+  var cos = viewerCompanies();
+  function perCompany(coll, onData){
+    var parts = {};
+    if(!cos.length){ onData([]); return; }
+    cos.forEach(function(c){
+      S.db.collection(coll).where("company","==",c).onSnapshot(function(snap){
+        parts[c] = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data() || {}); });
+        onData([].concat.apply([], Object.keys(parts).map(function(k){ return parts[k]; })));
+      }, function(){ onData([].concat.apply([], Object.keys(parts).map(function(k){ return parts[k]; }))); });
+    });
+  }
+  function byNewest(a, b){ return String(b.createdAt || "").localeCompare(String(a.createdAt || "")); }
+  perCompany("handovers", function(list){
+    S.logs = list.sort(byNewest).slice(0, 300).map(resolvePhotoUrls);
+    S.logsLoaded = true;
+    if(S.appMode === "handover" && S.view === "dashboard") renderDashboard();
+  });
+  perCompany("merch_visits", function(list){
+    S.merchLogs = list.sort(byNewest).slice(0, 300).map(resolveMerchPhotoUrls);
+    S.merchLogsLoaded = true;
+    if(S.appMode === "merch" && S.view === "dashboard") renderMerchDashboard();
+  });
+  perCompany("quick_shortages", function(list){
+    S.quickShortages = list.sort(byNewest);
+    S.quickShortagesLoaded = true;
+    if(S.appMode === "handover" && S.view === "dashboard") renderDashboard();
+  });
+  perCompany("expiry_items", function(list){
+    S.trackedItems = list.sort(function(a, b){ return String(a.expiryDate || "").localeCompare(String(b.expiryDate || "")); });
+    S.trackedItemsLoaded = true;
+    if(S.appMode === "expiry" && S.view === "dashboard") renderTrackedDashboard();
+  });
 }
 
 function subscribeLogs(){
