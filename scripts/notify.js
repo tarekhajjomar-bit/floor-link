@@ -36,10 +36,15 @@ init();
 const db = admin.firestore();
 const messaging = admin.messaging();
 
-/** Returns the FCM tokens for accounts matching a role (and optionally a specific userId). */
+// Manager accounts are stored with role "admin" since the move to Firebase Auth
+// (older accounts said "manager"). Every manager notification goes to both.
+const MANAGER_ROLES = ["admin", "manager"];
+
+/** Returns the FCM tokens for accounts matching a role, or a list of roles (and optionally a specific userId). */
 async function getTokens({ role, userId } = {}) {
   let query = db.collection("fcm_tokens");
-  if (role) query = query.where("role", "==", role);
+  if (Array.isArray(role)) query = query.where("role", "in", role);
+  else if (role) query = query.where("role", "==", role);
   if (userId) query = query.where("userId", "==", userId);
   const snap = await query.get();
   return [...new Set(snap.docs.map((d) => d.data().token).filter(Boolean))];
@@ -60,27 +65,75 @@ async function sendToTokens(tokens, title, body, data) {
       const code = r.error && r.error.code;
       console.log(`    token ${i} failed: ${code}`);
       if (code === "messaging/registration-token-not-registered" || code === "messaging/invalid-registration-token") {
-        db.collection("fcm_tokens").doc(tokens[i]).delete().catch(() => {});
+        // The app stores each token under an encoded doc id, so delete by the token field.
+        db.collection("fcm_tokens").where("token", "==", tokens[i]).get()
+          .then((q) => q.forEach((d) => d.ref.delete()))
+          .catch(() => {});
       }
     }
   });
 }
 
-/** Type 1 — a supervisor just submitted a handover: tell managers. */
+const BRANCH_NAMES = {
+  shoppies: "شوبيز",
+  omar_mina: "الحاج عمر — الميناء",
+  omar_abrin: "الحاج عمر — عبرين"
+};
+const branchName = (id) => BRANCH_NAMES[id] || id || "";
+
+/** Type 1 — someone just submitted a handover (opening / handover / closing): tell managers. */
 async function checkNewHandovers() {
   const snap = await db.collection("handovers").where("notifiedAdmin", "==", false).get();
   if (snap.empty) { console.log("No new un-notified handovers."); return; }
-  const managerTokens = await getTokens({ role: "manager" });
+  const managerTokens = await getTokens({ role: MANAGER_ROLES });
+  console.log(`Manager devices: ${managerTokens.length}`);
   for (const doc of snap.docs) {
     const d = doc.data();
-    await sendToTokens(
-      managerTokens,
-      "تسليم وردية جديد",
-      `${d.outgoingName || "مشرف"} سجّل تسليم بفرع ${d.company || ""}`,
-      { type: "handover", id: doc.id }
-    );
+    const type = d.entryType || d.shiftType || "handover";
+    const title = type === "opening" ? "🔓 فتح وردية" : type === "closing" ? "🔒 إقفال" : "🔁 تسليم وردية";
+    let body = `${d.outgoingName || "مشرف"}`;
+    if (type === "handover" && d.incomingName) body += ` ← ${d.incomingName}`;
+    body += ` · ${branchName(d.company)}`;
+    if (d.time) body += ` · ${d.time}`;
+    if (d.pending && d.pending.urgent) body += "\n🚨 في شي مستعجل";
+    else if (d.status === "issues") body += "\n⚠️ في مشاكل بالتسليم";
+    await sendToTokens(managerTokens, title, body, { type: "handover", id: doc.id });
     await doc.ref.update({ notifiedAdmin: true });
   }
+}
+
+/** Type 1b — someone just scanned / added new products in Expiry Control: tell managers.
+ * Grouped per person and branch, so scanning 20 items sends one notification, not 20.
+ * Looks at items added in the last 6 hours that haven't been announced yet, so it also
+ * works for phones still running an older copy of the app. */
+async function checkNewExpiryItems() {
+  const since = new Date(Date.now() - 6 * 3600 * 1000).toISOString();
+  const snap = await db.collection("expiry_items").where("createdAt", ">=", since).get();
+  const fresh = snap.docs.filter((d) => d.data().notifiedAdmin !== true);
+  if (!fresh.length) { console.log("No new expiry items."); return; }
+  const managerTokens = await getTokens({ role: MANAGER_ROLES });
+  console.log(`New expiry items: ${fresh.length} · Manager devices: ${managerTokens.length}`);
+
+  const groups = {};
+  fresh.forEach((doc) => {
+    const d = doc.data();
+    const who = (d.createdBy && (d.createdBy.fullName || d.createdBy.username)) || "موظف";
+    const key = who + "|" + (d.company || "");
+    (groups[key] = groups[key] || { who, company: d.company, items: [] }).items.push(d);
+  });
+
+  for (const g of Object.values(groups)) {
+    const n = g.items.length;
+    const title = n === 1 ? "📦 منتج جديد بالإكسبايري" : `📦 ${n} منتجات جديدة بالإكسبايري`;
+    const lines = g.items.slice(0, 3).map((d) => `• ${d.productName || d.barcode} — ${d.expiryDate || ""}`);
+    if (n > 3) lines.push(`• و${n - 3} غيرهن`);
+    const body = `${g.who} · ${branchName(g.company)}\n${lines.join("\n")}`;
+    await sendToTokens(managerTokens, title, body, { type: "expiry-new" });
+  }
+
+  const batch = db.batch();
+  fresh.forEach((doc) => batch.update(doc.ref, { notifiedAdmin: true }));
+  await batch.commit();
 }
 
 /** Type 2 — once a day, remind supervisors who haven't logged a handover today. */
@@ -113,7 +166,8 @@ async function checkExpiry() {
     : [7, 3, 1];
 
   const itemsSnap = await db.collection("expiry_items").where("status", "==", "active").get();
-  const managerTokens = await getTokens({ role: "manager" });
+  const managerTokens = await getTokens({ role: MANAGER_ROLES });
+  console.log(`Manager devices: ${managerTokens.length}`);
   const now = new Date();
   now.setHours(0, 0, 0, 0);
 
@@ -129,7 +183,7 @@ async function checkExpiry() {
         await sendToTokens(
           managerTokens,
           "منتج قرّب ينتهي",
-          `${d.productName || d.barcode} — باقي ${daysLeft} يوم (${d.branch || ""})`,
+          `${d.productName || d.barcode} — ${daysLeft < 0 ? "منتهي" : daysLeft === 0 ? "بينتهي اليوم" : "باقي " + daysLeft + " يوم"} (${branchName(d.company) || d.branch || ""})`,
           { type: "expiry", id: doc.id }
         );
         await doc.ref.update({ notifiedThresholds: admin.firestore.FieldValue.arrayUnion(th) });
@@ -161,6 +215,10 @@ async function sendTestNotification() {
     return;
   }
   console.log(`Found ${tokens.length} registered token(s). Sending test push...`);
+  snap.docs.forEach((d) => {
+    const x = d.data();
+    console.log(`  - ${x.fullName || x.username || "?"} | role: ${x.role || "?"} | updated: ${x.updatedAt || "?"}`);
+  });
   await sendToTokens(
     tokens,
     "🔔 Floor Link — Test",
@@ -171,7 +229,9 @@ async function sendTestNotification() {
 
 const mode = process.argv[2];
 const modes = {
-  "handover": checkNewHandovers,
+  // Runs every 10 minutes (notify-handover.yml): new handovers + newly scanned expiry items.
+  "handover": async () => { await checkNewHandovers(); await checkNewExpiryItems(); },
+  "new-items": checkNewExpiryItems,
   "supervisor-reminder": checkSupervisorReminders,
   "expiry-check": checkExpiry,
   "merchandiser-reminder": merchandiserReminder,
