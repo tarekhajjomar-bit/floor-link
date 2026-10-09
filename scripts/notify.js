@@ -7,7 +7,7 @@
 // Messaging — all free, no billing account needed anywhere.
 //
 // Usage: node notify.js <mode>
-//   mode is one of: handover | supervisor-reminder | expiry-check | merchandiser-reminder
+//   mode is one of: handover | feedback | supervisor-reminder | expiry-check | merchandiser-reminder
 //
 // Required environment variable:
 //   FIREBASE_SERVICE_ACCOUNT — the full JSON key of a Firebase service
@@ -136,6 +136,57 @@ async function checkNewExpiryItems() {
   await batch.commit();
 }
 
+/** Type 1c — customer feedback from the QR page: tell managers.
+ * Every complaint gets its own notification (it needs action). Ratings are
+ * grouped per branch, so a busy hour sends one message, not ten. A low rating
+ * (1 or 2 stars) is always called out. Looks at the last 6 hours, like expiry. */
+async function checkNewFeedback() {
+  const since = admin.firestore.Timestamp.fromMillis(Date.now() - 6 * 3600 * 1000);
+  const snap = await db.collection("feedback").where("createdAt", ">=", since).get();
+  const fresh = snap.docs.filter((d) => d.data().notifiedAdmin !== true);
+  if (!fresh.length) { console.log("No new feedback."); return; }
+  const managerTokens = await getTokens({ role: MANAGER_ROLES });
+  console.log(`New feedback: ${fresh.length} · Manager devices: ${managerTokens.length}`);
+
+  const where = (d) => d.type === "store" ? "بالمحل" : "دليفري";
+  const short = (txt, n) => { txt = String(txt || "").trim().replace(/\s+/g, " "); return txt.length > n ? txt.slice(0, n) + "…" : txt; };
+  const starsOf = (n) => "★".repeat(n) + "☆".repeat(5 - n);
+
+  const reviewsByBranch = {};
+  for (const doc of fresh) {
+    const d = doc.data();
+    if (d.kind === "complaint") {
+      let body = `${branchName(d.branch)} · ${where(d)}\n${short(d.text, 140)}`;
+      if (d.wantsContact) body += `\n📞 بدّو تتواصل معو: ${[d.contactName, d.contactInfo].filter(Boolean).join(" · ")}`;
+      await sendToTokens(managerTokens, "🚨 شكوى جديدة", body, { type: "feedback", id: doc.id });
+    } else {
+      (reviewsByBranch[d.branch] = reviewsByBranch[d.branch] || []).push(d);
+    }
+  }
+
+  for (const [branch, list] of Object.entries(reviewsByBranch)) {
+    const low = list.filter((d) => (d.stars || 0) <= 2);
+    let title, body;
+    if (list.length === 1) {
+      const d = list[0];
+      title = d.stars <= 2 ? "⚠️ تقييم منخفض" : "⭐ تقييم جديد";
+      body = `${branchName(branch)} · ${where(d)} · ${starsOf(d.stars || 0)}`;
+      if (d.text) body += `\n${short(d.text, 120)}`;
+    } else {
+      const avg = list.reduce((a, d) => a + (d.stars || 0), 0) / list.length;
+      title = low.length ? `⚠️ ${list.length} تقييمات جديدة (${low.length} منخفضة)` : `⭐ ${list.length} تقييمات جديدة`;
+      body = `${branchName(branch)} · المعدّل ${avg.toFixed(1)} من 5`;
+      const withText = low.concat(list.filter((d) => d.stars > 2)).filter((d) => d.text).slice(0, 2);
+      withText.forEach((d) => { body += `\n${starsOf(d.stars || 0)} ${short(d.text, 70)}`; });
+    }
+    await sendToTokens(managerTokens, title, body, { type: "feedback" });
+  }
+
+  const batch = db.batch();
+  fresh.forEach((doc) => batch.update(doc.ref, { notifiedAdmin: true }));
+  await batch.commit();
+}
+
 /** Type 2 — once a day, remind supervisors who haven't logged a handover today. */
 async function checkSupervisorReminders() {
   const today = new Date().toISOString().slice(0, 10);
@@ -229,8 +280,9 @@ async function sendTestNotification() {
 
 const mode = process.argv[2];
 const modes = {
-  // Runs every 10 minutes (notify-handover.yml): new handovers + newly scanned expiry items.
-  "handover": async () => { await checkNewHandovers(); await checkNewExpiryItems(); },
+  // Runs every 10 minutes (notify-handover.yml): new handovers, newly scanned expiry items, customer feedback.
+  "handover": async () => { await checkNewHandovers(); await checkNewExpiryItems(); await checkNewFeedback(); },
+  "feedback": checkNewFeedback,
   "new-items": checkNewExpiryItems,
   "supervisor-reminder": checkSupervisorReminders,
   "expiry-check": checkExpiry,
