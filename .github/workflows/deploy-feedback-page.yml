@@ -1,0 +1,37 @@
+name: Deploy — customer feedback page
+
+# Puts websites/feedback/feedback.html on the public brand websites as
+# /feedback.html, keeping everything else on those sites exactly as it is.
+# Runs by itself whenever the page changes, or by hand from the Actions tab.
+#
+# Sites: shoppies-web (shoppiesmarket.com). Add the Al-Hajj Omar hosting site
+# id to SITES once its website has a domain.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "websites/feedback/feedback.html"
+      - "scripts/deploy-feedback-page.js"
+      - ".github/workflows/deploy-feedback-page.yml"
+  workflow_dispatch: {}
+
+env:
+  SITES: "shoppies-web"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install dependencies
+        working-directory: scripts
+        run: npm install
+      - name: Deploy feedback page
+        working-directory: scripts
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node deploy-feedback-page.js $SITES
