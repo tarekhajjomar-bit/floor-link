@@ -93,6 +93,8 @@ async function deploy(site) {
     try { await deploy(site); }
     catch (e) {
       console.error(e.message);
+      // also as a GitHub annotation, so the reason shows on the run's summary page
+      console.log("::error::" + (e.status === 403 ? `No permission on ${site}. Give ${sa.client_email} the role Firebase Hosting Admin.` : e.message).replace(/\n/g, " "));
       if (e.status === 403) {
         console.error(`\nPermission missing. In Google Cloud Console, open the project that owns "${site}",` +
           ` go to IAM → Grant access, add ${sa.client_email} with the role "Firebase Hosting Admin", then run this again.`);
@@ -100,5 +102,6 @@ async function deploy(site) {
       process.exit(1);
     }
   }
+  console.log("::notice::Feedback page released on: " + sites.join(", "));
   console.log("\nDone.");
 })();
