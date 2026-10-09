@@ -512,6 +512,24 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
 .notif-banner .x{flex:none; border:none; background:transparent; color:#F5FAF8; opacity:.7; cursor:pointer; padding:2px;}
 /* ---------- delivery (manager only) ---------- */
 .dlv-nav{display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:12px;}
+/* Attendance (from the shop's fingerprint computer; read-only here) */
+.att-stats{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:12px;}
+.att-stat{background:var(--surface); border:1px solid var(--line-soft); border-radius:12px; padding:10px 12px;}
+.att-stat b{display:block; font-size:22px; font-weight:800; line-height:1.15; font-variant-numeric:tabular-nums;}
+.att-stat span{font-size:12px; color:var(--ink-soft); font-weight:600;}
+.att-stat.warn b{color:var(--amber);} .att-stat.bad b{color:var(--red);} .att-stat.ok b{color:var(--green);}
+.att-row{display:flex; flex-wrap:wrap; gap:4px 8px; align-items:center; padding:9px 0; border-bottom:1px solid var(--line-soft); font-size:13.5px;}
+.att-row:last-child{border-bottom:0;}
+.att-row .nm{font-weight:700;}
+.att-row .meta{color:var(--ink-soft); font-size:12.5px;}
+.att-row .times{margin-inline-start:auto; font-variant-numeric:tabular-nums; font-size:13px;}
+.att-tag{display:inline-block; padding:1px 8px; border-radius:6px; font-size:12px; font-weight:700; border-inline-start:3px solid currentColor;}
+.att-tag.on_time,.att-tag.excellent{background:var(--green-tint); color:var(--green);}
+.att-tag.late,.att-tag.early_leave,.att-tag.break_over,.att-tag.odd_punches,.att-tag.watch{background:var(--amber-tint); color:var(--amber);}
+.att-tag.absent,.att-tag.missing_out,.att-tag.punch_after_shift,.att-tag.weak{background:var(--red-tint); color:var(--red);}
+.att-tag.off,.att-tag.leave,.att-tag.on_break,.att-tag.good{background:var(--teal-tint); color:var(--teal);}
+.att-tag.other_shift,.att-tag.different_shift,.att-tag.worked_on_off,.att-tag.not_yet{background:var(--paper); color:var(--ink-soft);}
+.att-switch{display:flex; justify-content:center; margin-bottom:12px;}
 .dlv-nav b{font-size:15px;}
 .dlv-nav button{width:38px; height:38px; border-radius:10px; border:1.5px solid var(--line); background:var(--surface); font-size:18px; cursor:pointer; color:var(--ink);}
 .dlv-nav button:disabled{opacity:.35; cursor:default;}
@@ -644,6 +662,7 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
     <button class="tab-btn" id="deptExpiryBtn" type="button" style="display:none;"></button>
     <button class="tab-btn" id="deptDeliveryBtn" type="button" style="display:none;"></button>
     <button class="tab-btn" id="deptFeedbackBtn" type="button" style="display:none;"></button>
+    <button class="tab-btn" id="deptAttendanceBtn" type="button" style="display:none;"></button>
   </div>
 </div>
 <div class="tabbar" id="subtabbar" style="max-width:640px; margin:10px auto 0; padding-inline:16px;">
@@ -970,6 +989,21 @@ en:{
   syncedToast:"Synced — your offline entries are now saved to the shared log.",
   syncingNow:"Syncing…", pendingSyncLabel:"pending sync", offlineIndicator:"Offline",
   deptFeedbackLabel:"Feedback",
+  deptAttendanceLabel:"Attendance",
+  attToday:"Today", attBackToday:"Back to today", attMonthBtn:"Month report", attDayBtn:"Daily view",
+  attOnTime:"On time", attLate:"Late", attAbsent:"Absent", attNoOut:"No clock-out", attOffLeave:"Off / leave", attNotYet:"Not started",
+  attNeedsAttention:"Needs attention", attAllStaff:"All staff", attNoData:"No attendance data for this day yet. The shop computer sends it every 5 minutes.",
+  attLoadError:"Couldn't load attendance. Check your connection and permissions.",
+  attUpdated:"Updated", attIn:"In", attOut:"Out", attHours:"Hours", attShift:"Shift", attStatus:"Status",
+  attMin:"min", attAvgScore:"Average score", attLateTimes:"Late arrivals", attAbsentDays:"Absent days",
+  attMissing:"Missing punches", attOT:"Approved overtime", attScore:"Score", attNoMonth:"No month report yet.",
+  attSt_on_time:"On time", attSt_late:"Late", attSt_absent:"Absent", attSt_off:"Day off", attSt_leave:"Leave",
+  attSt_not_yet:"Not started", attSt_other_shift:"Unscheduled shift",
+  attFl_missing_out:"No clock-out", attFl_early_leave:"Left early", attFl_punch_after_shift:"Punched after shift",
+  attFl_on_break:"On break", attFl_break_over:"Break over", attFl_odd_punches:"Missing punch",
+  attFl_different_shift:"Worked a different shift", attFl_worked_on_off:"Worked on day off",
+  attR_excellent:"Excellent", attR_good:"Good", attR_watch:"Needs follow-up", attR_weak:"Weak",
+  attCh_late:"Repeatedly late", attCh_absent:"Repeated absence", attCh_missing:"Fingerprint problems",
   fbNewTitle:"New QR code", fbNewSub:"Make a code for any place: an invoice, the cashier, a delivery bag. Each reply shows which code it came from.",
   fbTypeLabel:"What it asks about",
   fbTypeAny:"Customer chooses", fbTypeStore:"Store only", fbTypeDelivery:"Delivery only",
@@ -1273,6 +1307,21 @@ ar:{
   syncedToast:"تمت المزامنة — السجلات يلي عبيتها بدون نت صارت محفوظة بالسجل المشترك.",
   syncingNow:"جارِ المزامنة…", pendingSyncLabel:"بانتظار المزامنة", offlineIndicator:"غير متصل",
   deptFeedbackLabel:"الفيدباك",
+  deptAttendanceLabel:"الحضور",
+  attToday:"اليوم", attBackToday:"رجوع لليوم", attMonthBtn:"تقرير الشهر", attDayBtn:"عرض اليوم",
+  attOnTime:"عالوقت", attLate:"متأخرين", attAbsent:"غايبين", attNoOut:"ما بصمو طلعة", attOffLeave:"أوف / إجازة", attNotYet:"لسّا ما بلّشو",
+  attNeedsAttention:"بدها انتباه", attAllStaff:"كل الموظفين", attNoData:"لسّا ما في داتا حضور لهاليوم. كمبيوتر المحل بيبعتها كل 5 دقايق.",
+  attLoadError:"ما قدر يجيب الحضور. تأكد من النت والصلاحيات.",
+  attUpdated:"آخر تحديث", attIn:"دخول", attOut:"خروج", attHours:"ساعات", attShift:"الشيفت", attStatus:"الحالة",
+  attMin:"د", attAvgScore:"معدّل العلامة", attLateTimes:"مرات تأخير", attAbsentDays:"أيام غياب",
+  attMissing:"بصمات ناقصة", attOT:"أوفر تايم موافق عليه", attScore:"العلامة", attNoMonth:"لسّا ما في تقرير لهالشهر.",
+  attSt_on_time:"عالوقت", attSt_late:"متأخر", attSt_absent:"غايب", attSt_off:"أوف", attSt_leave:"إجازة",
+  attSt_not_yet:"لسّا ما بلّش", attSt_other_shift:"شيفت غير مجدول",
+  attFl_missing_out:"ما بصم طلعة", attFl_early_leave:"طلع بكير", attFl_punch_after_shift:"بصم بعد الشيفت",
+  attFl_on_break:"بالاستراحة", attFl_break_over:"استراحة زيادة", attFl_odd_punches:"بصمة ناقصة",
+  attFl_different_shift:"اشتغل غير شيفتو", attFl_worked_on_off:"اشتغل بيوم أوف",
+  attR_excellent:"ممتاز", attR_good:"منيح", attR_watch:"بدو متابعة", attR_weak:"ضعيف",
+  attCh_late:"متأخر متكرر", attCh_absent:"غياب متكرر", attCh_missing:"مشاكل بصمة",
   fbNewTitle:"كود QR جديد", fbNewSub:"اعمل كود لأي مكان: الفاتورة، الكاشير، كيس الدليفري. كل رد بيوصل معروف من أي كود إجا.",
   fbTypeLabel:"عن شو بيسأل",
   fbTypeAny:"الزبون بيختار", fbTypeStore:"المحل بس", fbTypeDelivery:"الدليفري بس",
@@ -1479,6 +1528,11 @@ function updateDeptSwitch(){
   var canDelivery = role === "manager" || role === "admin" || role === "viewer";
   var fbBtn = document.getElementById("deptFeedbackBtn");
   var canFeedback = role === "manager" || role === "admin";
+  var canAttendance = role === "manager" || role === "admin";
+  var atBtn = document.getElementById("deptAttendanceBtn");
+  atBtn.style.display = canAttendance ? "" : "none";
+  atBtn.textContent = t("deptAttendanceLabel");
+  atBtn.classList.toggle("active", S.appMode === "attendance");
   fbBtn.style.display = canFeedback ? "" : "none";
   if(canFeedback) subscribeFeedbackItems();
   var fbOpenN = canFeedback ? fbOpenComplaints() : 0;
@@ -1499,12 +1553,12 @@ function updateDeptSwitch(){
   m.classList.toggle("active", S.appMode === "merch");
   a.classList.toggle("active", S.appMode === "accounts");
   x.classList.toggle("active", S.appMode === "expiry");
-  var visibleCount = (canHandover?1:0)+(canMerch?1:0)+(canAccounts?1:0)+(canExpiry?1:0)+(canDelivery?1:0)+(canFeedback?1:0);
+  var visibleCount = (canHandover?1:0)+(canMerch?1:0)+(canAccounts?1:0)+(canExpiry?1:0)+(canDelivery?1:0)+(canFeedback?1:0)+(canAttendance?1:0);
   document.getElementById("deptbar").style.display = visibleCount > 1 ? "" : "none";
   var tf = document.getElementById("tabForm");
   var td = document.getElementById("tabDash");
   var sub = document.getElementById("subtabbar");
-  if(S.appMode === "accounts" || S.appMode === "delivery" || S.appMode === "feedback" || isViewerUser()){
+  if(S.appMode === "accounts" || S.appMode === "delivery" || S.appMode === "feedback" || S.appMode === "attendance" || isViewerUser()){
     sub.style.display = "none";
   } else {
     sub.style.display = "";
@@ -5161,6 +5215,99 @@ function fbCreate(){
   });
 }
 
+// ================= Attendance (read-only; written by the shop's fingerprint computer) =================
+function attTodayStr(){ var d = new Date(); return d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2); }
+S.att = {day: "", view: "day", doc: null, month: null, loaded: false, error: false, unsub: null, unsubM: null};
+function stopAttendance(){
+  if(S.att.unsub){ try{ S.att.unsub(); }catch(e){} S.att.unsub = null; }
+  if(S.att.unsubM){ try{ S.att.unsubM(); }catch(e){} S.att.unsubM = null; }
+}
+function subscribeAttendance(){
+  if(!S.db || S.att.unsub) return;
+  var A = S.att; A.loaded = false; A.error = false;
+  A.unsub = S.db.doc("attendance_days/" + A.day).onSnapshot(function(snap){
+    A.doc = snap.exists ? snap.data() : null; A.loaded = true; A.error = false;
+    if(S.appMode === "attendance") renderAttendance();
+  }, function(){ A.loaded = true; A.error = true; A.unsub = null; if(S.appMode === "attendance") renderAttendance(); });
+  A.unsubM = S.db.doc("attendance_reports/" + A.day.slice(0,7)).onSnapshot(function(snap){
+    A.month = snap.exists ? snap.data() : null;
+    if(S.appMode === "attendance" && A.view === "month") renderAttendance();
+  }, function(){});
+}
+function attSetDay(day){ S.att.day = day; stopAttendance(); S.att.doc = null; renderAttendance(); }
+function attShiftDay(delta){
+  var p = S.att.day.split("-"), d = new Date(+p[0], +p[1]-1, +p[2]+delta);
+  attSetDay(d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2));
+}
+function attMin(m){ m = +m || 0; return m ? Math.floor(m/60)+":"+("0"+(m%60)).slice(-2) : ""; }
+function attTag(cls, key){ return '<span class="att-tag '+esc(cls)+'">'+esc(t(key))+'</span>'; }
+function attRowHtml(r){
+  var tags = attTag(r.status, "attSt_"+r.status);
+  if(r.status === "late") tags = '<span class="att-tag late">'+esc(t("attSt_late"))+' '+(+r.late_min||0)+' '+esc(t("attMin"))+'</span>';
+  (r.flags || []).forEach(function(f){ tags += ' ' + attTag(f, "attFl_"+f); });
+  var times = (r["in"] || r.out) ? '<span class="times" dir="ltr">'+esc(r["in"]||"--:--")+' → '+esc(r.out||"--:--")+(r.worked_min ? ' ('+attMin(r.worked_min)+')' : '')+'</span>' : '';
+  return '<div class="att-row"><span class="nm">'+esc(r.name)+'</span><span class="meta">#'+esc(r.id)+(r.shift ? ' '+esc(r.shift)+(r.start ? ' <bdi dir="ltr">'+esc(r.start)+'–'+esc(r.end)+'</bdi>' : '') : '')+'</span> '+tags+times+'</div>';
+}
+function renderAttendance(){
+  var A = S.att, main = document.getElementById("main");
+  if(!A.day) A.day = attTodayStr();
+  if(!A.unsub) subscribeAttendance();
+  var isToday = A.day === attTodayStr();
+  var html = '';
+  html += '<div class="att-switch"><button type="button" class="btn btn-secondary" id="attViewBtn">'+(A.view === "month" ? "📋 "+esc(t("attDayBtn")) : "📅 "+esc(t("attMonthBtn")))+'</button></div>';
+  if(A.view === "month"){
+    var M = A.month;
+    if(!M){ main.innerHTML = html + '<div class="card"><div class="empty">'+esc(t("attNoMonth"))+'</div></div>'; attBind(); return; }
+    var tm = M.team || {};
+    html += '<div class="dlv-nav"><span></span><div class="dlv-day-title"><b>'+esc(M.month)+'</b><small>'+esc(t("attUpdated"))+' '+esc(M.updated_at||"")+'</small></div><span></span></div>';
+    html += '<div class="att-stats">' +
+      '<div class="att-stat"><b>'+(tm.avg_score!=null?tm.avg_score:"-")+'</b><span>'+esc(t("attAvgScore"))+'</span></div>' +
+      '<div class="att-stat warn"><b>'+(+tm.late||0)+'</b><span>'+esc(t("attLateTimes"))+'</span></div>' +
+      '<div class="att-stat bad"><b>'+(+tm.absent||0)+'</b><span>'+esc(t("attAbsentDays"))+'</span></div>' +
+      '<div class="att-stat bad"><b>'+(+tm.missing||0)+'</b><span>'+esc(t("attMissing"))+'</span></div>' +
+      '<div class="att-stat"><b>'+(attMin(tm.ot_min)||"0")+'</b><span>'+esc(t("attOT"))+'</span></div></div>';
+    var people = (M.people || []).filter(function(p){ return p.score != null; }).sort(function(a,b){ return a.score - b.score; });
+    html += '<div class="card"><div class="section-title">'+esc(t("attScore"))+'</div>';
+    people.forEach(function(p){
+      var ch = (p.chronic || []).map(function(c){ return attTag(c === "missing" ? "odd_punches" : (c === "late" ? "late" : "absent"), "attCh_"+c); }).join(" ");
+      html += '<div class="att-row"><span class="nm">'+esc(p.name)+'</span><span class="meta">#'+esc(p.id)+'</span> ' +
+        '<span class="att-tag '+esc(p.rating)+'">'+(+p.score)+' '+esc(t("attR_"+p.rating))+'</span> '+ch +
+        '<span class="times">'+(p.late ? esc(t("attLate"))+' '+p.late+' ('+(+p.late_min)+' '+esc(t("attMin"))+') ' : '')+(p.absent ? esc(t("attAbsent"))+' '+p.absent : '')+'</span></div>';
+    });
+    html += '</div>';
+    main.innerHTML = html; attBind(); return;
+  }
+  html += '<div class="dlv-nav"><button type="button" id="attPrev" aria-label="prev">'+(S.lang==="ar"?"›":"‹")+'</button>' +
+    '<div class="dlv-day-title"><b>'+esc(A.day)+'</b><small>'+(isToday ? esc(t("attToday")) : '<a href="#" id="attToToday">'+esc(t("attBackToday"))+'</a>')+'</small></div>' +
+    '<button type="button" id="attNext" aria-label="next" '+(isToday?"disabled":"")+'>'+(S.lang==="ar"?"‹":"›")+'</button></div>';
+  if(!A.loaded){ main.innerHTML = html + '<div class="card"><div class="empty">…</div></div>'; attBind(); return; }
+  if(A.error){ main.innerHTML = html + '<div class="card"><div class="empty">'+esc(t("attLoadError"))+'</div></div>'; attBind(); return; }
+  if(!A.doc){ main.innerHTML = html + '<div class="card"><div class="empty">'+esc(t("attNoData"))+'</div></div>'; attBind(); return; }
+  var c = A.doc.counts || {}, rows = A.doc.rows || [];
+  var noOut = rows.filter(function(r){ return (r.flags||[]).indexOf("missing_out") !== -1; }).length;
+  html += '<div class="att-stats">' +
+    '<div class="att-stat ok"><b>'+(+c.on_time||0)+'</b><span>'+esc(t("attOnTime"))+'</span></div>' +
+    '<div class="att-stat warn"><b>'+(+c.late||0)+'</b><span>'+esc(t("attLate"))+'</span></div>' +
+    '<div class="att-stat bad"><b>'+(+c.absent||0)+'</b><span>'+esc(t("attAbsent"))+'</span></div>' +
+    '<div class="att-stat bad"><b>'+noOut+'</b><span>'+esc(t("attNoOut"))+'</span></div>' +
+    '<div class="att-stat"><b>'+((+c.off||0)+(+c.leave||0))+'</b><span>'+esc(t("attOffLeave"))+'</span></div>' +
+    '<div class="att-stat"><b>'+(+c.not_yet||0)+'</b><span>'+esc(t("attNotYet"))+'</span></div></div>';
+  var exc = A.doc.exceptions || [];
+  if(exc.length){
+    html += '<div class="card"><div class="section-title">'+esc(t("attNeedsAttention"))+'</div>' + exc.map(attRowHtml).join("") + '</div>';
+  }
+  html += '<div class="card"><div class="section-title">'+esc(t("attAllStaff"))+' <small style="color:var(--ink-soft);font-weight:500">'+esc(t("attUpdated"))+' '+esc(A.doc.updated_at||"")+'</small></div>' +
+    rows.map(attRowHtml).join("") + '</div>';
+  main.innerHTML = html; attBind();
+}
+function attBind(){
+  var v = document.getElementById("attViewBtn");
+  if(v) v.onclick = function(){ S.att.view = S.att.view === "month" ? "day" : "month"; renderAttendance(); window.scrollTo(0,0); };
+  var p = document.getElementById("attPrev"); if(p) p.onclick = function(){ attShiftDay(-1); };
+  var n = document.getElementById("attNext"); if(n) n.onclick = function(){ attShiftDay(1); };
+  var tt = document.getElementById("attToToday"); if(tt) tt.onclick = function(e){ e.preventDefault(); attSetDay(attTodayStr()); };
+}
+
 function render(){
   updateAuthChrome();
   updateNotifBanner();
@@ -5180,6 +5327,9 @@ function render(){
   } else if(S.appMode === "feedback"){
     applyBrand("");
     if(isManagerUser()) renderFeedback(); else { S.appMode = "handover"; render(); }
+  } else if(S.appMode === "attendance"){
+    applyBrand("");
+    if(isManagerUser()) renderAttendance(); else { S.appMode = "handover"; render(); }
   } else if(S.appMode === "delivery"){
     applyBrand("");
     if(isManagerUser() || isViewerUser()) renderDelivery(); else { S.appMode = "handover"; render(); }
@@ -5206,6 +5356,7 @@ document.getElementById("logoutBtn").onclick = function(){
   S.appMode = "handover";
   S.view = "form";
   stopDelivery();
+  stopAttendance();
   var wasViewer = isViewerUser();
   if(S.auth) S.auth.signOut().then(function(){ if(wasViewer) location.reload(); }); // onAuthStateChanged picks this up and clears S.currentUser
 };
@@ -5214,6 +5365,7 @@ document.getElementById("deptMerchBtn").onclick = function(){ S.appMode = "merch
 document.getElementById("deptAccountsBtn").onclick = function(){ S.appMode = "accounts"; render(); playSectionTransition(); };
 document.getElementById("deptDeliveryBtn").onclick = function(){ S.appMode = "delivery"; render(); playSectionTransition(); };
 document.getElementById("deptFeedbackBtn").onclick = function(){ S.appMode = "feedback"; render(); playSectionTransition(); };
+document.getElementById("deptAttendanceBtn").onclick = function(){ S.appMode = "attendance"; render(); playSectionTransition(); };
 document.getElementById("deptExpiryBtn").onclick = function(){ S.appMode = "expiry"; S.view = "form"; logActivity("view"); render(); playSectionTransition(); };
 
 function resolvePhotoUrls(doc){

@@ -116,6 +116,18 @@ service cloud.firestore {
       allow write: if canWrite();
     }
 
+    // ---------------- attendance (Oct 2026) ----------------
+    // Written only by the shop's fingerprint computer (service account, which
+    // bypasses these rules). Managers read; nobody writes from the app.
+    match /attendance_days/{day} {
+      allow read: if isManager();
+      allow write: if false;
+    }
+    match /attendance_reports/{month} {
+      allow read: if isManager();
+      allow write: if false;
+    }
+
     // ---------------- activity_log ----------------
     // Unchanged. Append-only; only admins read it.
     match /activity_log/{logId} {
