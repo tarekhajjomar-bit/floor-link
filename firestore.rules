@@ -10,12 +10,18 @@ rules_version = '2';
 //   companies:        ["omar_mina", "omar_abrin", ...]   (handover, merch, expiry, shortages)
 //   deliveryBranches: ["<branch name exactly as the delivery book writes it>", ...]
 // The manager ticks both lists in the app's Accounts screen.
+//
+// Customer feedback (Oct 2026): feedback_codes (QR codes), feedback (replies),
+// feedback_rate (spam limit per device). Only managers read feedback.
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Customers on the public feedback page sign in ANONYMOUSLY. They never
+    // count as signed-in employees; they can only send feedback (see below).
     function isSignedIn() {
-      return request.auth != null;
+      return request.auth != null
+        && request.auth.token.firebase.sign_in_provider != 'anonymous';
     }
     function isAdmin() {
       return isSignedIn() && request.auth.token.role == 'admin';
@@ -120,18 +126,125 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // =====================================================================
+    // ---------------- CUSTOMER FEEDBACK ----------------
+    // =====================================================================
+    function fbIsAnon() {
+      return request.auth != null
+        && request.auth.token.firebase.sign_in_provider == 'anonymous';
+    }
+
+    // ----- QR codes (made from Floor Link, admin only) -----
+    // feedback_codes/{codeId}: branch, type, place, active, createdAt, createdBy
+    // type: 'store', 'delivery', or 'any' (the customer picks store or delivery on the page)
+    match /feedback_codes/{codeId} {
+      allow get: if true;          // the customer page reads its one code (branch + type)
+      allow list: if isManager();    // only the admin sees the list of codes
+      allow create, update: if isManager()
+        && request.resource.data.keys().hasOnly(['branch', 'type', 'place', 'active', 'createdAt', 'createdBy'])
+        && request.resource.data.branch in ['shoppies', 'omar_mina', 'omar_abrin']
+        && request.resource.data.type in ['delivery', 'store', 'any']
+        && request.resource.data.place is string
+        && request.resource.data.place.size() >= 1
+        && request.resource.data.place.size() <= 60
+        && request.resource.data.active is bool;
+      allow delete: if isManager();
+    }
+
+    // ----- feedback sent by customers -----
+    function fbCodeOk(d) {
+      let c = /databases/$(database)/documents/feedback_codes/$(d.codeId);
+      return exists(c)
+        && get(c).data.active == true
+        && get(c).data.branch == d.branch
+        && (get(c).data.type == d.type || get(c).data.type == 'any');
+    }
+    function fbAnswersOk(d) {
+      return d.answers is map
+        && d.answers.values().toSet().hasOnly(['good', 'ok', 'bad'])
+        && ((d.type == 'delivery' && d.answers.keys().hasOnly(['speed', 'driver', 'order']))
+          || (d.type == 'store' && d.answers.keys().hasOnly(['clean', 'stock', 'staff'])));
+    }
+    function fbReviewOk(d) {
+      return d.stars is int && d.stars >= 1 && d.stars <= 5
+        && fbAnswersOk(d)
+        && !d.keys().hasAny(['wantsContact', 'contactName', 'contactInfo']);
+    }
+    function fbComplaintOk(d) {
+      return d.text.size() >= 2
+        && !d.keys().hasAny(['stars', 'answers'])
+        && d.wantsContact is bool
+        && ((d.wantsContact == false && !d.keys().hasAny(['contactName', 'contactInfo']))
+          || (d.wantsContact == true
+            && d.contactName is string && d.contactName.size() <= 80
+            && d.contactInfo is string && d.contactInfo.size() >= 3 && d.contactInfo.size() <= 80));
+    }
+    function fbNewOk(d) {
+      return d.keys().hasAll(['codeId', 'branch', 'type', 'kind', 'text', 'lang', 'uid', 'handled', 'createdAt'])
+        && d.keys().hasOnly(['codeId', 'branch', 'type', 'kind', 'stars', 'answers', 'text',
+                             'wantsContact', 'contactName', 'contactInfo', 'lang', 'uid', 'handled', 'createdAt'])
+        && d.uid == request.auth.uid
+        && d.createdAt == request.time
+        && d.handled == false
+        && d.codeId is string && d.codeId.size() <= 40
+        && d.text is string && d.text.size() <= 1000
+        && d.lang in ['ar', 'en']
+        && ((d.kind == 'review' && fbReviewOk(d)) || (d.kind == 'complaint' && fbComplaintOk(d)));
+    }
+    // every send must also stamp the device's rate counter in the same batch
+    function fbRateStamped() {
+      return getAfter(/databases/$(database)/documents/feedback_rate/$(request.auth.uid)).data.lastAt == request.time;
+    }
+
+    match /feedback/{id} {
+      allow create: if fbIsAnon()
+        && fbNewOk(request.resource.data)
+        && fbCodeOk(request.resource.data)
+        && fbRateStamped();
+      allow read: if isManager();
+      // the admin can only mark a complaint as handled; nothing else changes
+      allow update: if isManager()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['handled', 'handledAt', 'handledBy'])
+        && request.resource.data.handled is bool;
+      allow delete: if isManager();
+    }
+
+    // ----- spam limit, per device -----
+    // at most 1 send per 60 seconds, and at most 5 sends per 24 hours
+    match /feedback_rate/{uid} {
+      allow get: if fbIsAnon() && request.auth.uid == uid;
+      allow create: if fbIsAnon() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['lastAt', 'windowStart', 'n'])
+        && request.resource.data.lastAt == request.time
+        && request.resource.data.windowStart == request.time
+        && request.resource.data.n == 1;
+      allow update: if fbIsAnon() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['lastAt', 'windowStart', 'n'])
+        && request.resource.data.lastAt == request.time
+        && request.time > resource.data.lastAt + duration.value(60, 's')
+        && ((request.time < resource.data.windowStart + duration.value(24, 'h')
+              && request.resource.data.windowStart == resource.data.windowStart
+              && request.resource.data.n == resource.data.n + 1
+              && request.resource.data.n <= 5)
+          || (request.time >= resource.data.windowStart + duration.value(24, 'h')
+              && request.resource.data.windowStart == request.time
+              && request.resource.data.n == 1));
+    }
+
     // ---------------- everything else ----------------
     // Same open-to-signed-in behavior as before for every other collection
     // (catalog, settings, fcm_tokens, users, activity_log, ...), EXCEPT:
     //  - the five collections above are left to their own rules (previously
     //    this catch-all also matched them and overrode their limits), and
     //  - a viewer can only read catalog and settings here, and can't write.
+    //  - the three customer-feedback collections are left to their own rules
+    //    too, so only managers read feedback (not supervisors).
     match /{collection}/{document=**} {
       allow read: if isSignedIn()
-                  && !(collection in ['handovers', 'merch_visits', 'quick_shortages', 'expiry_items', 'delivery_shifts'])
+                  && !(collection in ['handovers', 'merch_visits', 'quick_shortages', 'expiry_items', 'delivery_shifts', 'feedback', 'feedback_codes', 'feedback_rate'])
                   && (!isViewer() || collection in ['catalog', 'settings']);
       allow write: if canWrite()
-                   && !(collection in ['handovers', 'merch_visits', 'quick_shortages', 'expiry_items', 'delivery_shifts']);
+                   && !(collection in ['handovers', 'merch_visits', 'quick_shortages', 'expiry_items', 'delivery_shifts', 'feedback', 'feedback_codes', 'feedback_rate']);
     }
   }
 }

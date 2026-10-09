@@ -568,6 +568,44 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
 .fb-code-meta{display:flex;align-items:center;gap:6px;margin-top:2px;}
 .fb-actions{display:flex;flex-wrap:wrap;gap:2px 12px;margin-top:4px;}
 .fb-actions .link-btn{padding:4px 0;}
+.fb-tabs{display:flex;gap:4px;background:var(--surface);border-radius:12px;padding:3px;box-shadow:var(--shadow-sm);margin-bottom:14px;}
+.fb-tabs .tab-btn{color:var(--ink-soft);opacity:1;}
+.fb-tabs .tab-btn.active{background:var(--teal-tint);color:var(--teal-deep);box-shadow:none;}
+.fb-dot{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--red);color:#fff;font-size:11px;font-weight:700;line-height:1;vertical-align:1px;}
+.fb-card-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;}
+.fb-complaints{border-color:var(--red);}
+.fb-complaint{border-inline-start:4px solid var(--red);background:var(--red-tint);border-radius:12px;padding:12px 14px;margin-top:10px;display:flex;flex-direction:column;gap:6px;}
+.fb-complaint.done{border-inline-start-color:var(--line);background:var(--paper);opacity:.75;}
+.fb-text{font-size:14px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere;margin:0;}
+.fb-meta{font-size:12px;color:var(--ink-soft);}
+.fb-contact{font-size:13px;font-weight:600;overflow-wrap:anywhere;}
+.fb-handle{width:auto;align-self:flex-start;padding:8px 14px;font-size:13px;}
+.fb-handle svg{width:15px;height:15px;}
+.fb-bar-row{display:grid;grid-template-columns:minmax(64px,1.2fr) 2fr auto;gap:10px;align-items:center;padding:6px 0;}
+.fb-bar-label{font-size:13px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.fb-bar-label small{display:block;font-size:11px;color:var(--ink-soft);font-weight:400;}
+.fb-track{height:9px;background:var(--paper);border-radius:99px;overflow:hidden;}
+.fb-track i{display:block;height:100%;background:var(--teal);border-radius:99px;}
+.fb-track i.low{background:var(--red);}
+.fb-bar-val{font-size:13px;font-weight:700;text-align:end;line-height:1.3;}
+.fb-bar-val small{display:block;font-size:11px;font-weight:500;color:var(--ink-soft);}
+.fb-bar-val small.red{color:var(--red);}
+.fb-q-row{padding:10px 0;border-top:1px solid var(--line-soft);}
+.fb-q-row:first-of-type{border-top:none;}
+.fb-q-head{display:flex;justify-content:space-between;align-items:baseline;font-size:13.5px;margin-bottom:6px;}
+.fb-split{display:flex;height:10px;border-radius:99px;overflow:hidden;background:var(--paper);}
+.fb-split i.g{background:var(--green);} .fb-split i.o{background:var(--amber);} .fb-split i.b{background:var(--red);}
+.fb-q-legend{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;margin-top:5px;font-weight:600;}
+.fb-q-legend .g{color:var(--green);} .fb-q-legend .o{color:var(--amber);} .fb-q-legend .b{color:var(--red);}
+.fb-review{padding:12px 0;border-top:1px solid var(--line-soft);display:flex;flex-direction:column;gap:6px;}
+.fb-review:first-of-type{border-top:none;}
+.fb-review.low{border-inline-start:3px solid var(--red);padding-inline-start:10px;}
+.fb-review-head{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+.fb-stars{color:var(--amber);font-size:17px;letter-spacing:1px;direction:ltr;}
+.fb-stars span{color:var(--line);}
+.fb-ans-row{display:flex;flex-wrap:wrap;gap:5px;}
+.fb-ans{font-size:11.5px;font-weight:600;border-radius:999px;padding:2px 9px;}
+.fb-ans.g{background:var(--green-tint);color:var(--green);} .fb-ans.o{background:var(--amber-tint);color:var(--amber);} .fb-ans.b{background:var(--red-tint);color:var(--red);}
 </style>
 </head>
 <body>
@@ -947,7 +985,21 @@ en:{
   fbStoppedToast:"Code stopped. Customers who scan it see a 'not active' message.", fbStartedToast:"Code is active again.",
   fbDownload:"Download image", fbPrint:"Print", fbCopyLink:"Copy link", fbLinkCopied:"Link copied.",
   fbNoDomain:"The Al-Hajj Omar website has no domain yet. You can make the code now, and download it once the domain is set.",
-  fbNoDomainShort:"Waiting for the Al-Hajj Omar domain"
+  fbNoDomainShort:"Waiting for the Al-Hajj Omar domain",
+  fbTabReplies:"Replies", fbTabCodes:"QR codes",
+  fbWhereAll:"Store & delivery", fbWhereStore:"In store", fbWhereDelivery:"Delivery", fbCodeAll:"All codes",
+  fbComplaintsTitle:"Complaints", fbOpen:"open", fbAllHandled:"All handled",
+  fbNoComplaints:"No complaints in this period.", fbNoOpenComplaints:"No open complaints.",
+  fbMarkHandled:"Mark as handled", fbHandledToast:"Marked as handled.", fbHandledBy:"Handled by", fbReopen:"Reopen",
+  fbShowHandled:"Show handled", fbHideHandled:"Hide handled",
+  fbAvgStars:"Average stars", fbReviewsCount:"Ratings", fbComplaintsCount:"Complaints",
+  fbStarsTitle:"Stars", fbQuestionsTitle:"Quick questions",
+  fbQ_clean:"Cleanliness", fbQ_stock:"Products in stock", fbQ_staff:"Staff",
+  fbQ_speed:"Delivery speed", fbQ_driver:"The driver", fbQ_order:"Order condition",
+  fbGood:"Great", fbOk:"Okay", fbBad:"Poor",
+  fbPerCodeTitle:"Replies by code", fbComplaintShort:"compl.",
+  fbReviewsTitle:"Latest ratings", fbNoReviews:"No ratings in this period.", fbShowMore:"Show more",
+  fbDeletedCode:"Deleted code"
 },
 ar:{
   appTitle:"فلور لينك", appSub:"سجل عمليات المتجر",
@@ -1236,7 +1288,21 @@ ar:{
   fbStoppedToast:"وقّفنا الكود. يلي بيمسحو بتطلعلو رسالة إنو مش شغّال.", fbStartedToast:"رجع الكود شغّال.",
   fbDownload:"نزّل الصورة", fbPrint:"اطبع", fbCopyLink:"انسخ الرابط", fbLinkCopied:"انتسخ الرابط.",
   fbNoDomain:"موقع حاج عمر لسا ما إلو دومين. فيك تعمل الكود هلّأ، وبتنزّلو لما يجهز الدومين.",
-  fbNoDomainShort:"ناطر دومين حاج عمر"
+  fbNoDomainShort:"ناطر دومين حاج عمر",
+  fbTabReplies:"الردود", fbTabCodes:"أكواد QR",
+  fbWhereAll:"المحل والدليفري", fbWhereStore:"بالمحل", fbWhereDelivery:"دليفري", fbCodeAll:"كل الأكواد",
+  fbComplaintsTitle:"الشكاوى", fbOpen:"مفتوحة", fbAllHandled:"كلها انعالجت",
+  fbNoComplaints:"ما في شكاوى بهالفترة.", fbNoOpenComplaints:"ما في شكاوى مفتوحة.",
+  fbMarkHandled:"تمّت معالجتها", fbHandledToast:"انعلّمت إنها انعالجت.", fbHandledBy:"عالجها", fbReopen:"رجّعها مفتوحة",
+  fbShowHandled:"اعرض يلي انعالجت", fbHideHandled:"خبّي يلي انعالجت",
+  fbAvgStars:"معدّل النجوم", fbReviewsCount:"تقييم", fbComplaintsCount:"شكوى",
+  fbStarsTitle:"النجوم", fbQuestionsTitle:"الأسئلة السريعة",
+  fbQ_clean:"النظافة", fbQ_stock:"توفّر البضاعة", fbQ_staff:"تعامل الموظفين",
+  fbQ_speed:"سرعة التوصيل", fbQ_driver:"تعامل السائق", fbQ_order:"حالة الطلبيّة",
+  fbGood:"ممتاز", fbOk:"مقبول", fbBad:"سيّئ",
+  fbPerCodeTitle:"الردود حسب الكود", fbComplaintShort:"شكوى",
+  fbReviewsTitle:"آخر التقييمات", fbNoReviews:"ما في تقييمات بهالفترة.", fbShowMore:"اعرض أكتر",
+  fbDeletedCode:"كود محذوف"
 }
 };
 
@@ -1414,7 +1480,9 @@ function updateDeptSwitch(){
   var fbBtn = document.getElementById("deptFeedbackBtn");
   var canFeedback = role === "manager" || role === "admin";
   fbBtn.style.display = canFeedback ? "" : "none";
-  fbBtn.textContent = t("deptFeedbackLabel");
+  if(canFeedback) subscribeFeedbackItems();
+  var fbOpenN = canFeedback ? fbOpenComplaints() : 0;
+  fbBtn.innerHTML = esc(t("deptFeedbackLabel")) + (fbOpenN ? ' <span class="fb-dot">' + fbOpenN + '</span>' : '');
   fbBtn.classList.toggle("active", S.appMode === "feedback");
   dv.style.display = canDelivery ? "" : "none";
   dv.textContent = t("deptDeliveryLabel");
@@ -4765,9 +4833,206 @@ function fbPrint(code){
   });
 }
 
+/* --- replies (step 4): everything customers sent, complaints first --- */
+S.fb.tab = "replies";
+S.fb.items = []; S.fb.itemsLoaded = false; S.fb.itemsError = false; S.fb.itemsUnsub = null;
+S.fb.rf = {branch: "", where: "", code: "", range: "30"};
+S.fb.showHandled = false; S.fb.reviewLimit = 20;
+
+var FB_QS = {store: ["clean", "stock", "staff"], delivery: ["speed", "driver", "order"]};
+
+function fbTime(x){
+  if(!x) return 0;
+  if(typeof x.toMillis === "function") return x.toMillis();
+  var n = new Date(x).getTime(); return isNaN(n) ? 0 : n;
+}
+function subscribeFeedbackItems(){
+  if(!S.db || S.fb.itemsUnsub) return;
+  S.fb.itemsUnsub = S.db.collection("feedback").orderBy("createdAt", "desc").limit(1500).onSnapshot(function(snap){
+    S.fb.items = snap.docs.map(function(d){ return Object.assign({id: d.id}, d.data() || {}); });
+    S.fb.itemsLoaded = true; S.fb.itemsError = false;
+    updateDeptSwitch();
+    if(S.appMode === "feedback") renderFeedback();
+  }, function(){
+    S.fb.itemsLoaded = true; S.fb.itemsError = true; S.fb.itemsUnsub = null;
+    if(S.appMode === "feedback") renderFeedback();
+  });
+}
+function fbOpenComplaints(){
+  return S.fb.items.filter(function(d){ return d.kind === "complaint" && !d.handled; }).length;
+}
+function fbFiltered(){
+  var rf = S.fb.rf, cutoff = 0, now = Date.now();
+  if(rf.range === "today"){ var d0 = new Date(); d0.setHours(0, 0, 0, 0); cutoff = d0.getTime(); }
+  else if(rf.range !== "all") cutoff = now - (+rf.range) * 86400000;
+  return S.fb.items.filter(function(d){
+    if(rf.branch && d.branch !== rf.branch) return false;
+    if(rf.where && d.type !== rf.where) return false;
+    if(rf.code && d.codeId !== rf.code) return false;
+    if(cutoff && fbTime(d.createdAt) < cutoff) return false;
+    return true;
+  });
+}
+function fbStars(n){
+  n = Math.max(0, Math.min(5, Math.round(n || 0)));
+  return '<span class="fb-stars" aria-label="' + n + '/5">' + "★".repeat(n) + '<span>' + "★".repeat(5 - n) + '</span></span>';
+}
+function fbWhere(d){ return d.type === "store" ? t("fbWhereStore") : t("fbWhereDelivery"); }
+function fbPlaceOf(id){ var c = fbFind(id); return c ? c.place : t("fbDeletedCode"); }
+function fbWhen(d){ var ms = fbTime(d.createdAt); return ms ? fmtDateTime(new Date(ms).toISOString()) : ""; }
+
+function fbRepliesHtml(){
+  var F = S.fb, rf = F.rf;
+  if(!F.itemsLoaded) return '<div class="empty">' + t("loading") + '</div>';
+  if(F.itemsError) return '<div class="empty">' + t("fbLoadErr") + '</div>';
+
+  var opt = function(v, label, cur){ return '<option value="' + esc(v) + '"' + (cur === v ? " selected" : "") + '>' + esc(label) + '</option>'; };
+  var codesForBranch = F.codes.filter(function(c){ return !rf.branch || c.branch === rf.branch; });
+  var html = '<div class="filters">' +
+    '<select id="fbr_branch">' + opt("", t("filterAll"), rf.branch) + COMPANIES.map(function(c){ return opt(c.id, S.lang === "ar" ? c.ar : c.en, rf.branch); }).join("") + '</select>' +
+    '<select id="fbr_where">' + opt("", t("fbWhereAll"), rf.where) + opt("store", t("fbWhereStore"), rf.where) + opt("delivery", t("fbWhereDelivery"), rf.where) + '</select>' +
+    '<select id="fbr_code">' + opt("", t("fbCodeAll"), rf.code) + codesForBranch.map(function(c){ return opt(c.id, c.place, rf.code); }).join("") + '</select>' +
+    '<select id="fbr_range">' + opt("today", t("today"), rf.range) + opt("7", t("last7"), rf.range) + opt("30", t("last30"), rf.range) + opt("all", t("allTime"), rf.range) + '</select>' +
+  '</div>';
+
+  var list = fbFiltered();
+  var complaints = list.filter(function(d){ return d.kind === "complaint"; });
+  var reviews = list.filter(function(d){ return d.kind === "review"; });
+  var open = complaints.filter(function(d){ return !d.handled; });
+  var shownComplaints = F.showHandled ? complaints : open;
+
+  /* complaints */
+  html += '<div class="card fb-complaints">' +
+    '<div class="fb-card-head"><div class="section-title">' + t("fbComplaintsTitle") + '</div>' +
+      (open.length ? '<span class="badge badge-issues">' + open.length + ' ' + t("fbOpen") + '</span>' : '<span class="badge badge-approved">' + t("fbAllHandled") + '</span>') + '</div>';
+  if(!shownComplaints.length) html += '<p class="hint">' + t(complaints.length ? "fbNoOpenComplaints" : "fbNoComplaints") + '</p>';
+  html += shownComplaints.map(function(d){
+    var contact = d.wantsContact ? '<div class="fb-contact">📞 ' + esc([d.contactName, d.contactInfo].filter(Boolean).join(" · ")) + '</div>' : '';
+    return '<div class="fb-complaint' + (d.handled ? " done" : "") + '">' +
+      '<p class="fb-text">' + esc(d.text) + '</p>' + contact +
+      '<div class="fb-meta">' + esc(companyName(d.branch)) + ' · ' + esc(fbWhere(d)) + ' · ' + esc(fbPlaceOf(d.codeId)) + ' · ' + esc(fbWhen(d)) + '</div>' +
+      (d.handled
+        ? '<div class="fb-meta">✓ ' + t("fbHandledBy") + ' ' + esc(d.handledBy || "") + (d.handledAt ? ' · ' + esc(fmtDateTime(d.handledAt)) : '') +
+          ' <button type="button" class="link-btn" data-fb-reopen="' + d.id + '">' + t("fbReopen") + '</button></div>'
+        : '<button type="button" class="btn btn-secondary fb-handle" data-fb-handle="' + d.id + '">' + ICONS.check + ' ' + t("fbMarkHandled") + '</button>') +
+    '</div>';
+  }).join("");
+  if(complaints.length > open.length){
+    html += '<button type="button" class="link-btn" id="fbr_toggleHandled">' + (F.showHandled ? t("fbHideHandled") : t("fbShowHandled") + ' (' + (complaints.length - open.length) + ')') + '</button>';
+  }
+  html += '</div>';
+
+  /* stats */
+  var avg = reviews.length ? reviews.reduce(function(a, d){ return a + (d.stars || 0); }, 0) / reviews.length : 0;
+  html += '<div class="stat-row">' +
+    '<div class="stat"><b>' + (reviews.length ? avg.toFixed(1) : "—") + '</b><span>' + t("fbAvgStars") + '</span></div>' +
+    '<div class="stat"><b>' + reviews.length + '</b><span>' + t("fbReviewsCount") + '</span></div>' +
+    '<div class="stat"><b>' + complaints.length + '</b><span>' + t("fbComplaintsCount") + '</span></div>' +
+  '</div>';
+
+  if(reviews.length){
+    var dist = [0, 0, 0, 0, 0, 0];
+    reviews.forEach(function(d){ dist[d.stars || 0]++; });
+    var maxD = Math.max.apply(null, dist.slice(1)) || 1;
+    html += '<div class="card"><div class="section-title">' + t("fbStarsTitle") + '</div>' +
+      [5, 4, 3, 2, 1].map(function(n){
+        return '<div class="fb-bar-row"><span class="fb-bar-label">' + n + ' ★</span><span class="fb-track"><i class="' + (n <= 2 ? "low" : "") + '" style="width:' + (dist[n] / maxD * 100) + '%"></i></span><span class="fb-bar-val">' + dist[n] + '</span></div>';
+      }).join("") + '</div>';
+
+    var keys = rf.where ? FB_QS[rf.where] : FB_QS.store.concat(FB_QS.delivery);
+    var rows = keys.map(function(k){
+      var c = {good: 0, ok: 0, bad: 0}, n = 0;
+      reviews.forEach(function(d){ var v = d.answers && d.answers[k]; if(v && c[v] !== undefined){ c[v]++; n++; } });
+      if(!n) return "";
+      var pct = function(v){ return Math.round(c[v] / n * 100); };
+      return '<div class="fb-q-row"><div class="fb-q-head"><b>' + esc(t("fbQ_" + k)) + '</b><span class="hint" style="margin:0;">' + n + '</span></div>' +
+        '<div class="fb-split"><i class="g" style="width:' + pct("good") + '%"></i><i class="o" style="width:' + pct("ok") + '%"></i><i class="b" style="width:' + pct("bad") + '%"></i></div>' +
+        '<div class="fb-q-legend"><span class="g">' + t("fbGood") + ' ' + pct("good") + '%</span><span class="o">' + t("fbOk") + ' ' + pct("ok") + '%</span><span class="b">' + t("fbBad") + ' ' + pct("bad") + '%</span></div></div>';
+    }).join("");
+    if(rows) html += '<div class="card"><div class="section-title">' + t("fbQuestionsTitle") + '</div>' + rows + '</div>';
+  }
+
+  /* per code */
+  if(list.length){
+    var per = {};
+    list.forEach(function(d){
+      var p = per[d.codeId] || (per[d.codeId] = {n: 0, r: 0, sum: 0, c: 0});
+      p.n++; if(d.kind === "review"){ p.r++; p.sum += d.stars || 0; } else p.c++;
+    });
+    var perList = Object.keys(per).map(function(id){ return {id: id, p: per[id]}; }).sort(function(a, b){ return b.p.n - a.p.n; });
+    var maxN = perList[0].p.n || 1;
+    html += '<div class="card"><div class="section-title">' + t("fbPerCodeTitle") + '</div>' +
+      perList.map(function(x){
+        var c = fbFind(x.id);
+        return '<div class="fb-bar-row"><span class="fb-bar-label fb-code-name">' + esc(fbPlaceOf(x.id)) + (c && !rf.branch ? '<small>' + esc(companyName(c.branch)) + '</small>' : '') + '</span>' +
+          '<span class="fb-track"><i style="width:' + (x.p.n / maxN * 100) + '%"></i></span>' +
+          '<span class="fb-bar-val">' + x.p.n + (x.p.r ? '<small>' + (x.p.sum / x.p.r).toFixed(1) + ' ★</small>' : '') + (x.p.c ? '<small class="red">' + x.p.c + ' ' + t("fbComplaintShort") + '</small>' : '') + '</span></div>';
+      }).join("") + '</div>';
+  }
+
+  /* reviews list */
+  html += '<div class="card"><div class="section-title">' + t("fbReviewsTitle") + '</div>';
+  if(!reviews.length) html += '<p class="hint">' + t("fbNoReviews") + '</p>';
+  html += reviews.slice(0, F.reviewLimit).map(function(d){
+    var chips = Object.keys(d.answers || {}).map(function(k){
+      var v = d.answers[k];
+      return '<span class="fb-ans ' + (v === "good" ? "g" : v === "bad" ? "b" : "o") + '">' + esc(t("fbQ_" + k)) + ': ' + esc(t(v === "good" ? "fbGood" : v === "bad" ? "fbBad" : "fbOk")) + '</span>';
+    }).join("");
+    return '<div class="fb-review' + ((d.stars || 0) <= 2 ? " low" : "") + '">' +
+      '<div class="fb-review-head">' + fbStars(d.stars) + '<span class="fb-meta">' + esc(fbWhen(d)) + '</span></div>' +
+      (d.text ? '<p class="fb-text">' + esc(d.text) + '</p>' : '') +
+      (chips ? '<div class="fb-ans-row">' + chips + '</div>' : '') +
+      '<div class="fb-meta">' + esc(companyName(d.branch)) + ' · ' + esc(fbWhere(d)) + ' · ' + esc(fbPlaceOf(d.codeId)) + '</div>' +
+    '</div>';
+  }).join("");
+  if(reviews.length > F.reviewLimit) html += '<button type="button" class="link-btn" id="fbr_more">' + t("fbShowMore") + '</button>';
+  html += '</div>';
+  return html;
+}
+
+function wireFeedbackReplies(){
+  var F = S.fb, rf = F.rf;
+  var bind = function(id, key){ var el = document.getElementById(id); if(el) el.onchange = function(){ rf[key] = this.value; if(key === "branch") rf.code = ""; F.reviewLimit = 20; renderFeedback(); }; };
+  bind("fbr_branch", "branch"); bind("fbr_where", "where"); bind("fbr_code", "code"); bind("fbr_range", "range");
+  var tg = document.getElementById("fbr_toggleHandled"); if(tg) tg.onclick = function(){ F.showHandled = !F.showHandled; renderFeedback(); };
+  var more = document.getElementById("fbr_more"); if(more) more.onclick = function(){ F.reviewLimit += 20; renderFeedback(); };
+  Array.prototype.forEach.call(document.querySelectorAll("[data-fb-handle]"), function(b){
+    b.onclick = function(){
+      this.disabled = true;
+      S.db.doc("feedback/" + this.getAttribute("data-fb-handle")).update({
+        handled: true, handledAt: new Date().toISOString(), handledBy: (S.currentUser && S.currentUser.fullName) || ""
+      }).then(function(){ toast(t("fbHandledToast")); }).catch(function(){ toast(t("connError")); renderFeedback(); });
+    };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-fb-reopen]"), function(b){
+    b.onclick = function(){
+      S.db.doc("feedback/" + this.getAttribute("data-fb-reopen")).update({handled: false})
+        .catch(function(){ toast(t("connError")); });
+    };
+  });
+}
+
 /* --- screen --- */
+function fbTabsHtml(){
+  var n = fbOpenComplaints();
+  return '<div class="fb-tabs" role="tablist">' +
+    '<button type="button" role="tab" class="tab-btn' + (S.fb.tab === "replies" ? " active" : "") + '" data-fb-tab="replies">' + t("fbTabReplies") + (n ? ' <span class="fb-dot">' + n + '</span>' : '') + '</button>' +
+    '<button type="button" role="tab" class="tab-btn' + (S.fb.tab === "codes" ? " active" : "") + '" data-fb-tab="codes">' + t("fbTabCodes") + '</button>' +
+  '</div>';
+}
+function wireFbTabs(){
+  Array.prototype.forEach.call(document.querySelectorAll("[data-fb-tab]"), function(b){
+    b.onclick = function(){ S.fb.tab = this.getAttribute("data-fb-tab"); renderFeedback(); window.scrollTo(0, 0); };
+  });
+}
 function renderFeedback(){
   subscribeFeedbackCodes();
+  subscribeFeedbackItems();
+  if(S.fb.tab === "replies"){
+    document.getElementById("main").innerHTML = fbTabsHtml() + fbRepliesHtml();
+    wireFbTabs(); wireFeedbackReplies();
+    return;
+  }
   var F = S.fb, f = F.form;
   var branchOpts = COMPANIES.map(function(c){
     return '<option value="' + c.id + '"' + (f.branch === c.id ? " selected" : "") + '>' + esc(S.lang === "ar" ? c.ar : c.en) + '</option>';
@@ -4780,7 +5045,7 @@ function renderFeedback(){
   }).join("");
   var noDomain = !FEEDBACK_SITES[fbBrandOf(f.branch)];
 
-  var html = '<div class="card">' +
+  var html = fbTabsHtml() + '<div class="card">' +
     '<div class="section-title">' + t("fbNewTitle") + '</div>' +
     '<div class="section-sub">' + t("fbNewSub") + '</div>' +
     '<div class="field"><label>' + t("company") + '</label><select id="fb_branch">' + branchOpts + '</select></div>' +
@@ -4836,6 +5101,7 @@ function fbCodeRow(c){
 function fbFind(id){ return S.fb.codes.filter(function(c){ return c.id === id; })[0]; }
 
 function wireFeedback(){
+  wireFbTabs();
   var F = S.fb, f = F.form;
   document.getElementById("fb_branch").onchange = function(){ f.branch = this.value; F.err = ""; renderFeedback(); };
   document.getElementById("fb_place").oninput = function(){ f.place = this.value; };
