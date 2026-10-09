@@ -1528,7 +1528,7 @@ function updateDeptSwitch(){
   var canDelivery = role === "manager" || role === "admin" || role === "viewer";
   var fbBtn = document.getElementById("deptFeedbackBtn");
   var canFeedback = role === "manager" || role === "admin";
-  var canAttendance = role === "manager" || role === "admin";
+  var canAttendance = isAttendanceOwner();
   var atBtn = document.getElementById("deptAttendanceBtn");
   atBtn.style.display = canAttendance ? "" : "none";
   atBtn.textContent = t("deptAttendanceLabel");
@@ -5216,6 +5216,13 @@ function fbCreate(){
 }
 
 // ================= Attendance (read-only; written by the shop's fingerprint computer) =================
+// Owner only for now (Oct 2026): he decides later if anyone else should see it.
+// Must match the email list in firestore.rules (isAttendanceOwner).
+var ATT_OWNERS = ["tarek.hajjomar@gmail.com"];
+function isAttendanceOwner(){
+  var u = S.auth && S.auth.currentUser;
+  return !!(u && u.email && ATT_OWNERS.indexOf(String(u.email).toLowerCase()) !== -1);
+}
 function attTodayStr(){ var d = new Date(); return d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2); }
 S.att = {day: "", view: "day", doc: null, month: null, loaded: false, error: false, unsub: null, unsubM: null};
 function stopAttendance(){
@@ -5329,7 +5336,7 @@ function render(){
     if(isManagerUser()) renderFeedback(); else { S.appMode = "handover"; render(); }
   } else if(S.appMode === "attendance"){
     applyBrand("");
-    if(isManagerUser()) renderAttendance(); else { S.appMode = "handover"; render(); }
+    if(isAttendanceOwner()) renderAttendance(); else { S.appMode = "handover"; render(); }
   } else if(S.appMode === "delivery"){
     applyBrand("");
     if(isManagerUser() || isViewerUser()) renderDelivery(); else { S.appMode = "handover"; render(); }

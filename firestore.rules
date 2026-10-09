@@ -118,13 +118,17 @@ service cloud.firestore {
 
     // ---------------- attendance (Oct 2026) ----------------
     // Written only by the shop's fingerprint computer (service account, which
-    // bypasses these rules). Managers read; nobody writes from the app.
+    // bypasses these rules). Only the owner reads for now; nobody writes from
+    // the app. Keep this list in sync with ATT_OWNERS in index.html.
+    function isAttendanceOwner() {
+      return isSignedIn() && request.auth.token.email in ['tarek.hajjomar@gmail.com'];
+    }
     match /attendance_days/{day} {
-      allow read: if isManager();
+      allow read: if isAttendanceOwner();
       allow write: if false;
     }
     match /attendance_reports/{month} {
-      allow read: if isManager();
+      allow read: if isAttendanceOwner();
       allow write: if false;
     }
 
