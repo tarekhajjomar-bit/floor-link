@@ -257,10 +257,10 @@ service cloud.firestore {
     //    too, so only managers read feedback (not supervisors).
     match /{collection}/{document=**} {
       allow read: if isSignedIn()
-                  && !(collection in ['handovers', 'merch_visits', 'quick_shortages', 'expiry_items', 'delivery_shifts', 'feedback', 'feedback_codes', 'feedback_rate'])
+                  && !(collection in ['handovers', 'attendance_days', 'attendance_reports', 'merch_visits', 'quick_shortages', 'expiry_items', 'delivery_shifts', 'feedback', 'feedback_codes', 'feedback_rate'])
                   && (!isViewer() || collection in ['catalog', 'settings']);
       allow write: if canWrite()
-                   && !(collection in ['handovers', 'merch_visits', 'quick_shortages', 'expiry_items', 'delivery_shifts', 'feedback', 'feedback_codes', 'feedback_rate']);
+                   && !(collection in ['handovers', 'attendance_days', 'attendance_reports', 'merch_visits', 'quick_shortages', 'expiry_items', 'delivery_shifts', 'feedback', 'feedback_codes', 'feedback_rate']);
     }
   }
 }
