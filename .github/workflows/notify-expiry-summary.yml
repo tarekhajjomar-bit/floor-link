@@ -1,0 +1,25 @@
+name: Notify — daily expiry summary
+
+on:
+  schedule:
+    # 19:00 UTC ≈ 10:00 PM Beirut in summer (UTC+3), 9:00 PM in winter (UTC+2).
+    # One notification a day listing who added items to Expiry Control and how many.
+    - cron: "0 19 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install dependencies
+        working-directory: scripts
+        run: npm install
+      - name: Run notifier
+        working-directory: scripts
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node notify.js expiry-summary

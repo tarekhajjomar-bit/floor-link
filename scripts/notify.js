@@ -7,7 +7,7 @@
 // Messaging — all free, no billing account needed anywhere.
 //
 // Usage: node notify.js <mode>
-//   mode is one of: handover | feedback | supervisor-reminder | expiry-check | merchandiser-reminder
+//   mode is one of: handover | feedback | supervisor-reminder | expiry-check | expiry-summary | merchandiser-reminder
 //
 // Required environment variable:
 //   FIREBASE_SERVICE_ACCOUNT — the full JSON key of a Firebase service
@@ -134,6 +134,39 @@ async function checkNewExpiryItems() {
   const batch = db.batch();
   fresh.forEach((doc) => batch.update(doc.ref, { notifiedAdmin: true }));
   await batch.commit();
+}
+
+/** Type 1b (daily) — one end-of-day summary of who added items to Expiry Control,
+ * instead of a notification for every scan (the manager found those too noisy, Oct 2026).
+ * Covers everything added in the last 26 hours that hasn't been in a summary yet,
+ * so a late or skipped GitHub run never loses items. */
+async function sendDailyExpirySummary() {
+  const since = new Date(Date.now() - 26 * 3600 * 1000).toISOString();
+  const snap = await db.collection("expiry_items").where("createdAt", ">=", since).get();
+  const fresh = snap.docs.filter((d) => d.data().inDailySummary !== true);
+  if (!fresh.length) { console.log("No new expiry items today — no summary sent."); return; }
+  const managerTokens = await getTokens({ role: MANAGER_ROLES });
+  console.log(`Expiry items for the summary: ${fresh.length} · Manager devices: ${managerTokens.length}`);
+
+  const groups = {};
+  fresh.forEach((doc) => {
+    const d = doc.data();
+    const who = (d.createdBy && (d.createdBy.fullName || d.createdBy.username)) || "موظف";
+    const key = who + "|" + (d.company || "");
+    (groups[key] = groups[key] || { who, company: d.company, n: 0 }).n += 1;
+  });
+  const list = Object.values(groups).sort((a, b) => b.n - a.n);
+  const lines = list.slice(0, 8).map((g) => `• ${g.who} (${branchName(g.company)}): ${g.n} ${g.n === 1 ? "منتج" : "منتجات"}`);
+  if (list.length > 8) lines.push(`• و${list.length - 8} غيرهن`);
+  const title = `📦 ملخّص الإكسبايري اليوم: ${fresh.length} ${fresh.length === 1 ? "منتج" : "منتجات"}`;
+  await sendToTokens(managerTokens, title, lines.join("\n"), { type: "expiry-summary" });
+
+  // Firestore batches hold up to 500 writes.
+  for (let i = 0; i < fresh.length; i += 450) {
+    const batch = db.batch();
+    fresh.slice(i, i + 450).forEach((doc) => batch.update(doc.ref, { inDailySummary: true, notifiedAdmin: true }));
+    await batch.commit();
+  }
 }
 
 /** Type 1c — customer feedback from the QR page: tell managers.
@@ -280,8 +313,10 @@ async function sendTestNotification() {
 
 const mode = process.argv[2];
 const modes = {
-  // Runs every 10 minutes (notify-handover.yml): new handovers, newly scanned expiry items, customer feedback.
-  "handover": async () => { await checkNewHandovers(); await checkNewExpiryItems(); await checkNewFeedback(); },
+  // Runs every 10 minutes (notify-handover.yml): new handovers and customer feedback.
+  // New expiry items are no longer announced one by one; see "expiry-summary" (once a day).
+  "handover": async () => { await checkNewHandovers(); await checkNewFeedback(); },
+  "expiry-summary": sendDailyExpirySummary,
   "feedback": checkNewFeedback,
   "new-items": checkNewExpiryItems,
   "supervisor-reminder": checkSupervisorReminders,

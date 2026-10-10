@@ -5335,7 +5335,7 @@ function render(){
     applyBrand("");
     if(isManagerUser()) renderFeedback(); else { S.appMode = "handover"; render(); }
   } else if(S.appMode === "attendance"){
-    applyBrand("");
+    applyBrand("shoppies");   // attendance is Shoppies' own: show it in Shoppies red
     if(isAttendanceOwner()) renderAttendance(); else { S.appMode = "handover"; render(); }
   } else if(S.appMode === "delivery"){
     applyBrand("");
