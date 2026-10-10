@@ -47,7 +47,19 @@ async function getTokens({ role, userId } = {}) {
   else if (role) query = query.where("role", "==", role);
   if (userId) query = query.where("userId", "==", userId);
   const snap = await query.get();
-  return [...new Set(snap.docs.map((d) => d.data().token).filter(Boolean))];
+  // A phone can end up registered several times (iOS hands out new tokens), and every
+  // registered token gets its own copy, so the same alert shows up 2–3 times.
+  // Keep only the newest token per account; tokens with no account are kept as they are.
+  const newest = {};
+  const loose = [];
+  snap.docs.forEach((doc) => {
+    const d = doc.data();
+    if (!d.token) return;
+    if (!d.userId) { loose.push(d.token); return; }
+    const cur = newest[d.userId];
+    if (!cur || String(d.updatedAt || "") > String(cur.updatedAt || "")) newest[d.userId] = d;
+  });
+  return [...new Set(Object.values(newest).map((d) => d.token).concat(loose))];
 }
 
 /** Sends one notification to a list of tokens, and cleans up any tokens Firebase reports as dead. */
@@ -242,7 +254,10 @@ async function checkSupervisorReminders() {
   }
 }
 
-/** Type 3 — expiry alerts: notify managers as items cross the configured day thresholds. */
+/** Type 3 — expiry alerts: tell managers about items that crossed a day threshold.
+ * ONE notification per run (8 AM and 5 PM), listing each product once. Before Oct 2026
+ * this sent one push per item per threshold, so a product scanned twice, or one that
+ * jumped past several thresholds at once, flooded the phone with identical alerts. */
 async function checkExpiry() {
   const thresholdsDoc = await db.doc("settings/expiry").get();
   const thresholds = (thresholdsDoc.exists && Array.isArray(thresholdsDoc.data().days) && thresholdsDoc.data().days.length)
@@ -250,29 +265,40 @@ async function checkExpiry() {
     : [7, 3, 1];
 
   const itemsSnap = await db.collection("expiry_items").where("status", "==", "active").get();
-  const managerTokens = await getTokens({ role: MANAGER_ROLES });
-  console.log(`Manager devices: ${managerTokens.length}`);
   const now = new Date();
   now.setHours(0, 0, 0, 0);
 
+  const toMark = [];        // [docRef, [thresholds just crossed]]
+  const products = {};      // one line per product + expiry date + branch
   for (const doc of itemsSnap.docs) {
     const d = doc.data();
     if (!d.expiryDate) continue;
-    const exp = new Date(d.expiryDate + "T00:00:00");
-    const daysLeft = Math.round((exp - now) / 86400000);
+    const daysLeft = Math.round((new Date(d.expiryDate + "T00:00:00") - now) / 86400000);
     const notified = Array.isArray(d.notifiedThresholds) ? d.notifiedThresholds : [];
+    const crossed = thresholds.filter((th) => daysLeft <= th && !notified.includes(th));
+    if (!crossed.length) continue;
+    toMark.push([doc.ref, crossed]);
+    const name = d.productName || d.barcode || "منتج";
+    const key = [name, d.expiryDate, d.company || d.branch || ""].join("|");
+    if (!products[key]) products[key] = { name, daysLeft, branch: branchName(d.company) || d.branch || "" };
+  }
 
-    for (const th of thresholds) {
-      if (daysLeft <= th && !notified.includes(th)) {
-        await sendToTokens(
-          managerTokens,
-          "منتج قرّب ينتهي",
-          `${d.productName || d.barcode} — ${daysLeft < 0 ? "منتهي" : daysLeft === 0 ? "بينتهي اليوم" : "باقي " + daysLeft + " يوم"} (${branchName(d.company) || d.branch || ""})`,
-          { type: "expiry", id: doc.id }
-        );
-        await doc.ref.update({ notifiedThresholds: admin.firestore.FieldValue.arrayUnion(th) });
-      }
-    }
+  const list = Object.values(products).sort((a, b) => a.daysLeft - b.daysLeft);
+  if (!list.length) { console.log("No items crossed a threshold."); return; }
+  const when = (n) => n < 0 ? "منتهي" : n === 0 ? "بينتهي اليوم" : "باقي " + n + " يوم";
+  const lines = list.slice(0, 8).map((p) => `• ${p.name} — ${when(p.daysLeft)} (${p.branch})`);
+  if (list.length > 8) lines.push(`• و${list.length - 8} غيرهن`);
+  const title = list.length === 1 ? "⏳ منتج قرّب ينتهي" : `⏳ ${list.length} منتجات قرّبو ينتهو`;
+
+  const managerTokens = await getTokens({ role: MANAGER_ROLES });
+  console.log(`Products to report: ${list.length} (from ${toMark.length} items) · Manager devices: ${managerTokens.length}`);
+  await sendToTokens(managerTokens, title, lines.join("\n"), { type: "expiry" });
+
+  for (let i = 0; i < toMark.length; i += 450) {
+    const batch = db.batch();
+    toMark.slice(i, i + 450).forEach(([ref, crossed]) =>
+      batch.update(ref, { notifiedThresholds: admin.firestore.FieldValue.arrayUnion(...crossed) }));
+    await batch.commit();
   }
 }
 
