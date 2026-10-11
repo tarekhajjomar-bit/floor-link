@@ -135,84 +135,13 @@ service cloud.firestore {
     function isAttendanceOwner() {
       return isSignedIn() && request.auth.token.email in ['tarek.hajjomar@gmail.com'];
     }
-    // HR accounts (role "hr") see attendance too, but never salaries.
-    function isHR() {
-      return isSignedIn() && myRole() == 'hr';
-    }
     match /attendance_days/{day} {
-      allow read: if isAttendanceOwner() || isHR();
+      allow read: if isAttendanceOwner();
       allow write: if false;
     }
     match /attendance_reports/{month} {
-      allow read: if isAttendanceOwner() || isHR();
+      allow read: if isAttendanceOwner();
       allow write: if false;
-    }
-
-    // ---------------- payroll (Oct 2026) ----------------
-    // Salaries, limits, warnings, deposits and month closing: the owner only.
-    // HR adds advances and discounts and sees them, but never a salary, a net
-    // total, a warning, or an employee's advance limit.
-    match /pay_staff/{did}     { allow read, write: if isAttendanceOwner(); }
-    match /pay_settings/{id}   { allow read, write: if isAttendanceOwner(); }
-    match /pay_warnings/{id}   { allow read, write: if isAttendanceOwner(); }
-    match /pay_months/{month}  { allow read, write: if isAttendanceOwner(); }
-    match /pay_deposit/{id}    { allow read, write: if isAttendanceOwner(); }
-
-    // Names and fingerprint IDs only, so HR can pick an employee.
-    match /hr_staff/{did} {
-      allow read: if isAttendanceOwner() || isHR();
-      allow write: if isAttendanceOwner();
-    }
-    match /pay_discounts/{id} {
-      allow read: if isAttendanceOwner() || isHR();
-      allow create: if isAttendanceOwner()
-                    || (isHR() && request.resource.data.by == request.auth.uid
-                        && request.resource.data.amount is number
-                        && request.resource.data.amount > 0);
-      allow update, delete: if isAttendanceOwner();
-    }
-    // Over-limit advance requests: HR asks, the owner decides.
-    match /pay_requests/{id} {
-      allow read: if isAttendanceOwner() || isHR();
-      allow create: if isHR() && request.resource.data.by == request.auth.uid
-                    && request.resource.data.status == 'pending'
-                    && request.resource.data.amount is number
-                    && request.resource.data.amount > 0;
-      allow update, delete: if isAttendanceOwner();
-    }
-    // An HR advance is only accepted together with its month total, and only
-    // while that total stays within the employee's limit. The limit lives in
-    // pay_staff (owner-only); rules can check it without HR ever reading it.
-    function advTotalsPath(key) {
-      return /databases/$(database)/documents/pay_adv_totals/$(key);
-    }
-    function advanceWithinLimit(advId) {
-      let a = request.resource.data;
-      let key = a.did + '_' + a.month;
-      let before = exists(advTotalsPath(key)) ? get(advTotalsPath(key)).data.total : 0;
-      let after = getAfter(advTotalsPath(key)).data;
-      let limit = get(/databases/$(database)/documents/pay_staff/$(a.did)).data.get('advanceLimit', 0);
-      return a.by == request.auth.uid
-        && a.amount is number && a.amount > 0
-        && a.get('approvedOver', false) == false
-        && after.lastId == advId
-        && after.total == before + a.amount
-        && after.total <= limit;
-    }
-    match /pay_advances/{advId} {
-      allow read: if isAttendanceOwner() || isHR();
-      allow create: if isAttendanceOwner() || (isHR() && advanceWithinLimit(advId));
-      allow update, delete: if isAttendanceOwner();
-    }
-    match /pay_adv_totals/{key} {
-      allow read: if isAttendanceOwner() || isHR();
-      allow write: if isAttendanceOwner()
-                   || (isHR()
-                       && !exists(/databases/$(database)/documents/pay_advances/$(request.resource.data.lastId))
-                       && getAfter(/databases/$(database)/documents/pay_advances/$(request.resource.data.lastId)).data.did + '_'
-                          + getAfter(/databases/$(database)/documents/pay_advances/$(request.resource.data.lastId)).data.month == key
-                       && request.resource.data.total == (resource == null ? 0 : resource.data.total)
-                          + getAfter(/databases/$(database)/documents/pay_advances/$(request.resource.data.lastId)).data.amount);
     }
 
     // ---------------- activity_log ----------------
@@ -338,14 +267,13 @@ service cloud.firestore {
     //  - a viewer can only read catalog and settings here, and can't write.
     //  - the three customer-feedback collections are left to their own rules
     //    too, so only managers read feedback (not supervisors).
-    //  - payroll / HR collections (Oct 2026) are left to their own rules, and
-    //    account documents (users) are only written through their own rules.
+    //  - account documents (users) are only written through their own rules (Oct 2026).
     match /{collection}/{document=**} {
       allow read: if isSignedIn()
-                  && !(collection in ['handovers', 'attendance_days', 'attendance_reports', 'merch_visits', 'quick_shortages', 'expiry_items', 'delivery_shifts', 'feedback', 'feedback_codes', 'feedback_rate', 'pay_staff', 'pay_settings', 'pay_warnings', 'pay_months', 'pay_deposit', 'hr_staff', 'pay_discounts', 'pay_requests', 'pay_advances', 'pay_adv_totals'])
+                  && !(collection in ['handovers', 'attendance_days', 'attendance_reports', 'merch_visits', 'quick_shortages', 'expiry_items', 'delivery_shifts', 'feedback', 'feedback_codes', 'feedback_rate'])
                   && (!isViewer() || collection in ['catalog', 'settings']);
       allow write: if canWrite()
-                   && !(collection in ['handovers', 'attendance_days', 'attendance_reports', 'merch_visits', 'quick_shortages', 'expiry_items', 'delivery_shifts', 'feedback', 'feedback_codes', 'feedback_rate', 'pay_staff', 'pay_settings', 'pay_warnings', 'pay_months', 'pay_deposit', 'hr_staff', 'pay_discounts', 'pay_requests', 'pay_advances', 'pay_adv_totals', 'users']);
+                   && !(collection in ['handovers', 'attendance_days', 'attendance_reports', 'merch_visits', 'quick_shortages', 'expiry_items', 'delivery_shifts', 'feedback', 'feedback_codes', 'feedback_rate', 'users']);
     }
   }
 }
