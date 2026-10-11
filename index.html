@@ -463,6 +463,18 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
 .req-block:first-of-type{border-top:none; padding-top:0; margin-top:0;}
 .req-block-head{display:flex; align-items:center; margin-bottom:8px;}
 .req-block-head h3{font-size:13.5px; font-weight:600;}
+.req-role-group{border-top:2px solid var(--line); padding-top:12px; margin-top:16px;}
+.req-role-group:first-of-type{border-top:none; padding-top:0; margin-top:0;}
+.req-role-head{font-size:13px; font-weight:700; color:var(--ink-soft); margin-bottom:6px; display:flex; align-items:center; gap:6px;}
+.req-role-mine{color:var(--red);}
+.req-role-tag{font-size:10px; font-weight:700; color:#fff; background:var(--red); border-radius:999px; padding:1px 7px;}
+.photo-by{position:absolute; left:0; right:0; bottom:0; font-size:8.5px; font-weight:600; color:#fff; background:rgba(0,0,0,.55); text-align:center; padding:1px 2px; line-height:1.2;}
+.thumb-sm-wrap{display:inline-block; position:relative; margin-inline-end:6px;}
+.photo-by-sm{font-size:9px; color:var(--ink-soft); text-align:center; margin-top:1px; max-width:54px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.handover-gate-card{text-align:center; padding:28px 20px;}
+.hg-countdown{font-size:38px; font-weight:800; font-variant-numeric:tabular-nums; color:var(--red); margin:14px 0;}
+.hg-open-list{margin:14px 0; display:flex; flex-direction:column; gap:8px;}
+.hg-open-row{display:flex; align-items:center; justify-content:space-between; background:var(--surface); border:1px solid var(--line-soft); border-radius:12px; padding:10px 14px; font-size:13.5px;}
 .auth-wrap{max-width:420px; margin:24px auto 0;}
 .auth-switch{text-align:center; font-size:13px; color:var(--ink-soft); margin-top:14px;}
 .auth-switch button{background:none; border:none; color:var(--teal); font-weight:700; cursor:pointer; font-size:13px; padding:0 3px;}
@@ -822,6 +834,19 @@ en:{
   pwMismatch:"Passwords don't match.", pwTooShort:"Use at least 4 characters.",
   pwSaved:"Manager password saved.", close:"Close",
   reqPhotosTitle:"Mandatory photo checkpoints", reqPhotosSub:"A photo is required for each area below before the handover can be submitted.",
+  reqPhotosHandoverSub:"Each supervisor photographs every area independently, from their own phone. Nobody can add a photo to the other person's set.",
+  reqPhotosOutgoingHead:"{name} — outgoing (handing over)", reqPhotosIncomingHead:"{name} — incoming (receiving)",
+  reqRoleYouTag:"You", notYourCheckpointErr:"This checkpoint belongs to the other supervisor — you can only add your own photos.",
+  reqBothMustCapture:"Both supervisors must personally take at least one checkpoint photo before this can be submitted.",
+  handoverGateTitle:"Confirm both supervisors are present", handoverGateIntro:"A handover needs both the outgoing and incoming supervisor to confirm, from their own phones, within 15 minutes of each other.",
+  handoverGateStartBtn:"Start — I'm the outgoing supervisor", handoverGateJoinRow:"{name} started a handover and is waiting", handoverGateJoinBtn:"Join — I'm the incoming supervisor",
+  handoverGateWaitingTitle:"Waiting for the incoming supervisor", handoverGateWaitingSub:"{name} confirmed. Now the incoming supervisor needs to open Floor Link on their own phone and join within the time shown.",
+  handoverGateShareHint:"If the window runs out, this session is cancelled and you'll need to start again from scratch.",
+  handoverGateCancelBtn:"Cancel this session",
+  handoverGateConfirmedTitle:"Both supervisors confirmed", handoverGateConfirmedSub:"{out} (outgoing) and {in} (incoming) are both present. You can now fill in the handover.",
+  handoverGateContinueBtn:"Continue to the handover form",
+  handoverSameAccountErr:"You're already the outgoing supervisor on this session — the incoming confirmation needs a different account.",
+  handoverSameDeviceErr:"This device already confirmed the outgoing side — the incoming supervisor needs to confirm from their own phone.",
   chicken:"Chicken area", cheese:"Cheese", olives:"Olives", eggs:"Eggs", breadSelfService:"Bread — Self Service",
   reqNoteLabel:"Confirmation checklist (required)",
   reqNoteMissing:" (confirmation checklist)",
@@ -1140,6 +1165,19 @@ ar:{
   pwMismatch:"كلمتا المرور غير متطابقتين.", pwTooShort:"استخدم 4 أحرف على الأقل.",
   pwSaved:"تم حفظ كلمة مرور المدير.", close:"إغلاق",
   reqPhotosTitle:"صور إلزامية", reqPhotosSub:"صورة واحدة على الأقل مطلوبة لكل منطقة أدناه قبل إمكانية إرسال التسليم.",
+  reqPhotosHandoverSub:"كل مشرف يصوّر كل منطقة بنفسه من تليفونه الخاص. ما حدا يقدر يضيف صورة بقسم التاني.",
+  reqPhotosOutgoingHead:"{name} — المغادر (التسليم)", reqPhotosIncomingHead:"{name} — المستلم (الاستلام)",
+  reqRoleYouTag:"أنت", notYourCheckpointErr:"هاد القسم خاص بالمشرف التاني — فيك تضيف بس صورك أنت.",
+  reqBothMustCapture:"لازم الاثنين (المغادر والمستلم) يصوّروا أقل شي صورة واحدة بنفسهم قبل إمكانية الإرسال.",
+  handoverGateTitle:"تأكيد حضور المشرفين الاثنين", handoverGateIntro:"الهاند أوفر لازم يتأكد فيه المشرف المغادر والمستلم، كل واحد من تليفونه، بفارق ما يتجاوز ١٥ دقيقة بين الاثنين.",
+  handoverGateStartBtn:"بلّش — أنا المشرف المغادر", handoverGateJoinRow:"{name} بلّش هاند أوفر وعم ينتظر", handoverGateJoinBtn:"انضمام — أنا المشرف المستلم",
+  handoverGateWaitingTitle:"بانتظار المشرف المستلم", handoverGateWaitingSub:"{name} أكّد. هلق لازم المشرف المستلم يفتح فلور لينك من تليفونه هو وينضم خلال الوقت المتبقي.",
+  handoverGateShareHint:"إذا خلص الوقت، هالجلسة بتنلغى تلقائيًا ولازم تبلشوا من جديد من الصفر.",
+  handoverGateCancelBtn:"إلغاء هالجلسة",
+  handoverGateConfirmedTitle:"المشرفين الاثنين أكّدوا", handoverGateConfirmedSub:"{out} (المغادر) و{in} (المستلم) الاثنين موجودين. هلق فيكم تعبّوا الهاند أوفر.",
+  handoverGateContinueBtn:"متابعة لتعبئة الهاند أوفر",
+  handoverSameAccountErr:"أنت أصلاً المشرف المغادر بهالجلسة — تأكيد الاستلام لازم يكون من حساب تاني.",
+  handoverSameDeviceErr:"هالجهاز أكّد التسليم أصلاً — المشرف المستلم لازم يأكّد من تليفونه هو.",
   chicken:"منطقة الدجاج", cheese:"الأجبان", olives:"الزيتون", eggs:"البيض", breadSelfService:"الخبز — سيلف سيرفس",
   reqNoteLabel:"قائمة فحص التأكيد (إلزامي)",
   reqNoteMissing:" (قائمة الفحص)",
@@ -1434,39 +1472,255 @@ var S = {
   catalogLookup: null,
   thresholds: [7,3,1],
   thresholdsLoaded: false,
-  thresholdsInput: "7,3,1"
+  thresholdsInput: "7,3,1",
+  handoverSession: null,
+  handoverSessionTick: null,
+  openHandoverSessions: [],
+  handoverGateCleared: false
 };
 
-function freshForm(){
-  var now = new Date();
+function freshRequiredPhotoSet(){
   var reqPhotos = {};
   REQUIRED_PHOTO_KEYS.forEach(function(k){ reqPhotos[k] = []; });
+  return reqPhotos;
+}
+function freshRequiredNoteSet(){
   var reqNotes = {};
   REQUIRED_NOTE_KEYS.forEach(function(k){
     var obj = {};
     REQUIRED_CHECKLIST_ITEMS.forEach(function(item){ obj[item.key] = null; });
     reqNotes[k] = obj;
   });
+  return reqNotes;
+}
+function freshForm(){
+  var now = new Date();
   return {
     company: COMPANIES[0].id, branch:"",
     entryType:"opening",
     date: now.toISOString().slice(0,10),
     time: now.toTimeString().slice(0,5),
-    outgoingName:"", incomingName:"", incomingUserId:null,
+    outgoingName:"", incomingName:"", incomingUserId:null, outgoingUserId:null,
+    handoverSessionId: null,
     cash:{status:"", notes:"", photos:[]},
     inventory:{status:"", notes:"", photos:[]},
     cleanliness:{status:"", notes:"", photos:[]},
     pending:{notes:"", urgent:false},
     staffNotes:"",
     closingCheck:false,
-    requiredPhotos: reqPhotos,
-    requiredNotes: reqNotes,
+    // Solo (opening/closing) entries use the single shared set below.
+    // Handover entries instead use the split Out/In sets further down —
+    // each supervisor fills in their own, independently, from their own
+    // device, so one person can never quietly cover for the other.
+    requiredPhotos: freshRequiredPhotoSet(),
+    requiredNotes: freshRequiredNoteSet(),
+    requiredPhotosOut: freshRequiredPhotoSet(),
+    requiredPhotosIn: freshRequiredPhotoSet(),
+    requiredNotesOut: freshRequiredNoteSet(),
+    requiredNotesIn: freshRequiredNoteSet(),
     outgoingSig:null, incomingSig:null,
     ackOut:false, ackIn:false,
     submitting:false
   };
 }
 S.form = freshForm();
+
+/* ================= HANDOVER DUAL-PRESENCE GATE =================
+   Before a "handover" entry can be filled in, the outgoing supervisor
+   starts a session and the incoming supervisor must join it — from a
+   DIFFERENT account AND a different device — within 15 minutes, measured
+   against the Firestore server clock (not either phone's local clock, so
+   it can't be gamed by changing the time on one device). If the window
+   lapses with only one side confirmed, the session is void: no resume,
+   no partial save, start again from zero. Firestore security rules
+   enforce the same invariants server-side (see firestore.rules), so this
+   isn't just a client-side courtesy. */
+var HANDOVER_SESSION_WINDOW_MS = 15 * 60 * 1000;
+
+function deviceFingerprint(){
+  try{
+    var fp = localStorage.getItem("sh_device_fp");
+    if(!fp){
+      fp = "d_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2);
+      localStorage.setItem("sh_device_fp", fp);
+    }
+    return fp;
+  }catch(e){ return "d_nofp_" + Math.random().toString(36).slice(2); }
+}
+
+function startHandoverSession(){
+  if(!S.db || !S.currentUser) return;
+  var ref = S.db.collection("handover_sessions").doc();
+  var payload = {
+    company: S.form.company,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    outgoing: {
+      userId: S.currentUser.id, fullName: S.currentUser.fullName,
+      deviceId: deviceFingerprint(), confirmedAt: firebase.firestore.FieldValue.serverTimestamp()
+    },
+    incoming: null,
+    status: "awaiting_incoming"
+  };
+  ref.set(payload).then(function(){
+    watchHandoverSession(ref.id);
+  }).catch(function(){ toast(t("connError")); });
+}
+
+function joinHandoverSession(sessionId){
+  if(!S.db || !S.currentUser) return;
+  var ref = S.db.collection("handover_sessions").doc(sessionId);
+  var myDevice = deviceFingerprint();
+  S.db.runTransaction(function(tx){
+    return tx.get(ref).then(function(snap){
+      if(!snap.exists) throw new Error("gone");
+      var d = snap.data();
+      if(d.status !== "awaiting_incoming") throw new Error("not-awaiting");
+      if(d.outgoing && d.outgoing.userId === S.currentUser.id) throw new Error("same-account");
+      if(d.outgoing && d.outgoing.deviceId === myDevice) throw new Error("same-device");
+      tx.update(ref, {
+        incoming: {
+          userId: S.currentUser.id, fullName: S.currentUser.fullName,
+          deviceId: myDevice, confirmedAt: firebase.firestore.FieldValue.serverTimestamp()
+        },
+        status: "confirmed"
+      });
+    });
+  }).catch(function(err){
+    var msg = err && err.message;
+    if(msg === "same-account") toast(t("handoverSameAccountErr"));
+    else if(msg === "same-device") toast(t("handoverSameDeviceErr"));
+    else toast(t("connError"));
+  });
+}
+
+function handoverSessionDeadline(session){
+  if(!session || !session.outgoing || !session.outgoing.confirmedAt) return null;
+  var t0 = session.outgoing.confirmedAt;
+  var ms = (typeof t0.toMillis === "function") ? t0.toMillis() : null;
+  if(ms === null) return null; // serverTimestamp() not yet resolved locally
+  return ms + HANDOVER_SESSION_WINDOW_MS;
+}
+
+function subscribeOpenHandoverSessions(){
+  if(!S.db) return;
+  S.db.collection("handover_sessions")
+    .where("status","==","awaiting_incoming")
+    .onSnapshot(function(snap){
+      S.openHandoverSessions = snap.docs
+        .map(function(d){ return Object.assign({id:d.id}, d.data()); })
+        .filter(function(s){
+          // Client-side time filter too (not just a hint for the UI): a
+          // session whose own countdown has lapsed should not be offered
+          // to join even if Firestore hasn't been told to delete it yet.
+          var dl = handoverSessionDeadline(s);
+          return dl === null || dl > Date.now();
+        });
+      if(S.appMode === "handover" && S.view === "form" && !S.handoverSession) render();
+    }, function(){});
+}
+
+function stopWatchingHandoverSession(){
+  if(S.handoverSession && S.handoverSession.unsub){ try{ S.handoverSession.unsub(); }catch(e){} }
+  if(S.handoverSessionTick){ clearInterval(S.handoverSessionTick); S.handoverSessionTick = null; }
+}
+
+function watchHandoverSession(sessionId){
+  stopWatchingHandoverSession();
+  var ref = S.db.collection("handover_sessions").doc(sessionId);
+  var unsub = ref.onSnapshot(function(snap){
+    if(!snap.exists){ S.handoverSession = null; render(); return; }
+    var d = snap.data();
+    S.handoverSession = Object.assign({id: snap.id, unsub: unsub}, d);
+    render();
+  });
+  S.handoverSession = {id: sessionId, unsub: unsub, status: "awaiting_incoming"};
+  S.handoverSessionTick = setInterval(function(){
+    if(S.appMode === "handover" && S.view === "form" && S.form.entryType === "handover") render();
+  }, 1000);
+}
+
+function abandonHandoverSession(){
+  if(S.handoverSession && S.handoverSession.id && S.db){
+    S.db.collection("handover_sessions").doc(S.handoverSession.id).delete().catch(function(){});
+  }
+  stopWatchingHandoverSession();
+  S.handoverSession = null;
+  S.handoverGateCleared = false;
+  render();
+}
+
+function fmtCountdown(ms){
+  var totalSec = Math.max(0, Math.ceil(ms / 1000));
+  var m = Math.floor(totalSec / 60), s = totalSec % 60;
+  return (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
+}
+
+function renderHandoverGate(){
+  var session = S.handoverSession;
+
+  if(!session){
+    var openRows = (S.openHandoverSessions || []).filter(function(s){
+      return s.company === S.form.company && (!S.currentUser || (s.outgoing && s.outgoing.userId !== S.currentUser.id));
+    }).map(function(s){
+      return '<div class="hg-open-row"><span>'+t("handoverGateJoinRow").replace("{name}", esc(s.outgoing.fullName))+'</span>' +
+        '<button type="button" class="link-btn" id="hgJoinBtn" data-session="'+esc(s.id)+'">'+t("handoverGateJoinBtn")+'</button></div>';
+    }).join("");
+    return '<div class="card handover-gate-card">' +
+      '<div class="section-title">'+t("handoverGateTitle")+'</div>' +
+      '<p class="section-sub">'+t("handoverGateIntro")+'</p>' +
+      '<button type="button" class="btn btn-primary" id="hgStartBtn">'+t("handoverGateStartBtn")+'</button>' +
+      (openRows ? '<div class="hg-open-list">'+openRows+'</div>' : '') +
+    '</div>';
+  }
+
+  if(session.status === "confirmed" && session.incoming){
+    return '<div class="card handover-gate-card">' +
+      '<div class="section-title">'+t("handoverGateConfirmedTitle")+'</div>' +
+      '<p class="section-sub">'+t("handoverGateConfirmedSub").replace("{out}", esc(session.outgoing.fullName)).replace("{in}", esc(session.incoming.fullName))+'</p>' +
+      '<button type="button" class="btn btn-primary" id="hgContinueBtn">'+t("handoverGateContinueBtn")+'</button>' +
+    '</div>';
+  }
+
+  // awaiting_incoming
+  var deadline = handoverSessionDeadline(session);
+  var remaining = deadline === null ? HANDOVER_SESSION_WINDOW_MS : deadline - Date.now();
+  if(deadline !== null && remaining <= 0){
+    // Window lapsed — wipe it immediately, no resume.
+    abandonHandoverSession();
+    return '<div class="card handover-gate-card"><p class="section-sub">'+t("handoverGateShareHint")+'</p></div>';
+  }
+  return '<div class="card handover-gate-card">' +
+    '<div class="section-title">'+t("handoverGateWaitingTitle")+'</div>' +
+    '<p class="section-sub">'+t("handoverGateWaitingSub").replace("{name}", esc(session.outgoing.fullName))+'</p>' +
+    '<div class="hg-countdown">'+fmtCountdown(remaining)+'</div>' +
+    '<p class="hint">'+t("handoverGateShareHint")+'</p>' +
+    '<button type="button" class="link-btn" id="hgCancelBtn">'+t("handoverGateCancelBtn")+'</button>' +
+  '</div>';
+}
+
+function wireHandoverGate(){
+  var startBtn = document.getElementById("hgStartBtn");
+  if(startBtn) startBtn.onclick = startHandoverSession;
+  var cancelBtn = document.getElementById("hgCancelBtn");
+  if(cancelBtn) cancelBtn.onclick = abandonHandoverSession;
+  var joinBtn = document.getElementById("hgJoinBtn");
+  if(joinBtn) joinBtn.onclick = function(){
+    var sessionId = this.getAttribute("data-session");
+    watchHandoverSession(sessionId); // attach live listener so this device also sees "confirmed" the instant it lands
+    joinHandoverSession(sessionId);
+  };
+  var continueBtn = document.getElementById("hgContinueBtn");
+  if(continueBtn) continueBtn.onclick = function(){
+    S.form.handoverSessionId = S.handoverSession.id;
+    S.form.outgoingName = S.handoverSession.outgoing.fullName;
+    S.form.outgoingUserId = S.handoverSession.outgoing.userId;
+    S.form.incomingName = S.handoverSession.incoming.fullName;
+    S.form.incomingUserId = S.handoverSession.incoming.userId;
+    S.handoverGateCleared = true;
+    render();
+  };
+}
+
 var _draftT = null;
 document.addEventListener("input", function(e){ if(S.appMode === "handover" && S.view === "form" && e.target.closest && e.target.closest("#handoverForm")){ clearTimeout(_draftT); _draftT = setTimeout(saveFormDraft, 400); } }, true);
 document.addEventListener("change", function(e){ if(S.appMode === "handover" && S.view === "form" && e.target.closest && e.target.closest("#handoverForm")){ clearTimeout(_draftT); _draftT = setTimeout(saveFormDraft, 400); } }, true);
@@ -1814,8 +2068,11 @@ function computeStatus(f){
   if(f.pending.urgent || f.cash.status === "issue" || f.inventory.status === "issue" || f.cleanliness.status === "issue"){
     return "issues";
   }
-  var hasNo = REQUIRED_NOTE_KEYS.some(function(k){
-    return REQUIRED_CHECKLIST_ITEMS.some(function(item){ return f.requiredNotes[k][item.key] === false; });
+  var noteSetsToCheck = f.entryType === "handover" ? [f.requiredNotesOut, f.requiredNotesIn] : [f.requiredNotes];
+  var hasNo = noteSetsToCheck.some(function(notesObj){
+    return REQUIRED_NOTE_KEYS.some(function(k){
+      return REQUIRED_CHECKLIST_ITEMS.some(function(item){ return notesObj[k][item.key] === false; });
+    });
   });
   if(hasNo){ return "issues"; }
   if(f.entryType === "handover"){
@@ -1865,21 +2122,46 @@ function companyName(id){
 
 /* ================= FORM VIEW ================= */
 function photosArrFor(key){
+  if(key.indexOf("reqOut:") === 0){ return S.form.requiredPhotosOut[key.slice(7)]; }
+  if(key.indexOf("reqIn:") === 0){ return S.form.requiredPhotosIn[key.slice(6)]; }
   if(key.indexOf("req:") === 0){ return S.form.requiredPhotos[key.slice(4)]; }
   return S.form[key].photos;
 }
 
-function reqPhotoBlock(key){
-  var arr = S.form.requiredPhotos[key];
-  var fullKey = "req:" + key;
+// Which checkpoint bucket ("out" vs "in") belongs to the currently signed-in
+// account for THIS handover form. Determined from the session's confirmed
+// identities (set when the gate was cleared), not from anything typed in —
+// so it can't be spoofed by editing a text field.
+function myReqRole(){
+  if(!S.currentUser || S.form.entryType !== "handover") return "";
+  if(S.form.outgoingUserId === S.currentUser.id) return "out";
+  if(S.form.incomingUserId === S.currentUser.id) return "in";
+  return "";
+}
+function isMyReqRole(catKey){
+  var role = myReqRole();
+  if(catKey.indexOf("reqOut:") === 0) return role === "out";
+  if(catKey.indexOf("reqIn:") === 0) return role === "in";
+  return true;
+}
+
+// role is "" for a solo entry (opening/closing — one shared checkpoint
+// set), or "out"/"in" for a handover entry (each supervisor fills their
+// own set, independently, from their own device).
+function reqPhotoBlock(key, role){
+  var photosObj = role === "out" ? S.form.requiredPhotosOut : role === "in" ? S.form.requiredPhotosIn : S.form.requiredPhotos;
+  var notesObj = role === "out" ? S.form.requiredNotesOut : role === "in" ? S.form.requiredNotesIn : S.form.requiredNotes;
+  var arr = photosObj[key];
+  var fullKey = (role === "out" ? "reqOut:" : role === "in" ? "reqIn:" : "req:") + key;
   var photosHtml = "";
   arr.forEach(function(p, i){
-    photosHtml += '<div class="photo-thumb'+(p.pending?" up":"")+'"><img src="'+esc(p.url)+'" alt="" data-img-zoom="'+esc(p.url)+'">' +
+    var byTag = p.byName ? '<span class="photo-by">'+esc(p.byName)+'</span>' : '';
+    photosHtml += '<div class="photo-thumb'+(p.pending?" up":"")+'"><img src="'+esc(p.url)+'" alt="" data-img-zoom="'+esc(p.url)+'">' + byTag +
       (p.failed ? '<button class="retry" type="button" data-photo-retry="'+fullKey+'|'+i+'" aria-label="retry">↻</button>' : '') +
       '<button class="rm" type="button" data-photo-rm="'+fullKey+'|'+i+'">'+ICONS.close+'</button></div>';
   });
   var addHtml = "";
-  if(S.canWriteAssets){
+  if(S.canWriteAssets && isMyReqRole(fullKey)){
     addHtml = '<label class="photo-add">'+ICONS.plus+'<input type="file" accept="image/*" capture="environment" multiple data-photo-add="'+fullKey+'"></label>';
   }
   var body = (S.canWriteAssets || arr.length) ?
@@ -1887,14 +2169,14 @@ function reqPhotoBlock(key){
     '<p class="hint">'+t("reqPhotosBlocked")+'</p>';
   var noteHtml = "";
   if(REQUIRED_NOTE_KEYS.indexOf(key) !== -1){
-    var cl = S.form.requiredNotes[key];
+    var cl = notesObj[key];
     var rows = REQUIRED_CHECKLIST_ITEMS.map(function(item){
       var val = cl[item.key];
       return '<div class="check-row">' +
         '<span class="check-row-label">'+t(item.labelKey)+'</span>' +
         '<div class="chip-row" style="gap:6px;">' +
-          '<button type="button" class="chip chip-yn chip-ok'+(val===true?" sel":"")+'" data-reqcheck="'+key+'|'+item.key+'|yes">'+t("yesLabel")+'</button>' +
-          '<button type="button" class="chip chip-yn chip-issue'+(val===false?" sel":"")+'" data-reqcheck="'+key+'|'+item.key+'|no">'+t("noLabel")+'</button>' +
+          '<button type="button" class="chip chip-yn chip-ok'+(val===true?" sel":"")+'" data-reqcheck="'+role+'|'+key+'|'+item.key+'|yes">'+t("yesLabel")+'</button>' +
+          '<button type="button" class="chip chip-yn chip-issue'+(val===false?" sel":"")+'" data-reqcheck="'+role+'|'+key+'|'+item.key+'|no">'+t("noLabel")+'</button>' +
         '</div>' +
       '</div>';
     }).join("");
@@ -1962,6 +2244,38 @@ function sigBlock(which, label, personName, ackKey){
 
 function renderForm(){
   var f = S.form;
+
+  // Dual-presence gate: a "handover" entry cannot be filled in until BOTH
+  // the outgoing and incoming supervisor have confirmed, each from their
+  // own account and device, within the 15-minute window. Until that's
+  // done, show only the entry-type picker and the gate — never the real
+  // form — so there's no path to filling in checkpoints or signatures
+  // without both people actually present.
+  if(f.entryType === "handover" && !S.handoverGateCleared){
+    var gateChips = ["opening","handover","closing"].map(function(s){
+      return '<button type="button" class="chip chip-shift'+(f.entryType===s?" sel":"")+'" data-entrytype="'+s+'">'+t("entry"+s.charAt(0).toUpperCase()+s.slice(1))+'</button>';
+    }).join("");
+    var gateHtml = '<div class="card">' +
+      '<div class="section-title">'+t("shiftDetails")+'</div>' +
+      '<div class="field"><label>'+t("entryTypeLabel")+'</label><div class="chip-row">'+gateChips+'</div></div>' +
+    '</div>' + renderHandoverGate();
+    document.getElementById("main").innerHTML = gateHtml;
+    Array.prototype.forEach.call(document.querySelectorAll("[data-entrytype]"), function(btn){
+      btn.onclick = function(){
+        var wasHandover = f.entryType === "handover";
+        f.entryType = this.getAttribute("data-entrytype");
+        if(f.entryType !== "handover"){
+          f.incomingName = ""; f.incomingUserId = null; f.incomingSig = null; f.ackIn = false;
+          f.handoverSessionId = null;
+          if(wasHandover) abandonHandoverSession();
+        }
+        renderForm();
+      };
+    });
+    wireHandoverGate();
+    return;
+  }
+
   var companyLocked = S.currentUser && S.currentUser.role === "supervisor" && S.currentUser.company;
   var companyOpts = COMPANIES.map(function(c){
     return '<option value="'+c.id+'"'+(f.company===c.id?" selected":"")+'>'+esc(S.lang==="ar"?c.ar:c.en)+'</option>';
@@ -1975,16 +2289,15 @@ function renderForm(){
   }).join("");
 
   var isSolo = f.entryType !== "handover";
-  var supervisorOpts = S.users.filter(function(u){
-    return u.role === "supervisor" && !u.disabled && (!S.currentUser || u.id !== S.currentUser.id);
-  }).map(function(u){
-    return '<option value="'+esc(u.id)+'"'+(f.incomingUserId===u.id?" selected":"")+'>'+esc(u.fullName)+'</option>';
-  }).join("");
   var nameFieldsHtml = isSolo ?
     '<div class="field"><label>'+t("supervisorNameLabel")+'</label><input type="text" value="'+esc(f.outgoingName)+'" disabled></div>' :
+    // Both names come from the confirmed dual-presence session (set when
+    // the gate was cleared) — no dropdown here, since letting the
+    // outgoing supervisor simply pick a name from a list is exactly the
+    // unverified-handover gap this feature closes.
     '<div class="grid-2">' +
       '<div class="field"><label>'+t("outgoingName")+'</label><input type="text" value="'+esc(f.outgoingName)+'" disabled></div>' +
-      '<div class="field"><label>'+t("incomingName")+'</label><select id="f_in"><option value="">'+t("namePh")+'</option>'+supervisorOpts+'</select></div>' +
+      '<div class="field"><label>'+t("incomingName")+'</label><input type="text" value="'+esc(f.incomingName)+'" disabled></div>' +
     '</div>';
 
   var html = '';
@@ -2026,11 +2339,27 @@ function renderForm(){
     '<div class="field"><textarea id="f_staffNotes" placeholder="'+t("staffNotesPh")+'">'+esc(f.staffNotes)+'</textarea></div>' +
   '</div>';
 
-  html += '<div class="card">' +
-    '<div class="section-title">'+t("reqPhotosTitle")+'</div>' +
-    '<div class="section-sub">'+t("reqPhotosSub")+'</div>' +
-    REQUIRED_PHOTO_KEYS.map(reqPhotoBlock).join("") +
-  '</div>';
+  if(f.entryType === "handover"){
+    var myRole = myReqRole();
+    html += '<div class="card">' +
+      '<div class="section-title">'+t("reqPhotosTitle")+'</div>' +
+      '<div class="section-sub">'+t("reqPhotosHandoverSub")+'</div>' +
+      '<div class="req-role-group">' +
+        '<h4 class="req-role-head'+(myRole==="out"?" req-role-mine":"")+'">'+t("reqPhotosOutgoingHead").replace("{name}", esc(f.outgoingName))+(myRole==="out"?' <span class="req-role-tag">'+t("reqRoleYouTag")+'</span>':'')+'</h4>' +
+        REQUIRED_PHOTO_KEYS.map(function(k){ return reqPhotoBlock(k, "out"); }).join("") +
+      '</div>' +
+      '<div class="req-role-group">' +
+        '<h4 class="req-role-head'+(myRole==="in"?" req-role-mine":"")+'">'+t("reqPhotosIncomingHead").replace("{name}", esc(f.incomingName))+(myRole==="in"?' <span class="req-role-tag">'+t("reqRoleYouTag")+'</span>':'')+'</h4>' +
+        REQUIRED_PHOTO_KEYS.map(function(k){ return reqPhotoBlock(k, "in"); }).join("") +
+      '</div>' +
+    '</div>';
+  } else {
+    html += '<div class="card">' +
+      '<div class="section-title">'+t("reqPhotosTitle")+'</div>' +
+      '<div class="section-sub">'+t("reqPhotosSub")+'</div>' +
+      REQUIRED_PHOTO_KEYS.map(function(k){ return reqPhotoBlock(k, ""); }).join("") +
+    '</div>';
+  }
 
   if(f.entryType === "closing"){
     html += '<div class="card">' +
@@ -2117,8 +2446,13 @@ function wireForm(){
 
   Array.prototype.forEach.call(document.querySelectorAll("[data-entrytype]"), function(btn){
     btn.onclick = function(){
+      var wasHandover = f.entryType === "handover";
       f.entryType = this.getAttribute("data-entrytype");
-      if(f.entryType !== "handover"){ f.incomingName = ""; f.incomingUserId = null; f.incomingSig = null; f.ackIn = false; }
+      if(f.entryType !== "handover"){
+        f.incomingName = ""; f.incomingUserId = null; f.incomingSig = null; f.ackIn = false;
+        f.handoverSessionId = null;
+        if(wasHandover) abandonHandoverSession();
+      }
       renderForm();
     };
   });
@@ -2136,7 +2470,9 @@ function wireForm(){
   Array.prototype.forEach.call(document.querySelectorAll("[data-reqcheck]"), function(btn){
     btn.onclick = function(){
       var parts = this.getAttribute("data-reqcheck").split("|");
-      f.requiredNotes[parts[0]][parts[1]] = (parts[2] === "yes");
+      var role = parts[0], catKey = parts[1], itemKey = parts[2], val = parts[3];
+      var notesObj = role === "out" ? f.requiredNotesOut : role === "in" ? f.requiredNotesIn : f.requiredNotes;
+      notesObj[catKey][itemKey] = (val === "yes");
       renderForm();
     };
   });
@@ -2313,7 +2649,9 @@ document.addEventListener("click", function(e){
   if(input.id === "mPhotoAdd"){ target = "merch"; title = t("displayTitle"); }
   else {
     target = input.getAttribute("data-photo-add");
-    title = target.indexOf("req:") === 0 ? t(target.slice(4)) : t(target);
+    title = target.indexOf("reqOut:") === 0 ? t(target.slice(7)) :
+            target.indexOf("reqIn:") === 0 ? t(target.slice(6)) :
+            target.indexOf("req:") === 0 ? t(target.slice(4)) : t(target);
   }
   camOpen(target, title, input);
 }, true);
@@ -2321,7 +2659,23 @@ document.addEventListener("click", function(e){
 function anyPhotoUploading(list){ return list.some(function(p){ return p.pending; }); }
 function uploadPhoto(catKey, file){
   if(!S.assets) return;
-  var item = {url:URL.createObjectURL(file), id:null, pending:true, _file:file};
+  // A supervisor can only add photos to THEIR OWN checkpoint bucket in a
+  // handover entry — never the other person's, even if the DOM were
+  // tampered with to expose the control. isMyReqRole() is the single
+  // source of truth for which bucket belongs to the signed-in account.
+  if((catKey.indexOf("reqOut:") === 0 || catKey.indexOf("reqIn:") === 0) && !isMyReqRole(catKey)){
+    toast(t("notYourCheckpointErr"));
+    return;
+  }
+  // Checkpoint photos (reqOut:/reqIn:) are stamped with whoever is logged
+  // in on THIS device at capture time — this is what makes it impossible
+  // for one supervisor to quietly fill in the other's checkpoint set: the
+  // name shown under every photo is read from the account that uploaded
+  // it, not typed in by anyone.
+  var isRoleTagged = catKey.indexOf("reqOut:") === 0 || catKey.indexOf("reqIn:") === 0;
+  var byName = (isRoleTagged && S.currentUser) ? S.currentUser.fullName : null;
+  var byUserId = (isRoleTagged && S.currentUser) ? S.currentUser.id : null;
+  var item = {url:URL.createObjectURL(file), id:null, pending:true, _file:file, byName:byName, byUserId:byUserId};
   photosArrFor(catKey).push(item);
   saveFormDraft();
   startPhotoUpload(item, renderForm, saveFormDraft);
@@ -2333,10 +2687,12 @@ function uploadPhoto(catKey, file){
 var FORM_DRAFT_KEY = "fl_handover_draft";
 function saveFormDraft(){
   try{
-    var f = S.form, keep = function(arr){ return (arr||[]).filter(function(p){ return p.id; }).map(function(p){ return {id:p.id, url:p.url}; }); };
+    var f = S.form, keep = function(arr){ return (arr||[]).filter(function(p){ return p.id; }).map(function(p){ return {id:p.id, url:p.url, byName:p.byName||null, byUserId:p.byUserId||null}; }); };
     var d = JSON.parse(JSON.stringify(f, function(k, v){ return (k === "outgoingSig" || k === "incomingSig" || k === "submitting" || k === "_file") ? undefined : v; }));
     ["cash","inventory","cleanliness"].forEach(function(c){ if(d[c]) d[c].photos = keep(f[c].photos); });
     d.requiredPhotos = {}; REQUIRED_PHOTO_KEYS.forEach(function(k){ d.requiredPhotos[k] = keep(f.requiredPhotos[k]); });
+    d.requiredPhotosOut = {}; REQUIRED_PHOTO_KEYS.forEach(function(k){ d.requiredPhotosOut[k] = keep(f.requiredPhotosOut[k]); });
+    d.requiredPhotosIn = {}; REQUIRED_PHOTO_KEYS.forEach(function(k){ d.requiredPhotosIn[k] = keep(f.requiredPhotosIn[k]); });
     localStorage.setItem(FORM_DRAFT_KEY, JSON.stringify({at:Date.now(), form:d}));
   }catch(e){}
 }
@@ -2373,30 +2729,58 @@ function canvasToUpload(which){
 function submitHandover(){
   var f = S.form;
   var needIncoming = f.entryType === "handover";
+  var isHandover = needIncoming;
   if(!f.outgoingName.trim() || (needIncoming && !f.incomingName.trim()) || !f.date){
     toast(needIncoming ? t("reqError") : t("reqErrorSolo"));
     return;
   }
-  var allPhotos = [].concat(f.cash.photos, f.inventory.photos, f.cleanliness.photos);
-  REQUIRED_PHOTO_KEYS.forEach(function(k){ allPhotos = allPhotos.concat(f.requiredPhotos[k]); });
-  if(anyPhotoUploading(allPhotos)){ toast(t("photosStillUploading")); return; }
-  var missing = REQUIRED_PHOTO_KEYS.filter(function(k){
-    return !f.requiredPhotos[k].some(function(p){ return p.id; });
-  });
-  if(missing.length){
-    if(!S.canWriteAssets){
-      toast(t("reqPhotosBlocked"));
-    } else {
-      toast(t("reqPhotoMissing") + missing.map(function(k){ return t(k); }).join(S.lang==="ar" ? "، " : ", "));
-    }
+  if(isHandover && !S.handoverGateCleared){
+    // Shouldn't be reachable (the form is gated), but guard anyway —
+    // never let a submit through without a cleared dual-presence session.
+    toast(t("connError"));
     return;
   }
-  var missingNotes = REQUIRED_NOTE_KEYS.filter(function(k){
-    return REQUIRED_CHECKLIST_ITEMS.some(function(item){ return f.requiredNotes[k][item.key] === null; });
-  });
-  if(missingNotes.length){
-    toast(t("reqPhotoMissing") + missingNotes.map(function(k){ return t(k) + t("reqNoteMissing"); }).join(S.lang==="ar" ? "، " : ", "));
-    return;
+  var allPhotos = [].concat(f.cash.photos, f.inventory.photos, f.cleanliness.photos);
+  var photoSets = isHandover ? [{label:t("reqPhotosOutgoingHead").replace("{name}", f.outgoingName), obj:f.requiredPhotosOut}, {label:t("reqPhotosIncomingHead").replace("{name}", f.incomingName), obj:f.requiredPhotosIn}]
+                              : [{label:"", obj:f.requiredPhotos}];
+  photoSets.forEach(function(s){ REQUIRED_PHOTO_KEYS.forEach(function(k){ allPhotos = allPhotos.concat(s.obj[k]); }); });
+  if(anyPhotoUploading(allPhotos)){ toast(t("photosStillUploading")); return; }
+
+  for(var si=0; si<photoSets.length; si++){
+    var missing = REQUIRED_PHOTO_KEYS.filter(function(k){
+      return !photoSets[si].obj[k].some(function(p){ return p.id; });
+    });
+    if(missing.length){
+      if(!S.canWriteAssets){
+        toast(t("reqPhotosBlocked"));
+      } else {
+        var prefix = photoSets[si].label ? photoSets[si].label + ": " : "";
+        toast(prefix + t("reqPhotoMissing") + missing.map(function(k){ return t(k); }).join(S.lang==="ar" ? "، " : ", "));
+      }
+      return;
+    }
+  }
+  var noteSets = isHandover ? [f.requiredNotesOut, f.requiredNotesIn] : [f.requiredNotes];
+  for(var ni=0; ni<noteSets.length; ni++){
+    var missingNotes = REQUIRED_NOTE_KEYS.filter(function(k){
+      return REQUIRED_CHECKLIST_ITEMS.some(function(item){ return noteSets[ni][k][item.key] === null; });
+    });
+    if(missingNotes.length){
+      toast(t("reqPhotoMissing") + missingNotes.map(function(k){ return t(k) + t("reqNoteMissing"); }).join(S.lang==="ar" ? "، " : ", "));
+      return;
+    }
+  }
+  // Both supervisors must have personally captured at least one checkpoint
+  // photo themselves — proof that each of them actually engaged with the
+  // handover on their own device, not just signed off on someone else's
+  // work. This is on top of the 15-minute dual-presence confirmation.
+  if(isHandover){
+    var outTouched = REQUIRED_PHOTO_KEYS.some(function(k){ return f.requiredPhotosOut[k].some(function(p){ return p.byUserId === f.outgoingUserId; }); });
+    var inTouched = REQUIRED_PHOTO_KEYS.some(function(k){ return f.requiredPhotosIn[k].some(function(p){ return p.byUserId === f.incomingUserId; }); });
+    if(!outTouched || !inTouched){
+      toast(t("reqBothMustCapture"));
+      return;
+    }
   }
   if(f.entryType === "closing" && !f.closingCheck){
     toast(t("closingCheckMissing"));
@@ -2412,22 +2796,44 @@ function submitHandover(){
     var photoIds = function(cat){
       return f[cat].photos.filter(function(p){ return p.id; }).map(function(p){ return p.id; });
     };
-    var reqPhotoIds = {};
-    REQUIRED_PHOTO_KEYS.forEach(function(k){
-      reqPhotoIds[k] = f.requiredPhotos[k].filter(function(p){ return p.id; }).map(function(p){ return p.id; });
-    });
-    var reqNoteVals = {};
-    REQUIRED_NOTE_KEYS.forEach(function(k){
-      var obj = {};
-      REQUIRED_CHECKLIST_ITEMS.forEach(function(item){ obj[item.key] = f.requiredNotes[k][item.key]; });
-      reqNoteVals[k] = obj;
-    });
+    // Solo (opening/closing) entries keep the original plain-id array
+    // format for requiredPhotos, unchanged, since existing saved records
+    // and the log viewer both expect that shape. The new split Out/In
+    // sets are handover-only and use the richer {id, byName, byUserId}
+    // form so the log viewer can show who captured each photo.
+    function packReqPhotoIds(obj){
+      var packed = {};
+      REQUIRED_PHOTO_KEYS.forEach(function(k){
+        packed[k] = obj[k].filter(function(p){ return p.id; }).map(function(p){ return p.id; });
+      });
+      return packed;
+    }
+    function packPhotoSet(obj){
+      var packed = {};
+      REQUIRED_PHOTO_KEYS.forEach(function(k){
+        packed[k] = obj[k].filter(function(p){ return p.id; }).map(function(p){
+          return {id: p.id, byName: p.byName || null, byUserId: p.byUserId || null};
+        });
+      });
+      return packed;
+    }
+    function packNoteSet(obj){
+      var packed = {};
+      REQUIRED_NOTE_KEYS.forEach(function(k){
+        var o = {};
+        REQUIRED_CHECKLIST_ITEMS.forEach(function(item){ o[item.key] = obj[k][item.key]; });
+        packed[k] = o;
+      });
+      return packed;
+    }
 
     var doc = {
       company: f.company,
       entryType: f.entryType, date: f.date, time: f.time,
       outgoingName: f.outgoingName.trim(), incomingName: f.incomingName.trim(),
       incomingUserId: f.incomingUserId || null,
+      outgoingUserId: f.outgoingUserId || null,
+      handoverSessionId: f.handoverSessionId || null,
       submittedByUserId: S.currentUser ? S.currentUser.id : null,
       submittedByUsername: S.currentUser ? (S.currentUser.username || "") : null,
       cash: {status: f.cash.status, notes: f.cash.notes.trim(), photos: photoIds("cash")},
@@ -2436,8 +2842,12 @@ function submitHandover(){
       pending: {notes: f.pending.notes.trim(), urgent: !!f.pending.urgent},
       staffNotes: f.staffNotes.trim(),
       closingCheck: f.entryType === "closing" ? !!f.closingCheck : false,
-      requiredPhotos: reqPhotoIds,
-      requiredNotes: reqNoteVals,
+      requiredPhotos: isHandover ? null : packReqPhotoIds(f.requiredPhotos),
+      requiredNotes: isHandover ? null : packNoteSet(f.requiredNotes),
+      requiredPhotosOut: isHandover ? packPhotoSet(f.requiredPhotosOut) : null,
+      requiredPhotosIn: isHandover ? packPhotoSet(f.requiredPhotosIn) : null,
+      requiredNotesOut: isHandover ? packNoteSet(f.requiredNotesOut) : null,
+      requiredNotesIn: isHandover ? packNoteSet(f.requiredNotesIn) : null,
       outgoingSig: f.outgoingSig ? f.outgoingSig.id : null,
       incomingSig: f.incomingSig ? f.incomingSig.id : null,
       ackOut: !!f.ackOut, ackIn: !!f.ackIn,
@@ -2450,6 +2860,14 @@ function submitHandover(){
     saveOrQueue("handovers", doc, function(queued){
       toast(queued ? t("offlineSavedToast") : t("savedToast"));
       clearFormDraft();
+      // A submitted handover consumes its dual-presence session for good —
+      // delete it and stop watching so it can never be reused or resumed.
+      if(isHandover){
+        if(f.handoverSessionId && S.db){ S.db.collection("handover_sessions").doc(f.handoverSessionId).delete().catch(function(){}); }
+        stopWatchingHandoverSession();
+        S.handoverSession = null;
+        S.handoverGateCleared = false;
+      }
       S.form = freshForm();
       applyIdentityToForms();
       S.view = "dashboard";
@@ -2571,10 +2989,15 @@ function logCard(l){
     body += catLogBlock(t("cash"), l.cash);
     body += catLogBlock(t("inventory"), l.inventory);
     body += catLogBlock(t("cleanliness"), l.cleanliness);
-    if(l.requiredPhotos){
+    function reqLogGroup(photosSet, notesSet, groupLabel){
+      var out = "";
       REQUIRED_PHOTO_KEYS.forEach(function(k){
-        var urls = (l.requiredPhotos[k] || []).map(function(id){ return id; });
-        var checklist = l.requiredNotes && l.requiredNotes[k] ? l.requiredNotes[k] : null;
+        var entries = (photosSet && photosSet[k]) || [];
+        // Older records stored plain id/url strings; newer handover
+        // records store {id, byName, byUserId}. Accept both so past
+        // handovers (and solo entries) still render correctly.
+        var items = entries.map(function(e){ return (typeof e === "string") ? {id:e, byName:null} : e; });
+        var checklist = notesSet && notesSet[k] ? notesSet[k] : null;
         var checklistHtml = "";
         if(checklist){
           checklistHtml = '<div class="check-list" style="margin-bottom:6px;">' +
@@ -2586,12 +3009,23 @@ function logCard(l){
             }).join("") +
           '</div>';
         }
-        if(!urls.length && !checklist) return;
-        body += '<div class="log-cat"><div class="log-cat-head"><b>'+t(k)+'</b><span class="req-tag">'+t("requiredTag")+'</span></div>' +
+        if(!items.length && !checklist) return;
+        out += '<div class="log-cat"><div class="log-cat-head"><b>'+t(k)+'</b><span class="req-tag">'+t("requiredTag")+'</span></div>' +
           checklistHtml +
-          '<div>' + urls.map(function(u){ return '<img class="thumb-sm" src="'+esc(u)+'">'; }).join("") + '</div>' +
+          '<div>' + items.map(function(e){
+            var byTag = e.byName ? '<div class="photo-by-sm">'+esc(e.byName)+'</div>' : '';
+            return '<span class="thumb-sm-wrap"><img class="thumb-sm" src="'+esc(e.id)+'">'+byTag+'</span>';
+          }).join("") + '</div>' +
         '</div>';
       });
+      if(!out) return "";
+      return (groupLabel ? '<div class="req-role-head" style="margin-top:10px;">'+esc(groupLabel)+'</div>' : "") + out;
+    }
+    if(l.requiredPhotosOut || l.requiredPhotosIn){
+      body += reqLogGroup(l.requiredPhotosOut, l.requiredNotesOut, t("reqPhotosOutgoingHead").replace("{name}", l.outgoingName||""));
+      body += reqLogGroup(l.requiredPhotosIn, l.requiredNotesIn, t("reqPhotosIncomingHead").replace("{name}", l.incomingName||""));
+    } else if(l.requiredPhotos){
+      body += reqLogGroup(l.requiredPhotos, l.requiredNotes, "");
     }
     if(l.pending && (l.pending.notes || l.pending.urgent)){
       body += '<div class="log-cat"><div class="log-cat-head"><b>'+t("pending")+'</b>' +
@@ -3190,6 +3624,7 @@ function routeAfterAuth(){
 function applyIdentityToForms(){
   if(!S.currentUser) return;
   S.form.outgoingName = S.currentUser.fullName;
+  S.form.outgoingUserId = S.currentUser.id;
   S.merchForm.merchName = S.currentUser.fullName;
   if(S.currentUser.company){
     if(S.currentUser.role === "supervisor") S.form.company = S.currentUser.company;
@@ -5507,6 +5942,7 @@ function boot(){
     subscribeUsers();
     subscribeTrackedItems();
     subscribeQuickShortages();
+    subscribeOpenHandoverSessions();
     subscribeActivityLog();
     subscribeThresholds();
     watchAuthState();

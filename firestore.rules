@@ -98,6 +98,43 @@ service cloud.firestore {
       allow write: if canWrite();
     }
 
+    // ---------------- handover_sessions ----------------
+    // Backs the dual-presence confirmation gate in Floor Link: before a
+    // "handover" entry can be filled in, the outgoing supervisor starts a
+    // session and the incoming supervisor must join it within 15 minutes,
+    // from a DIFFERENT account. These rules are what actually make that
+    // real instead of just a client-side courtesy — a tampered client
+    // cannot fake either side of it.
+    match /handover_sessions/{id} {
+      allow read: if isSignedIn();
+
+      // Starting a session: the creator can only name THEMSELVES as the
+      // outgoing supervisor (no starting one "as" a colleague), and the
+      // incoming side must start empty.
+      allow create: if isSignedIn()
+                    && request.resource.data.outgoing.userId == request.auth.uid
+                    && request.resource.data.incoming == null
+                    && request.resource.data.status == 'awaiting_incoming';
+
+      // Joining: only the still-empty "incoming" side may be filled in, by
+      // someone who is NOT the outgoing supervisor, and only while the
+      // session is still awaiting_incoming. The outgoing side can never be
+      // edited after creation, so a session can't be quietly reassigned to
+      // a different "outgoing" person after the fact either.
+      allow update: if isSignedIn()
+                    && resource.data.status == 'awaiting_incoming'
+                    && request.resource.data.outgoing == resource.data.outgoing
+                    && request.resource.data.incoming.userId == request.auth.uid
+                    && request.resource.data.incoming.userId != resource.data.outgoing.userId
+                    && request.resource.data.status == 'confirmed';
+
+      // Either participant can delete: covers both the 15-minute expiry
+      // wipe and the normal cleanup once a handover is actually submitted.
+      allow delete: if isSignedIn()
+                    && (resource.data.outgoing.userId == request.auth.uid
+                        || (resource.data.incoming != null && resource.data.incoming.userId == request.auth.uid));
+    }
+
     // ---------------- expiry_items ----------------
     // Any signed-in employee can read, create, and make ordinary edits
     // (quantity, category). Only a manager can touch the two fields that
@@ -270,10 +307,10 @@ service cloud.firestore {
     //  - account documents (users) are only written through their own rules (Oct 2026).
     match /{collection}/{document=**} {
       allow read: if isSignedIn()
-                  && !(collection in ['handovers', 'attendance_days', 'attendance_reports', 'merch_visits', 'quick_shortages', 'expiry_items', 'delivery_shifts', 'feedback', 'feedback_codes', 'feedback_rate'])
+                  && !(collection in ['handovers', 'handover_sessions', 'attendance_days', 'attendance_reports', 'merch_visits', 'quick_shortages', 'expiry_items', 'delivery_shifts', 'feedback', 'feedback_codes', 'feedback_rate'])
                   && (!isViewer() || collection in ['catalog', 'settings']);
       allow write: if canWrite()
-                   && !(collection in ['handovers', 'attendance_days', 'attendance_reports', 'merch_visits', 'quick_shortages', 'expiry_items', 'delivery_shifts', 'feedback', 'feedback_codes', 'feedback_rate', 'users']);
+                   && !(collection in ['handovers', 'handover_sessions', 'attendance_days', 'attendance_reports', 'merch_visits', 'quick_shortages', 'expiry_items', 'delivery_shifts', 'feedback', 'feedback_codes', 'feedback_rate', 'users']);
     }
   }
 }
