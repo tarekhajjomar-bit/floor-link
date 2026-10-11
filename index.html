@@ -562,6 +562,8 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
 .btn.pay-back{width:auto; padding-inline:14px; margin-bottom:10px;}
 .pay-link{background:none; border:0; padding:4px 0; color:var(--red); font:inherit; font-size:12.5px; font-weight:700; cursor:pointer; text-decoration:underline;}
 .pay-gap{height:10px;}
+.pay-check{display:flex; align-items:center; gap:8px; font-size:14px; font-weight:600; margin:2px 0 12px; cursor:pointer;}
+.pay-check input{width:18px; height:18px; accent-color:var(--red);}
 .pay-warn{display:flex; gap:12px; align-items:flex-start; padding:10px 0; border-bottom:1px solid var(--line-soft); font-size:13.5px;}
 .pay-warn img{width:64px; height:64px; object-fit:cover; border-radius:8px; border:1px solid var(--line); cursor:zoom-in; flex:0 0 auto;}
 .pay-stats .att-stat b{font-size:18px;}
@@ -5371,7 +5373,7 @@ function attBind(){
 // The advance limit is enforced by firestore.rules, so HR only learns "over the limit".
 var PAY_STR = {
   en: {
-    payTab:"Payroll", roleHR:"HR", hrTab:"Advances & discounts", month:"Month", loading:"Loading…", loadErr:"Couldn't load. Check your connection.",
+    payTab:"Payroll", roleHR:"HR", cashier:"Cashier (handles a cash drawer)", cashShort:"Cash shortage", addCashShort:"Add cash shortage", cashShortNote:"Shift / note", cashShortAdded:"Cash shortage saved", cashierTag:"Cashier", hrTab:"Advances & discounts", month:"Month", loading:"Loading…", loadErr:"Couldn't load. Check your connection.",
     noSalary:"No salary set", base:"Base salary", net:"Net pay", lateDed:"Lateness", ot:"Overtime", adv:"Advances", disc:"Discounts",
     depHold:"Deposit held", depRelease:"Deposit returned", totalNet:"Total net", employees:"Employees", open:"Open",
     back:"Back", save:"Save", saved:"Saved", name:"Name", fpId:"Fingerprint ID", currency:"Currency", hoursDay:"Working hours per day",
@@ -5399,7 +5401,7 @@ var PAY_STR = {
     advList:"Advances this month", discList:"Discounts this month", needAmount:"Enter an amount", hrSub:"Advances and discounts are deducted from this month's salary."
   },
   ar: {
-    payTab:"المعاشات", roleHR:"HR (سلف وحضور)", hrTab:"السلف والديسكاونت", month:"الشهر", loading:"عم يحمّل…", loadErr:"ما قدر يحمّل. تأكد من النت.",
+    payTab:"المعاشات", roleHR:"HR (سلف وحضور)", cashier:"كاشير (عندو صندوق)", cashShort:"نقص صندوق", addCashShort:"زيد نقص صندوق", cashShortNote:"الوردية / ملاحظة", cashShortAdded:"انحفظ نقص الصندوق", cashierTag:"كاشير", hrTab:"السلف والديسكاونت", month:"الشهر", loading:"عم يحمّل…", loadErr:"ما قدر يحمّل. تأكد من النت.",
     noSalary:"بلا معاش", base:"المعاش الأساسي", net:"الصافي", lateDed:"التأخير", ot:"أوفر تايم", adv:"السلف", disc:"الديسكاونت",
     depHold:"ديبوزيت محجوز", depRelease:"ديبوزيت راجع", totalNet:"مجموع الصافي", employees:"الموظفين", open:"افتح",
     back:"رجوع", save:"حفظ", saved:"انحفظ", name:"الاسم", fpId:"رقم البصمة", currency:"العملة", hoursDay:"ساعات الشغل باليوم",
@@ -5513,16 +5515,18 @@ function payCalc(did){
   var lateDed = lateCounted * minuteRate;
   var otPay = payNum(att.ot_min) * minuteRate * otMult;
   var adv = P.adv.filter(function(a){ return String(a.did) === String(did); }).reduce(function(s, a){ return s + payNum(a.amount); }, 0);
-  var disc = P.disc.filter(function(a){ return String(a.did) === String(did); }).reduce(function(s, a){ return s + payNum(a.amount); }, 0);
+  var mine = P.disc.filter(function(a){ return String(a.did) === String(did); });
+  var cashShort = mine.filter(function(a){ return a.type === "cash_short"; }).reduce(function(s, a){ return s + payNum(a.amount); }, 0);
+  var disc = mine.filter(function(a){ return a.type !== "cash_short"; }).reduce(function(s, a){ return s + payNum(a.amount); }, 0);
   var heldBefore = payDepositHeld(did, m);
   var agreed = payNum(st.depositAgreed), perMonth = payNum(st.depositPerMonth);
   var depHold = (st.status === "closed" || (st.resignation && st.resignation.acceptedAt)) ? 0 : Math.max(0, Math.min(perMonth, agreed - heldBefore));
   var depRelease = 0;
   var rs = st.resignation || {};
   if(rs.acceptedAt && rs.releaseDate && rs.releaseDate <= payMonthEnd(m) && !rs.released) depRelease = Math.max(0, heldBefore);
-  var net = base - lateDed - adv - disc - depHold + otPay + depRelease;
+  var net = base - lateDed - adv - disc - cashShort - depHold + otPay + depRelease;
   return {did: did, name: payName(did), currency: cur, base: payRound(base, cur), lateCountedMin: lateCounted, lateDed: payRound(lateDed, cur),
-    otMin: payNum(att.ot_min), otPay: payRound(otPay, cur), adv: payRound(adv, cur), disc: payRound(disc, cur),
+    otMin: payNum(att.ot_min), otPay: payRound(otPay, cur), adv: payRound(adv, cur), disc: payRound(disc, cur), cashShort: payRound(cashShort, cur),
     depHold: payRound(depHold, cur), depRelease: payRound(depRelease, cur), net: payRound(net, cur),
     absent: payNum(att.absent), absentDates: att.absent_dates || [], hasSalary: !!P.staff[did]};
 }
@@ -5578,6 +5582,7 @@ function renderPayroll(){
         (r.lateDed ? '<span class="neg">'+esc(pt("lateDed"))+' ⁦−'+esc(payMoney(r.lateDed, r.currency))+'⁩'+'</span>' : '') +
         (r.adv ? '<span class="neg">'+esc(pt("adv"))+' ⁦−'+esc(payMoney(r.adv, r.currency))+'⁩'+'</span>' : '') +
         (r.disc ? '<span class="neg">'+esc(pt("disc"))+' ⁦−'+esc(payMoney(r.disc, r.currency))+'⁩'+'</span>' : '') +
+        (r.cashShort ? '<span class="neg">'+esc(pt("cashShort"))+' ⁦−'+esc(payMoney(r.cashShort, r.currency))+'⁩'+'</span>' : '') +
         (r.depHold ? '<span class="neg">'+esc(pt("depHold"))+' ⁦−'+esc(payMoney(r.depHold, r.currency))+'⁩'+'</span>' : '') +
         (r.otPay ? '<span class="pos">'+esc(pt("ot"))+' ⁦+'+esc(payMoney(r.otPay, r.currency))+'⁩'+'</span>' : '') +
         (r.depRelease ? '<span class="pos">'+esc(pt("depRelease"))+' ⁦+'+esc(payMoney(r.depRelease, r.currency))+'⁩'+'</span>' : '') +
@@ -5637,6 +5642,7 @@ function renderPayrollEmployee(did){
     payFieldHtml("pfDep", pt("depAgreed"), st.depositAgreed, "number", 'min="0" step="any" placeholder="'+esc(payRound(payNum(st.baseSalary)/2, cur))+'"') +
     payFieldHtml("pfDepM", pt("depPerMonth"), st.depositPerMonth, "number", 'min="0" step="any"') + '</div>' +
     '<div class="pay-note">'+esc(pt("depHint"))+'</div>' +
+    '<label class="pay-check"><input type="checkbox" id="pfCashier"'+(st.isCashier ? " checked" : "")+'> '+esc(pt("cashier"))+'</label>' +
     '<div class="field"><label for="pfNotes">'+esc(pt("notes"))+'</label><textarea id="pfNotes">'+esc(st.notes || "")+'</textarea></div>' +
     '<button type="button" class="btn btn-primary" id="pfSave">'+esc(pt("save"))+'</button></div>';
 
@@ -5648,6 +5654,7 @@ function renderPayrollEmployee(did){
     '<tr class="neg"><td>'+esc(pt("lateDed"))+' <span class="meta">('+esc(Math.round(r.lateCountedMin))+' '+esc(pt("min"))+' '+esc(pt("counted"))+')</span></td><td>⁦−'+esc(payMoney(r.lateDed, cur))+'⁩'+'</td></tr>' +
     '<tr class="neg"><td>'+esc(pt("adv"))+'</td><td>⁦−'+esc(payMoney(r.adv, cur))+'⁩'+'</td></tr>' +
     '<tr class="neg"><td>'+esc(pt("disc"))+'</td><td>⁦−'+esc(payMoney(r.disc, cur))+'⁩'+'</td></tr>' +
+    (r.cashShort || st.isCashier ? '<tr class="neg"><td>'+esc(pt("cashShort"))+'</td><td>⁦−'+esc(payMoney(r.cashShort || 0, cur))+'⁩'+'</td></tr>' : '') +
     '<tr class="neg"><td>'+esc(pt("depHold"))+'</td><td>⁦−'+esc(payMoney(r.depHold, cur))+'⁩'+'</td></tr>' +
     '<tr class="pos"><td>'+esc(pt("ot"))+' <span class="meta">('+esc(r.otMin)+' '+esc(pt("min"))+')</span></td><td>⁦+'+esc(payMoney(r.otPay, cur))+'⁩'+'</td></tr>' +
     (r.depRelease ? '<tr class="pos"><td>'+esc(pt("depRelease"))+'</td><td>⁦+'+esc(payMoney(r.depRelease, cur))+'⁩'+'</td></tr>' : '') +
@@ -5660,7 +5667,8 @@ function renderPayrollEmployee(did){
     }).join("");
   }
   var advs = P.adv.filter(function(a){ return String(a.did) === String(did); });
-  var discs = P.disc.filter(function(a){ return String(a.did) === String(did); });
+  var discs = P.disc.filter(function(a){ return String(a.did) === String(did) && a.type !== "cash_short"; });
+  var shorts = P.disc.filter(function(a){ return String(a.did) === String(did) && a.type === "cash_short"; });
   html += '<div class="pay-sub">'+esc(pt("adv"))+'</div>' + (advs.length ? advs.map(function(a){
       return '<div class="pay-line"><span dir="ltr">'+esc(a.date || "")+'</span><b>'+esc(payMoney(a.amount, cur))+'</b><span class="meta">'+esc(a.byName || "")+(a.note ? ' · '+esc(a.note) : '')+'</span>' +
         (md.closed ? '' : '<button type="button" class="pay-link" data-del-adv="'+esc(a.id)+'">'+esc(pt("del"))+'</button>')+'</div>';
@@ -5669,13 +5677,22 @@ function renderPayrollEmployee(did){
       return '<div class="pay-line"><span dir="ltr">'+esc(a.date || "")+'</span><b>'+esc(payMoney(a.amount, cur))+'</b><span class="meta">'+esc(a.byName || "")+(a.reason ? ' · '+esc(a.reason) : '')+'</span>' +
         (md.closed ? '' : '<button type="button" class="pay-link" data-del-disc="'+esc(a.id)+'">'+esc(pt("del"))+'</button>')+'</div>';
     }).join("") : '<div class="pay-note">'+esc(pt("none"))+'</div>');
+  if(st.isCashier || shorts.length){
+    html += '<div class="pay-sub">🧾 '+esc(pt("cashShort"))+'</div>' + (shorts.length ? shorts.map(function(a){
+      return '<div class="pay-line"><span dir="ltr">'+esc(a.date || "")+'</span><b>'+esc(payMoney(a.amount, cur))+'</b><span class="meta">'+esc(a.byName || "")+(a.reason ? ' · '+esc(a.reason) : '')+'</span>' +
+        (md.closed ? '' : '<button type="button" class="pay-link" data-del-disc="'+esc(a.id)+'">'+esc(pt("del"))+'</button>')+'</div>';
+    }).join("") : '<div class="pay-note">'+esc(pt("none"))+'</div>');
+  }
   if(!md.closed){
     html += '<div class="pay-gap"></div><div class="pay-grid">' +
       payFieldHtml("pfAdvAmt", pt("addAdv"), "", "number", 'min="0" step="any" placeholder="'+esc(pt("amount"))+'"') +
       payFieldHtml("pfAdvNote", pt("notes"), "") + '</div><button type="button" class="btn btn-secondary" id="pfAddAdv">+ '+esc(pt("addAdv"))+'</button>' +
       '<div class="pay-gap"></div><div class="pay-grid">' +
       payFieldHtml("pfDiscAmt", pt("addDisc"), "", "number", 'min="0" step="any" placeholder="'+esc(pt("amount"))+'"') +
-      payFieldHtml("pfDiscWhy", pt("reason"), "") + '</div><button type="button" class="btn btn-secondary" id="pfAddDisc">+ '+esc(pt("addDisc"))+'</button>';
+      payFieldHtml("pfDiscWhy", pt("reason"), "") + '</div><button type="button" class="btn btn-secondary" id="pfAddDisc">+ '+esc(pt("addDisc"))+'</button>' +
+      (st.isCashier ? '<div class="pay-gap"></div><div class="pay-grid">' +
+        payFieldHtml("pfCashAmt", pt("addCashShort"), "", "number", 'min="0" step="any" placeholder="'+esc(pt("amount"))+'"') +
+        payFieldHtml("pfCashWhy", pt("cashShortNote"), "") + '</div><button type="button" class="btn btn-secondary" id="pfAddCash">🧾 '+esc(pt("addCashShort"))+'</button>' : '');
   }
   html += '</div>';
 
@@ -5747,7 +5764,7 @@ function paySaveStaff(did, patch){
   var P = S.pay, st = Object.assign({}, P.staff[did] || {}, patch);
   var b = S.db.batch();
   b.set(S.db.doc("pay_staff/" + did), Object.assign({did: String(did), updatedAt: new Date().toISOString()}, patch), {merge: true});
-  b.set(S.db.doc("hr_staff/" + did), {did: String(did), name: st.name || payName(did), active: st.status !== "closed"}, {merge: true});
+  b.set(S.db.doc("hr_staff/" + did), {did: String(did), name: st.name || payName(did), active: st.status !== "closed", cashier: !!st.isCashier}, {merge: true});
   return b.commit();
 }
 function payAddAdvance(did, amount, note, extra){
@@ -5850,11 +5867,17 @@ function payBind(){
   on("pfSave", function(){
     paySaveStaff(did, {name: val("pfName").trim() || payName(did), baseSalary: payNum(val("pfBase")), currency: val("pfCur"),
       hoursPerDay: payNum(val("pfHours")) || 9, advanceLimit: payNum(val("pfLimit")), depositAgreed: payNum(val("pfDep")),
-      depositPerMonth: payNum(val("pfDepM")), notes: val("pfNotes")}).then(function(){ toast(pt("saved")); }).catch(fail);
+      depositPerMonth: payNum(val("pfDepM")), notes: val("pfNotes"),
+      isCashier: !!(document.getElementById("pfCashier") || {}).checked}).then(function(){ toast(pt("saved")); }).catch(fail);
   });
   on("pfAddAdv", function(){
     var a = payNum(val("pfAdvAmt")); if(!(a > 0)){ toast(pt("needAmount")); return; }
     payAddAdvance(did, a, val("pfAdvNote"), {approvedOver: true}).then(function(){ toast(pt("saved")); }).catch(fail);
+  });
+  on("pfAddCash", function(){
+    var a = payNum(val("pfCashAmt")); if(!(a > 0)){ toast(pt("needAmount")); return; }
+    S.db.collection("pay_discounts").add({did: String(did), month: P.month, amount: a, type: "cash_short", reason: val("pfCashWhy"), date: payToday(),
+      by: S.currentUser.id, byName: payByName(), createdAt: new Date().toISOString()}).then(function(){ toast(pt("cashShortAdded")); }).catch(fail);
   });
   on("pfAddDisc", function(){
     var a = payNum(val("pfDiscAmt")); if(!(a > 0)){ toast(pt("needAmount")); return; }
@@ -5934,10 +5957,11 @@ function renderHR(){
   var html = payMonthNav(H.month);
   html += '<div class="card"><div class="section-title">'+esc(pt("hrTab"))+'</div><div class="section-sub">'+esc(pt("hrSub"))+'</div>' +
     '<div class="field"><label for="hrEmp">'+esc(pt("hrEmp"))+'</label><select id="hrEmp"><option value="">'+esc(pt("hrPick"))+'</option>' +
-    ids.map(function(k){ return '<option value="'+esc(k)+'"'+(H.did === k ? " selected" : "")+'>#'+esc(k)+' '+esc(hrName(k))+'</option>'; }).join("") + '</select></div>' +
+    ids.map(function(k){ return '<option value="'+esc(k)+'"'+(H.did === k ? " selected" : "")+'>#'+esc(k)+' '+esc(hrName(k))+(H.staff[k] && H.staff[k].cashier ? ' · '+esc(pt("cashierTag")) : '')+'</option>'; }).join("") + '</select></div>' +
     '<div class="pay-grid">' + payFieldHtml("hrAmt", pt("amount"), "", "number", 'min="0" step="any"') + payFieldHtml("hrNote", pt("hrNote") + " / " + pt("reason"), "") + '</div>' +
     '<div class="pay-grid"><button type="button" class="btn btn-primary" id="hrAddAdv">+ '+esc(pt("addAdv"))+'</button>' +
-    '<button type="button" class="btn btn-secondary" id="hrAddDisc">+ '+esc(pt("addDisc"))+'</button></div>';
+    '<button type="button" class="btn btn-secondary" id="hrAddDisc">+ '+esc(pt("addDisc"))+'</button></div>' +
+    (H.did && H.staff[H.did] && H.staff[H.did].cashier ? '<button type="button" class="btn btn-secondary" id="hrAddCash" style="margin-top:8px;">🧾 '+esc(pt("addCashShort"))+'</button>' : '');
   if(H.over){
     html += '<div class="pay-alert">⛔ '+esc(pt("overLimit"))+'<button type="button" class="btn btn-secondary pay-sm" id="hrSendReq">'+esc(pt("sendReq"))+'</button></div>';
   }
@@ -5947,7 +5971,9 @@ function renderHR(){
       return '<div class="pay-line"><span class="nm">'+esc(hrName(a.did))+'</span><b>'+esc(payNum(a.amount).toLocaleString("en-US"))+'</b><span dir="ltr" class="meta">'+esc(a.date || "")+'</span><span class="meta">'+esc(a.byName || "")+((a.note || a.reason) ? ' · '+esc(a.note || a.reason) : '')+'</span></div>';
     }).join("") : '<div class="pay-note">'+esc(pt("none"))+'</div>') + '</div>';
   };
-  html += list(H.adv, pt("advList")) + list(H.disc, pt("discList"));
+  var hrShorts = H.disc.filter(function(a){ return a.type === "cash_short"; });
+  html += list(H.adv, pt("advList")) + list(H.disc.filter(function(a){ return a.type !== "cash_short"; }), pt("discList")) +
+    (hrShorts.length ? list(hrShorts, "🧾 " + pt("cashShort")) : '');
   if(H.req.length){
     html += '<div class="card"><div class="section-title">'+esc(pt("myReqs"))+'</div>' + H.req.slice().sort(function(a, b){ return (a.createdAt || "") < (b.createdAt || "") ? 1 : -1; }).map(function(r){
       var cls = r.status === "approved" ? "on_time" : r.status === "rejected" ? "absent" : "late";
@@ -5957,7 +5983,8 @@ function renderHR(){
   main.innerHTML = html;
   var on = function(id, fn){ var el = document.getElementById(id); if(el) el.onclick = fn; };
   var val = function(id){ var el = document.getElementById(id); return el ? el.value : ""; };
-  var sel = document.getElementById("hrEmp"); if(sel) sel.onchange = function(){ H.did = this.value; H.over = null; };
+  var sel = document.getElementById("hrEmp"); if(sel) sel.onchange = function(){ var amt = val("hrAmt"), nt = val("hrNote"); H.did = this.value; H.over = null; renderHR();
+    var e1 = document.getElementById("hrAmt"), e2 = document.getElementById("hrNote"); if(e1) e1.value = amt; if(e2) e2.value = nt; };
   on("payPrev", function(){ H.month = payShiftMonth(H.month, -1); subscribeHRMonth(); renderHR(); });
   on("payNext", function(){ H.month = payShiftMonth(H.month, 1); subscribeHRMonth(); renderHR(); });
   on("hrAddAdv", function(){
@@ -5970,6 +5997,13 @@ function renderHR(){
         if(err && err.code === "permission-denied"){ H.over = {did: did, amount: a, note: note, month: H.month}; renderHR(); }
         else toast(describeFirebaseError(err));
       }).then(function(){ S.pay.month = keep; });
+  });
+  on("hrAddCash", function(){
+    var did = val("hrEmp"), a = payNum(val("hrAmt"));
+    if(!did){ toast(pt("hrPick")); return; }
+    if(!(a > 0)){ toast(pt("needAmount")); return; }
+    S.db.collection("pay_discounts").add({did: String(did), month: H.month, amount: a, type: "cash_short", reason: val("hrNote"), date: payToday(),
+      by: S.currentUser.id, byName: payByName(), createdAt: new Date().toISOString()}).then(function(){ toast(pt("cashShortAdded")); }).catch(function(err){ toast(describeFirebaseError(err)); });
   });
   on("hrAddDisc", function(){
     var did = val("hrEmp"), a = payNum(val("hrAmt"));
