@@ -222,7 +222,7 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
 .field:last-child{margin-bottom:0;}
 .field label{display:block; font-size:12.5px; font-weight:600; color:var(--ink-soft); margin-bottom:5px;}
 .field input[type="text"], .field input[type="date"], .field input[type="time"],
-.field input[type="password"],
+.field input[type="password"], .field input[type="number"], .field input[type="email"], .field input[type="file"],
 .field select, .field textarea{
   width:100%; border:1.5px solid var(--line); border-radius:var(--radius-sm); background:var(--paper);
   padding:10px 12px; font-size:14.5px; color:var(--ink);
@@ -530,6 +530,41 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
 .att-tag.off,.att-tag.leave,.att-tag.on_break,.att-tag.good{background:var(--teal-tint); color:var(--teal);}
 .att-tag.other_shift,.att-tag.different_shift,.att-tag.worked_on_off,.att-tag.not_yet{background:var(--paper); color:var(--ink-soft);}
 .att-switch{display:flex; justify-content:center; margin-bottom:12px;}
+/* Payroll (owner) and HR advances */
+.pay-emp{display:block; width:100%; text-align:start; background:none; border:0; border-bottom:1px solid var(--line-soft); padding:11px 0; cursor:pointer; color:var(--ink); font:inherit;}
+.pay-emp:last-of-type{border-bottom:0;}
+.pay-emp:hover .nm{color:var(--red);}
+.pay-emp-top{display:flex; flex-wrap:wrap; align-items:center; gap:4px 8px;}
+.pay-emp-top .nm{font-weight:700; font-size:14.5px;}
+.pay-emp-top .meta, .pay-line .meta, .pay-table .meta{color:var(--ink-soft); font-size:12px; font-weight:500;}
+.pay-net{margin-inline-start:auto; font-size:16px; font-weight:800; font-variant-numeric:tabular-nums;}
+.pay-emp-lines{display:flex; flex-wrap:wrap; gap:2px 12px; margin-top:4px; font-size:12.5px; color:var(--ink-soft); font-variant-numeric:tabular-nums;}
+.pay-emp-lines .neg, .pay-table .neg td:last-child{color:var(--red);}
+.pay-emp-lines .pos, .pay-table .pos td:last-child{color:var(--green);}
+.pay-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:0 12px;}
+.pay-grid .field:last-child{margin-bottom:12px;}
+.pay-table{width:100%; border-collapse:collapse; font-size:14px; margin-top:4px;}
+.pay-table td{padding:8px 0; border-bottom:1px solid var(--line-soft);}
+.pay-table td:last-child{text-align:end; font-variant-numeric:tabular-nums; font-weight:700; white-space:nowrap;}
+.pay-table tr.tot td{border-bottom:0; border-top:2px solid var(--ink); font-size:16px; font-weight:800;}
+.pay-line{display:flex; flex-wrap:wrap; align-items:center; gap:4px 10px; padding:8px 0; border-bottom:1px solid var(--line-soft); font-size:13.5px; font-variant-numeric:tabular-nums;}
+.pay-line:last-child{border-bottom:0;}
+.pay-line .pay-link{margin-inline-start:auto;}
+.pay-sub{font-size:13px; font-weight:700; color:var(--ink-soft); margin:14px 0 4px;}
+.pay-note{font-size:12.5px; color:var(--ink-soft); margin:6px 0 10px;}
+.pay-alert{background:var(--red-tint); color:var(--red); border:1.5px solid var(--red); border-radius:var(--radius-sm); padding:10px 12px; font-size:13.5px; font-weight:600; margin:8px 0;}
+.pay-closed{background:var(--amber-tint); border-color:var(--amber);}
+.pay-details > summary{cursor:pointer; list-style:none; margin:0;}
+.pay-details > summary::-webkit-details-marker{display:none;}
+.pay-details[open] > summary{margin-bottom:10px;}
+.pay-actions{display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;}
+.btn.pay-sm{width:auto; padding:6px 12px; font-size:13px; min-height:0;}
+.btn.pay-back{width:auto; padding-inline:14px; margin-bottom:10px;}
+.pay-link{background:none; border:0; padding:4px 0; color:var(--red); font:inherit; font-size:12.5px; font-weight:700; cursor:pointer; text-decoration:underline;}
+.pay-gap{height:10px;}
+.pay-warn{display:flex; gap:12px; align-items:flex-start; padding:10px 0; border-bottom:1px solid var(--line-soft); font-size:13.5px;}
+.pay-warn img{width:64px; height:64px; object-fit:cover; border-radius:8px; border:1px solid var(--line); cursor:zoom-in; flex:0 0 auto;}
+.pay-stats .att-stat b{font-size:18px;}
 .dlv-nav b{font-size:15px;}
 .dlv-nav button{width:38px; height:38px; border-radius:10px; border:1.5px solid var(--line); background:var(--surface); font-size:18px; cursor:pointer; color:var(--ink);}
 .dlv-nav button:disabled{opacity:.35; cursor:default;}
@@ -663,6 +698,8 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
     <button class="tab-btn" id="deptDeliveryBtn" type="button" style="display:none;"></button>
     <button class="tab-btn" id="deptFeedbackBtn" type="button" style="display:none;"></button>
     <button class="tab-btn" id="deptAttendanceBtn" type="button" style="display:none;"></button>
+    <button class="tab-btn" id="deptPayrollBtn" type="button" style="display:none;"></button>
+    <button class="tab-btn" id="deptHrBtn" type="button" style="display:none;"></button>
   </div>
 </div>
 <div class="tabbar" id="subtabbar" style="max-width:640px; margin:10px auto 0; padding-inline:16px;">
@@ -1521,14 +1558,24 @@ function updateDeptSwitch(){
   var dv = document.getElementById("deptDeliveryBtn");
   if(!S.currentUser) return;
   var role = S.currentUser.role;
+  var isHR = role === "hr";
   var canHandover = role === "manager" || role === "admin" || role === "supervisor" || role === "viewer";
   var canMerch = role === "manager" || role === "admin" || role === "merchandiser" || role === "viewer";
   var canAccounts = role === "manager" || role === "admin";
-  var canExpiry = true;
+  var canExpiry = !isHR;
   var canDelivery = role === "manager" || role === "admin" || role === "viewer";
   var fbBtn = document.getElementById("deptFeedbackBtn");
   var canFeedback = role === "manager" || role === "admin";
-  var canAttendance = isAttendanceOwner();
+  var canAttendance = isAttendanceOwner() || isHR;
+  var canPayroll = isAttendanceOwner();
+  var payBtn = document.getElementById("deptPayrollBtn");
+  payBtn.style.display = canPayroll ? "" : "none";
+  payBtn.textContent = pt("payTab");
+  payBtn.classList.toggle("active", S.appMode === "payroll");
+  var hrBtn = document.getElementById("deptHrBtn");
+  hrBtn.style.display = isHR ? "" : "none";
+  hrBtn.textContent = pt("hrTab");
+  hrBtn.classList.toggle("active", S.appMode === "hradv");
   var atBtn = document.getElementById("deptAttendanceBtn");
   atBtn.style.display = canAttendance ? "" : "none";
   atBtn.textContent = t("deptAttendanceLabel");
@@ -1553,12 +1600,12 @@ function updateDeptSwitch(){
   m.classList.toggle("active", S.appMode === "merch");
   a.classList.toggle("active", S.appMode === "accounts");
   x.classList.toggle("active", S.appMode === "expiry");
-  var visibleCount = (canHandover?1:0)+(canMerch?1:0)+(canAccounts?1:0)+(canExpiry?1:0)+(canDelivery?1:0)+(canFeedback?1:0)+(canAttendance?1:0);
+  var visibleCount = (canHandover?1:0)+(canMerch?1:0)+(canAccounts?1:0)+(canExpiry?1:0)+(canDelivery?1:0)+(canFeedback?1:0)+(canAttendance?1:0)+(canPayroll?1:0)+(isHR?1:0);
   document.getElementById("deptbar").style.display = visibleCount > 1 ? "" : "none";
   var tf = document.getElementById("tabForm");
   var td = document.getElementById("tabDash");
   var sub = document.getElementById("subtabbar");
-  if(S.appMode === "accounts" || S.appMode === "delivery" || S.appMode === "feedback" || S.appMode === "attendance" || isViewerUser()){
+  if(S.appMode === "accounts" || S.appMode === "delivery" || S.appMode === "feedback" || S.appMode === "attendance" || S.appMode === "payroll" || S.appMode === "hradv" || isViewerUser()){
     sub.style.display = "none";
   } else {
     sub.style.display = "";
@@ -3181,6 +3228,7 @@ function routeAfterAuth(){
     subscribeViewerData();
     return;
   }
+  if(role === "hr"){ S.appMode = "hradv"; S.view = "form"; return; }
   S.appMode = role === "merchandiser" ? "merch" : "handover";
   S.view = "form";
   applyIdentityToForms();
@@ -3633,7 +3681,7 @@ function renderAccounts(){
 
   if(S.newAccountForm){
     var nf = S.newAccountForm;
-    var roleOpts2 = ["supervisor","merchandiser","admin","delivery","viewer"].map(function(r){
+    var roleOpts2 = ["supervisor","merchandiser","admin","delivery","viewer","hr"].map(function(r){
       return '<option value="'+r+'"'+(nf.role===r?" selected":"")+'>'+roleBadgeLabel(r)+'</option>';
     }).join("");
     html += '<div class="divider-note">' +
@@ -3675,7 +3723,7 @@ function renderAccounts(){
 }
 
 function roleBadgeLabel(role){
-  return (role==="manager"||role==="admin")?t("roleManagerOpt"):role==="merchandiser"?t("roleMerchandiser"):role==="delivery"?t("roleDelivery"):role==="viewer"?t("roleViewer"):t("roleSupervisor");
+  return (role==="manager"||role==="admin")?t("roleManagerOpt"):role==="merchandiser"?t("roleMerchandiser"):role==="delivery"?t("roleDelivery"):role==="viewer"?t("roleViewer"):role==="hr"?pt("roleHR"):t("roleSupervisor");
 }
 
 function deptLabel(deptId){
@@ -3684,7 +3732,7 @@ function deptLabel(deptId){
 }
 
 function acctRow(u){
-  var roleOpts = ["supervisor","merchandiser","admin","delivery","viewer"].map(function(r){
+  var roleOpts = ["supervisor","merchandiser","admin","delivery","viewer","hr"].map(function(r){
     return '<option value="'+r+'"'+(u.role===r?" selected":"")+'>'+roleBadgeLabel(r)+'</option>';
   }).join("");
   var lastLogin = u.lastLoginAt ? fmtDateTime(u.lastLoginAt) : t("neverLoggedIn");
@@ -5315,6 +5363,629 @@ function attBind(){
   var tt = document.getElementById("attToToday"); if(tt) tt.onclick = function(e){ e.preventDefault(); attSetDay(attTodayStr()); };
 }
 
+
+// ================= Payroll (owner only) and HR advances (Oct 2026) =================
+// Salaries, limits, warnings, deposits and month closing are visible to the owner
+// only (ATT_OWNERS). HR accounts (role "hr") add advances and discounts and see
+// attendance, but never a salary, a net total, a warning, or an advance limit.
+// The advance limit is enforced by firestore.rules, so HR only learns "over the limit".
+var PAY_STR = {
+  en: {
+    payTab:"Payroll", roleHR:"HR", hrTab:"Advances & discounts", month:"Month", loading:"Loading…", loadErr:"Couldn't load. Check your connection.",
+    noSalary:"No salary set", base:"Base salary", net:"Net pay", lateDed:"Lateness", ot:"Overtime", adv:"Advances", disc:"Discounts",
+    depHold:"Deposit held", depRelease:"Deposit returned", totalNet:"Total net", employees:"Employees", open:"Open",
+    back:"Back", save:"Save", saved:"Saved", name:"Name", fpId:"Fingerprint ID", currency:"Currency", hoursDay:"Working hours per day",
+    advLimit:"Monthly advance limit", depAgreed:"Agreed deposit (total)", depPerMonth:"Deposit held per month", notes:"Notes",
+    depHint:"Usually 15 days of salary = half the base salary.", settings:"Rules", lateGrace:"Lateness grace (minutes)",
+    lateMult:"Each late minute after the grace counts ×", otMult:"Approved overtime pay ×", settingsSaved:"Rules saved",
+    pending:"Advance requests over the limit", approve:"Approve", reject:"Reject", approved:"Approved", rejected:"Rejected",
+    requestBy:"by", review:"Month-end absence review", reviewHint:"No automatic deduction for absence. Check each employee's absences, add a discount if you want, then confirm.",
+    confirm:"Confirm", confirmed:"Confirmed", addAbsDisc:"Add discount for {n} day(s)", noAbs:"No absences this month.",
+    closeMonth:"Close the month", closeNeedsReview:"Confirm every absence first.", closed:"This month is closed. The numbers below are frozen.",
+    reopen:"Reopen month", closeConfirm:"Close {m}? The numbers will be frozen and the deposits recorded.", reopenConfirm:"Reopen {m}?",
+    thisMonth:"This month", lateDays:"Late days", min:"min", counted:"counted", date:"Date", amount:"Amount", reason:"Reason", by:"By",
+    addAdv:"Add advance", addDisc:"Add discount", del:"Delete", delConfirm:"Delete this?", none:"None",
+    deposit:"Deposit", held:"Currently held", ledger:"History", hold:"Held", release:"Returned",
+    resign:"Resignation", resignDate:"Resignation submitted on", acceptResign:"I accept the resignation", accepted:"Accepted on",
+    releaseOn:"Deposit can be returned from", releaseNow:"Return deposit and close the account", releaseConfirm:"Return the deposit and close this account?",
+    closedAcct:"Account closed", warnings:"Warnings", warnCount:"{n} warning(s)", warnEligible:"3 warnings: eligible for suspension",
+    addWarn:"Add warning", scan:"Signed scan (photo)", noScan:"Add the signed scan photo", warnAdded:"Warning saved",
+    addEmp:"Add employee", addEmpHint:"For someone not on the fingerprint list yet.", needName:"Enter the name and fingerprint ID",
+    hideClosed:"Closed accounts hidden", showClosed:"Show closed accounts", noAttData:"No attendance data for this month yet.",
+    // HR
+    hrEmp:"Employee", hrPick:"Choose an employee", hrNote:"Note", hrAdvAdded:"Advance added", hrDiscAdded:"Discount added",
+    overLimit:"This advance is over the limit allowed for this employee.", sendReq:"Send a request to the manager",
+    reqSent:"Request sent to the manager", myReqs:"Requests", st_pending:"Waiting", st_approved:"Approved", st_rejected:"Rejected",
+    advList:"Advances this month", discList:"Discounts this month", needAmount:"Enter an amount", hrSub:"Advances and discounts are deducted from this month's salary."
+  },
+  ar: {
+    payTab:"المعاشات", roleHR:"HR (سلف وحضور)", hrTab:"السلف والديسكاونت", month:"الشهر", loading:"عم يحمّل…", loadErr:"ما قدر يحمّل. تأكد من النت.",
+    noSalary:"بلا معاش", base:"المعاش الأساسي", net:"الصافي", lateDed:"التأخير", ot:"أوفر تايم", adv:"السلف", disc:"الديسكاونت",
+    depHold:"ديبوزيت محجوز", depRelease:"ديبوزيت راجع", totalNet:"مجموع الصافي", employees:"الموظفين", open:"افتح",
+    back:"رجوع", save:"حفظ", saved:"انحفظ", name:"الاسم", fpId:"رقم البصمة", currency:"العملة", hoursDay:"ساعات الشغل باليوم",
+    advLimit:"سقف السلفة بالشهر", depAgreed:"الديبوزيت المتفق عليه (كامل)", depPerMonth:"قديش ينحجز كل شهر", notes:"ملاحظات",
+    depHint:"عادةً 15 يوم معاش = نص المعاش الأساسي.", settings:"القواعد", lateGrace:"سماحية التأخير (دقايق)",
+    lateMult:"كل دقيقة تأخير بعد السماحية بتنحسب ×", otMult:"الأوفر تايم الموافق عليه بينحسب ×", settingsSaved:"انحفظت القواعد",
+    pending:"طلبات سلف فوق السقف", approve:"وافق", reject:"ارفض", approved:"انوافق", rejected:"انرفض",
+    requestBy:"من", review:"مراجعة الغياب آخر الشهر", reviewHint:"ما في خصم أوتوماتيك عالغياب. شيك غياب كل موظف، زيد ديسكاونت إذا بدك، وبعدين أكّد.",
+    confirm:"أكّد", confirmed:"متأكّد", addAbsDisc:"زيد ديسكاونت عن {n} يوم", noAbs:"ما في غياب هالشهر.",
+    closeMonth:"سكّر الشهر", closeNeedsReview:"أكّد غياب كل الموظفين أول.", closed:"هالشهر مسكّر. الأرقام تحت ثابتة.",
+    reopen:"افتح الشهر من جديد", closeConfirm:"تسكّر {m}؟ الأرقام بتثبت والديبوزيت بينسجّل.", reopenConfirm:"تفتح {m} من جديد؟",
+    thisMonth:"هالشهر", lateDays:"أيام التأخير", min:"د", counted:"منحسوب", date:"التاريخ", amount:"المبلغ", reason:"السبب", by:"مين",
+    addAdv:"زيد سلفة", addDisc:"زيد ديسكاونت", del:"امسح", delConfirm:"أكيد بدك تمسح؟", none:"ما في",
+    deposit:"الديبوزيت", held:"محجوز هلق", ledger:"السجل", hold:"انحجز", release:"رجع",
+    resign:"الاستقالة", resignDate:"قدّم استقالتو بتاريخ", acceptResign:"قبلت الاستقالة", accepted:"انقبلت بتاريخ",
+    releaseOn:"بيرجعلو الديبوزيت من تاريخ", releaseNow:"رجّع الديبوزيت وسكّر الحساب", releaseConfirm:"ترجّع الديبوزيت وتسكّر حساب هالموظف؟",
+    closedAcct:"الحساب مسكّر", warnings:"الإنذارات", warnCount:"{n} إنذار", warnEligible:"3 إنذارات: مؤهّل للإيقاف",
+    addWarn:"زيد إنذار", scan:"صورة الإنذار الممضي", noScan:"زيد صورة الإنذار الممضي", warnAdded:"انحفظ الإنذار",
+    addEmp:"زيد موظف", addEmpHint:"لحدا مش موجود بليستة البصمة لسّا.", needName:"حط الاسم ورقم البصمة",
+    hideClosed:"الحسابات المسكّرة مخفية", showClosed:"ورجيني الحسابات المسكّرة", noAttData:"لسّا ما في داتا حضور لهالشهر.",
+    hrEmp:"الموظف", hrPick:"اختار موظف", hrNote:"ملاحظة", hrAdvAdded:"انزادت السلفة", hrDiscAdded:"انزاد الديسكاونت",
+    overLimit:"هالسلفة بتتجاوز الحد المسموح لهالموظف.", sendReq:"ابعت طلب للمدير",
+    reqSent:"انبعت الطلب للمدير", myReqs:"الطلبات", st_pending:"بالانتظار", st_approved:"انوافق", st_rejected:"انرفض",
+    advList:"سلف هالشهر", discList:"ديسكاونت هالشهر", needAmount:"حط المبلغ", hrSub:"السلف والديسكاونت بينخصمو من معاش هالشهر."
+  }
+};
+function pt(k, vars){
+  var s = (PAY_STR[S.lang] || PAY_STR.ar)[k] || PAY_STR.en[k] || k;
+  if(vars) Object.keys(vars).forEach(function(v){ s = s.replace("{"+v+"}", vars[v]); });
+  return s;
+}
+function isHRUser(){ return !!(S.currentUser && S.currentUser.role === "hr"); }
+function payMonthNow(){ var d = new Date(); return d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2); }
+function payShiftMonth(m, delta){ var p = m.split("-"), d = new Date(+p[0], +p[1]-1+delta, 1); return d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2); }
+function payMonthEnd(m){ var p = m.split("-"), d = new Date(+p[0], +p[1], 0); return m + "-" + ("0"+d.getDate()).slice(-2); }
+function payToday(){ var d = new Date(); return d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2); }
+function payAddDays(ds, n){ var p = ds.split("-"), d = new Date(+p[0], +p[1]-1, +p[2]+n); return d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2); }
+function payNum(v){ var n = parseFloat(String(v == null ? "" : v).replace(/,/g, "")); return isFinite(n) ? n : 0; }
+function payRound(n, cur){ return cur === "LBP" ? Math.round(n) : Math.round(n * 100) / 100; }
+function payMoney(n, cur){
+  cur = cur || "USD"; n = payRound(n || 0, cur);
+  var s = Math.abs(n).toLocaleString("en-US", {minimumFractionDigits: cur === "LBP" ? 0 : 2, maximumFractionDigits: cur === "LBP" ? 0 : 2});
+  return (n < 0 ? "-" : "") + (cur === "LBP" ? s + " ل.ل" : "$" + s);
+}
+function payNewId(){ return S.db.collection("pay_advances").doc().id; }
+
+S.pay = {month: payMonthNow(), staff: {}, hrStaff: {}, att: null, monthDoc: null, adv: [], disc: [], req: [], warn: [], dep: [],
+  settings: {lateGrace: 5, lateMult: 2, otMult: 1.5}, sel: null, showClosed: false, unsubs: [], monthUnsubs: [], loaded: false, error: false, msg: ""};
+
+function payUnsub(list){ list.forEach(function(u){ try{ u(); }catch(e){} }); return []; }
+function stopPayroll(){ S.pay.unsubs = payUnsub(S.pay.unsubs); S.pay.monthUnsubs = payUnsub(S.pay.monthUnsubs); S.pay.loaded = false; }
+function payRerender(){ if(S.appMode === "payroll") renderPayroll(); }
+function payErr(){ S.pay.error = true; S.pay.loaded = true; payRerender(); }
+
+function subscribePayroll(){
+  var P = S.pay;
+  if(!S.db || P.unsubs.length) return;
+  P.loaded = false; P.error = false;
+  var mapInto = function(key){ return function(snap){ var o = {}; snap.forEach(function(d){ o[d.id] = Object.assign({id: d.id}, d.data()); }); P[key] = o; P.loaded = true; payRerender(); }; };
+  var listInto = function(key){ return function(snap){ P[key] = snap.docs.map(function(d){ return Object.assign({id: d.id}, d.data()); }); payRerender(); }; };
+  P.unsubs.push(S.db.collection("pay_staff").onSnapshot(mapInto("staff"), payErr));
+  P.unsubs.push(S.db.collection("hr_staff").onSnapshot(mapInto("hrStaff"), function(){}));
+  P.unsubs.push(S.db.collection("pay_warnings").onSnapshot(listInto("warn"), function(){}));
+  P.unsubs.push(S.db.collection("pay_deposit").onSnapshot(listInto("dep"), function(){}));
+  P.unsubs.push(S.db.collection("pay_requests").where("status", "==", "pending").onSnapshot(listInto("req"), function(){}));
+  P.unsubs.push(S.db.doc("pay_settings/main").onSnapshot(function(snap){
+    if(snap.exists) P.settings = Object.assign({lateGrace: 5, lateMult: 2, otMult: 1.5}, snap.data());
+    payRerender();
+  }, function(){}));
+  subscribePayrollMonth();
+}
+function subscribePayrollMonth(){
+  var P = S.pay, m = P.month;
+  P.monthUnsubs = payUnsub(P.monthUnsubs);
+  P.att = null; P.monthDoc = null; P.adv = []; P.disc = [];
+  P.monthUnsubs.push(S.db.doc("attendance_reports/" + m).onSnapshot(function(s){ P.att = s.exists ? s.data() : {people: []}; payRerender(); }, function(){ P.att = {people: []}; payRerender(); }));
+  P.monthUnsubs.push(S.db.doc("pay_months/" + m).onSnapshot(function(s){ P.monthDoc = s.exists ? s.data() : {}; payRerender(); }, function(){}));
+  P.monthUnsubs.push(S.db.collection("pay_advances").where("month", "==", m).onSnapshot(function(s){ P.adv = s.docs.map(function(d){ return Object.assign({id: d.id}, d.data()); }); payRerender(); }, function(){}));
+  P.monthUnsubs.push(S.db.collection("pay_discounts").where("month", "==", m).onSnapshot(function(s){ P.disc = s.docs.map(function(d){ return Object.assign({id: d.id}, d.data()); }); payRerender(); }, function(){}));
+}
+
+function payAttPerson(did){ var a = S.pay.att; return a && a.people ? a.people.filter(function(p){ return String(p.id) === String(did); })[0] : null; }
+function payDepositHeld(did, exceptMonth){
+  return S.pay.dep.reduce(function(sum, e){
+    if(String(e.did) !== String(did) || (exceptMonth && e.month === exceptMonth)) return sum;
+    return sum + (e.type === "release" ? -payNum(e.amount) : payNum(e.amount));
+  }, 0);
+}
+function payEmployeeIds(){
+  var P = S.pay, ids = {};
+  Object.keys(P.staff).forEach(function(k){ ids[k] = 1; });
+  Object.keys(P.hrStaff).forEach(function(k){ ids[k] = 1; });
+  ((P.att && P.att.people) || []).forEach(function(p){ ids[String(p.id)] = 1; });
+  return Object.keys(ids).sort(function(a, b){ return (+a || 0) - (+b || 0); });
+}
+function payName(did){
+  var st = S.pay.staff[did], h = S.pay.hrStaff[did], a = payAttPerson(did);
+  return (st && st.name) || (h && h.name) || (a && a.name) || ("#" + did);
+}
+
+/** Net pay for one employee and the selected month (the snapshot once the month is closed). */
+function payCalc(did){
+  var P = S.pay, m = P.month, md = P.monthDoc || {};
+  if(md.closed && md.snapshot && md.snapshot[did]) return Object.assign({frozen: true}, md.snapshot[did]);
+  var st = P.staff[did] || {}, set = P.settings, cur = st.currency || "USD";
+  var base = payNum(st.baseSalary), hpd = payNum(st.hoursPerDay) || 9;
+  var minuteRate = base / 30 / hpd / 60;
+  var att = payAttPerson(did) || {};
+  var grace = payNum(set.lateGrace), lateMult = payNum(set.lateMult) || 1, otMult = payNum(set.otMult) || 1;
+  var lateCounted = (att.late_days || []).reduce(function(s, d){ return s + Math.max(0, payNum(d.min) - grace); }, 0) * lateMult;
+  var lateDed = lateCounted * minuteRate;
+  var otPay = payNum(att.ot_min) * minuteRate * otMult;
+  var adv = P.adv.filter(function(a){ return String(a.did) === String(did); }).reduce(function(s, a){ return s + payNum(a.amount); }, 0);
+  var disc = P.disc.filter(function(a){ return String(a.did) === String(did); }).reduce(function(s, a){ return s + payNum(a.amount); }, 0);
+  var heldBefore = payDepositHeld(did, m);
+  var agreed = payNum(st.depositAgreed), perMonth = payNum(st.depositPerMonth);
+  var depHold = (st.status === "closed" || (st.resignation && st.resignation.acceptedAt)) ? 0 : Math.max(0, Math.min(perMonth, agreed - heldBefore));
+  var depRelease = 0;
+  var rs = st.resignation || {};
+  if(rs.acceptedAt && rs.releaseDate && rs.releaseDate <= payMonthEnd(m) && !rs.released) depRelease = Math.max(0, heldBefore);
+  var net = base - lateDed - adv - disc - depHold + otPay + depRelease;
+  return {did: did, name: payName(did), currency: cur, base: payRound(base, cur), lateCountedMin: lateCounted, lateDed: payRound(lateDed, cur),
+    otMin: payNum(att.ot_min), otPay: payRound(otPay, cur), adv: payRound(adv, cur), disc: payRound(disc, cur),
+    depHold: payRound(depHold, cur), depRelease: payRound(depRelease, cur), net: payRound(net, cur),
+    absent: payNum(att.absent), absentDates: att.absent_dates || [], hasSalary: !!P.staff[did]};
+}
+function payWarnCount(did){ return S.pay.warn.filter(function(w){ return String(w.did) === String(did); }).length; }
+
+function payFieldHtml(id, label, value, type, extra){
+  return '<div class="field"><label for="'+id+'">'+esc(label)+'</label><input type="'+(type || "text")+'" id="'+id+'" value="'+esc(value == null ? "" : value)+'" '+(extra || "")+'></div>';
+}
+function payMonthNav(m){
+  return '<div class="dlv-nav"><button type="button" id="payPrev" aria-label="prev">'+(S.lang==="ar"?"›":"‹")+'</button>' +
+    '<div class="dlv-day-title"><b>'+esc(m)+'</b><small>'+esc(pt("month"))+'</small></div>' +
+    '<button type="button" id="payNext" aria-label="next">'+(S.lang==="ar"?"‹":"›")+'</button></div>';
+}
+
+function renderPayroll(){
+  var P = S.pay, main = document.getElementById("main");
+  if(!P.unsubs.length) subscribePayroll();
+  if(P.sel){ renderPayrollEmployee(P.sel); return; }
+  var html = payMonthNav(P.month);
+  if(P.error){ main.innerHTML = html + '<div class="card"><div class="empty">'+esc(pt("loadErr"))+'</div></div>'; payBind(); return; }
+  if(!P.loaded || !P.att || !P.monthDoc){ main.innerHTML = html + '<div class="card"><div class="empty">'+esc(pt("loading"))+'</div></div>'; payBind(); return; }
+  var md = P.monthDoc;
+  if(md.closed) html += '<div class="card pay-closed"><b>🔒 '+esc(pt("closed"))+'</b><button type="button" class="btn btn-secondary pay-sm" id="payReopen">'+esc(pt("reopen"))+'</button></div>';
+
+  if(P.req.length){
+    html += '<div class="card"><div class="section-title">'+esc(pt("pending"))+'</div>' + P.req.map(function(r){
+      return '<div class="att-row"><span class="nm">'+esc(payName(r.did))+'</span><span class="meta">#'+esc(r.did)+' · '+esc(r.month)+' · '+esc(pt("requestBy"))+' '+esc(r.byName || "")+'</span>' +
+        (r.note ? '<span class="meta">'+esc(r.note)+'</span>' : '') +
+        '<span class="times"><b>'+esc(payMoney(r.amount, (P.staff[r.did] || {}).currency))+'</b></span>' +
+        '<span class="pay-actions"><button type="button" class="btn btn-primary pay-sm" data-req-ok="'+esc(r.id)+'">'+esc(pt("approve"))+'</button>' +
+        '<button type="button" class="btn btn-secondary pay-sm" data-req-no="'+esc(r.id)+'">'+esc(pt("reject"))+'</button></span></div>';
+    }).join("") + '</div>';
+  }
+
+  var ids = payEmployeeIds().filter(function(did){ return P.showClosed || ((P.staff[did] || {}).status !== "closed"); });
+  var rows = ids.map(payCalc);
+  var totals = {};
+  rows.forEach(function(r){ if(r.hasSalary || r.frozen){ totals[r.currency] = (totals[r.currency] || 0) + r.net; } });
+  html += '<div class="att-stats pay-stats">' + Object.keys(totals).map(function(c){
+      return '<div class="att-stat"><b>'+esc(payMoney(totals[c], c))+'</b><span>'+esc(pt("totalNet"))+'</span></div>';
+    }).join("") + '<div class="att-stat"><b>'+rows.length+'</b><span>'+esc(pt("employees"))+'</span></div></div>';
+  if(!P.att.people || !P.att.people.length) html += '<p class="pay-note">'+esc(pt("noAttData"))+'</p>';
+
+  html += '<div class="card"><div class="section-title">'+esc(pt("employees"))+'</div>' + rows.map(function(r){
+    var wc = payWarnCount(r.did), st = P.staff[r.did] || {};
+    return '<button type="button" class="pay-emp" data-pay-open="'+esc(r.did)+'">' +
+      '<span class="pay-emp-top"><span class="nm">'+esc(r.name)+'</span><span class="meta">#'+esc(r.did)+'</span>' +
+        (st.status === "closed" ? '<span class="att-tag other_shift">'+esc(pt("closedAcct"))+'</span>' : '') +
+        (wc ? '<span class="att-tag '+(wc >= 3 ? "absent" : "late")+'">'+esc(wc >= 3 ? pt("warnEligible") : pt("warnCount", {n: wc}))+'</span>' : '') +
+        '<b class="pay-net">'+(r.hasSalary || r.frozen ? esc(payMoney(r.net, r.currency)) : '<span class="meta">'+esc(pt("noSalary"))+'</span>')+'</b></span>' +
+      ((r.hasSalary || r.frozen) ? '<span class="pay-emp-lines">' +
+        '<span>'+esc(pt("base"))+' '+esc(payMoney(r.base, r.currency))+'</span>' +
+        (r.lateDed ? '<span class="neg">'+esc(pt("lateDed"))+' ⁦−'+esc(payMoney(r.lateDed, r.currency))+'⁩'+'</span>' : '') +
+        (r.adv ? '<span class="neg">'+esc(pt("adv"))+' ⁦−'+esc(payMoney(r.adv, r.currency))+'⁩'+'</span>' : '') +
+        (r.disc ? '<span class="neg">'+esc(pt("disc"))+' ⁦−'+esc(payMoney(r.disc, r.currency))+'⁩'+'</span>' : '') +
+        (r.depHold ? '<span class="neg">'+esc(pt("depHold"))+' ⁦−'+esc(payMoney(r.depHold, r.currency))+'⁩'+'</span>' : '') +
+        (r.otPay ? '<span class="pos">'+esc(pt("ot"))+' ⁦+'+esc(payMoney(r.otPay, r.currency))+'⁩'+'</span>' : '') +
+        (r.depRelease ? '<span class="pos">'+esc(pt("depRelease"))+' ⁦+'+esc(payMoney(r.depRelease, r.currency))+'⁩'+'</span>' : '') +
+      '</span>' : '') + '</button>';
+  }).join("") + '<button type="button" class="pay-link" id="payToggleClosed">'+esc(P.showClosed ? pt("hideClosed") : pt("showClosed"))+'</button></div>';
+
+  // Month-end absence review and closing
+  var review = md.review || {};
+  var withAbs = rows.filter(function(r){ return r.absent > 0; });
+  html += '<div class="card"><div class="section-title">'+esc(pt("review"))+'</div><div class="section-sub">'+esc(pt("reviewHint"))+'</div>';
+  if(!withAbs.length) html += '<div class="pay-note">'+esc(pt("noAbs"))+'</div>';
+  withAbs.forEach(function(r){
+    var ok = review[r.did] && review[r.did].confirmed;
+    var dayPay = payRound(payNum((P.staff[r.did] || {}).baseSalary) / 30 * r.absent, r.currency);
+    html += '<div class="att-row"><span class="nm">'+esc(r.name)+'</span><span class="att-tag absent">'+esc(r.absent)+'</span>' +
+      '<span class="meta" dir="ltr">'+r.absentDates.map(function(d){ return esc(d.slice(5)); }).join("  ")+'</span>' +
+      (md.closed ? (ok ? '<span class="att-tag on_time">'+esc(pt("confirmed"))+'</span>' : '') :
+        '<span class="pay-actions">' + (r.hasSalary ? '<button type="button" class="btn btn-secondary pay-sm" data-abs-disc="'+esc(r.did)+'" data-abs-amt="'+dayPay+'" data-abs-n="'+r.absent+'">'+esc(pt("addAbsDisc", {n: r.absent}))+'</button>' : '') +
+        (ok ? '<span class="att-tag on_time">✓ '+esc(pt("confirmed"))+'</span>' : '<button type="button" class="btn btn-primary pay-sm" data-abs-ok="'+esc(r.did)+'">'+esc(pt("confirm"))+'</button>') + '</span>') + '</div>';
+  });
+  if(!md.closed){
+    var allOk = withAbs.every(function(r){ return review[r.did] && review[r.did].confirmed; });
+    html += '<div class="pay-gap"></div><button type="button" class="btn btn-primary" id="payClose" '+(allOk ? "" : "disabled")+'>🔒 '+esc(pt("closeMonth"))+'</button>' +
+      (allOk ? '' : '<div class="pay-note">'+esc(pt("closeNeedsReview"))+'</div>');
+  }
+  html += '</div>';
+
+  // Rules
+  var s = P.settings;
+  html += '<details class="card pay-details"><summary class="section-title">⚙️ '+esc(pt("settings"))+'</summary>' +
+    payFieldHtml("paySetGrace", pt("lateGrace"), s.lateGrace, "number", 'min="0" step="1"') +
+    payFieldHtml("paySetLate", pt("lateMult"), s.lateMult, "number", 'min="0" step="0.5"') +
+    payFieldHtml("paySetOt", pt("otMult"), s.otMult, "number", 'min="0" step="0.25"') +
+    '<button type="button" class="btn btn-primary" id="paySaveSet">'+esc(pt("save"))+'</button></details>';
+
+  // Add employee by hand
+  html += '<details class="card pay-details"><summary class="section-title">+ '+esc(pt("addEmp"))+'</summary><div class="section-sub">'+esc(pt("addEmpHint"))+'</div>' +
+    payFieldHtml("payNewId", pt("fpId"), "", "text", 'inputmode="numeric"') + payFieldHtml("payNewName", pt("name"), "") +
+    '<button type="button" class="btn btn-primary" id="payAddEmp">'+esc(pt("save"))+'</button></details>';
+  main.innerHTML = html;
+  payBind();
+}
+
+function renderPayrollEmployee(did){
+  var P = S.pay, main = document.getElementById("main"), st = P.staff[did] || {}, r = payCalc(did), cur = r.currency, md = P.monthDoc || {};
+  var att = payAttPerson(did) || {}, set = P.settings;
+  var html = '<button type="button" class="btn btn-secondary pay-back" id="payBack">'+(S.lang==="ar"?"→ ":"← ")+esc(pt("back"))+'</button>';
+  html += '<div class="card"><div class="section-title">'+esc(r.name)+' <span class="meta">#'+esc(did)+'</span></div>';
+  var wc = payWarnCount(did);
+  if(wc >= 3) html += '<div class="pay-alert">⚠️ '+esc(pt("warnEligible"))+'</div>';
+  if(st.status === "closed") html += '<div class="pay-note">'+esc(pt("closedAcct"))+'</div>';
+  html += payFieldHtml("pfName", pt("name"), st.name || r.name) +
+    '<div class="pay-grid">' + payFieldHtml("pfBase", pt("base"), st.baseSalary, "number", 'min="0" step="any"') +
+    '<div class="field"><label for="pfCur">'+esc(pt("currency"))+'</label><select id="pfCur"><option value="USD"'+(cur==="USD"?" selected":"")+'>USD $</option><option value="LBP"'+(cur==="LBP"?" selected":"")+'>LBP ل.ل</option></select></div>' +
+    payFieldHtml("pfHours", pt("hoursDay"), st.hoursPerDay || 9, "number", 'min="1" step="0.5"') +
+    payFieldHtml("pfLimit", pt("advLimit"), st.advanceLimit, "number", 'min="0" step="any"') +
+    payFieldHtml("pfDep", pt("depAgreed"), st.depositAgreed, "number", 'min="0" step="any" placeholder="'+esc(payRound(payNum(st.baseSalary)/2, cur))+'"') +
+    payFieldHtml("pfDepM", pt("depPerMonth"), st.depositPerMonth, "number", 'min="0" step="any"') + '</div>' +
+    '<div class="pay-note">'+esc(pt("depHint"))+'</div>' +
+    '<div class="field"><label for="pfNotes">'+esc(pt("notes"))+'</label><textarea id="pfNotes">'+esc(st.notes || "")+'</textarea></div>' +
+    '<button type="button" class="btn btn-primary" id="pfSave">'+esc(pt("save"))+'</button></div>';
+
+  // This month
+  html += payMonthNav(P.month);
+  html += '<div class="card"><div class="section-title">'+esc(pt("thisMonth"))+(r.frozen ? ' 🔒' : '')+'</div>' +
+    '<table class="pay-table">' +
+    '<tr><td>'+esc(pt("base"))+'</td><td>'+esc(payMoney(r.base, cur))+'</td></tr>' +
+    '<tr class="neg"><td>'+esc(pt("lateDed"))+' <span class="meta">('+esc(Math.round(r.lateCountedMin))+' '+esc(pt("min"))+' '+esc(pt("counted"))+')</span></td><td>⁦−'+esc(payMoney(r.lateDed, cur))+'⁩'+'</td></tr>' +
+    '<tr class="neg"><td>'+esc(pt("adv"))+'</td><td>⁦−'+esc(payMoney(r.adv, cur))+'⁩'+'</td></tr>' +
+    '<tr class="neg"><td>'+esc(pt("disc"))+'</td><td>⁦−'+esc(payMoney(r.disc, cur))+'⁩'+'</td></tr>' +
+    '<tr class="neg"><td>'+esc(pt("depHold"))+'</td><td>⁦−'+esc(payMoney(r.depHold, cur))+'⁩'+'</td></tr>' +
+    '<tr class="pos"><td>'+esc(pt("ot"))+' <span class="meta">('+esc(r.otMin)+' '+esc(pt("min"))+')</span></td><td>⁦+'+esc(payMoney(r.otPay, cur))+'⁩'+'</td></tr>' +
+    (r.depRelease ? '<tr class="pos"><td>'+esc(pt("depRelease"))+'</td><td>⁦+'+esc(payMoney(r.depRelease, cur))+'⁩'+'</td></tr>' : '') +
+    '<tr class="tot"><td>'+esc(pt("net"))+'</td><td>'+esc(payMoney(r.net, cur))+'</td></tr></table>';
+  var lds = att.late_days || [];
+  if(lds.length){
+    html += '<div class="pay-sub">'+esc(pt("lateDays"))+'</div>' + lds.map(function(d){
+      var c = Math.max(0, payNum(d.min) - payNum(set.lateGrace)) * (payNum(set.lateMult) || 1);
+      return '<div class="pay-line"><span dir="ltr">'+esc(d.date)+'</span><span>'+esc(d.min)+' '+esc(pt("min"))+'</span><span class="meta">→ '+esc(c)+' '+esc(pt("min"))+' '+esc(pt("counted"))+'</span></div>';
+    }).join("");
+  }
+  var advs = P.adv.filter(function(a){ return String(a.did) === String(did); });
+  var discs = P.disc.filter(function(a){ return String(a.did) === String(did); });
+  html += '<div class="pay-sub">'+esc(pt("adv"))+'</div>' + (advs.length ? advs.map(function(a){
+      return '<div class="pay-line"><span dir="ltr">'+esc(a.date || "")+'</span><b>'+esc(payMoney(a.amount, cur))+'</b><span class="meta">'+esc(a.byName || "")+(a.note ? ' · '+esc(a.note) : '')+'</span>' +
+        (md.closed ? '' : '<button type="button" class="pay-link" data-del-adv="'+esc(a.id)+'">'+esc(pt("del"))+'</button>')+'</div>';
+    }).join("") : '<div class="pay-note">'+esc(pt("none"))+'</div>');
+  html += '<div class="pay-sub">'+esc(pt("disc"))+'</div>' + (discs.length ? discs.map(function(a){
+      return '<div class="pay-line"><span dir="ltr">'+esc(a.date || "")+'</span><b>'+esc(payMoney(a.amount, cur))+'</b><span class="meta">'+esc(a.byName || "")+(a.reason ? ' · '+esc(a.reason) : '')+'</span>' +
+        (md.closed ? '' : '<button type="button" class="pay-link" data-del-disc="'+esc(a.id)+'">'+esc(pt("del"))+'</button>')+'</div>';
+    }).join("") : '<div class="pay-note">'+esc(pt("none"))+'</div>');
+  if(!md.closed){
+    html += '<div class="pay-gap"></div><div class="pay-grid">' +
+      payFieldHtml("pfAdvAmt", pt("addAdv"), "", "number", 'min="0" step="any" placeholder="'+esc(pt("amount"))+'"') +
+      payFieldHtml("pfAdvNote", pt("notes"), "") + '</div><button type="button" class="btn btn-secondary" id="pfAddAdv">+ '+esc(pt("addAdv"))+'</button>' +
+      '<div class="pay-gap"></div><div class="pay-grid">' +
+      payFieldHtml("pfDiscAmt", pt("addDisc"), "", "number", 'min="0" step="any" placeholder="'+esc(pt("amount"))+'"') +
+      payFieldHtml("pfDiscWhy", pt("reason"), "") + '</div><button type="button" class="btn btn-secondary" id="pfAddDisc">+ '+esc(pt("addDisc"))+'</button>';
+  }
+  html += '</div>';
+
+  // Deposit
+  var held = payDepositHeld(did);
+  var led = P.dep.filter(function(e){ return String(e.did) === String(did); }).sort(function(a, b){ return a.month < b.month ? -1 : 1; });
+  html += '<div class="card"><div class="section-title">'+esc(pt("deposit"))+'</div>' +
+    '<div class="pay-line"><span>'+esc(pt("held"))+'</span><b>'+esc(payMoney(held, cur))+'</b><span class="meta">/ '+esc(payMoney(payNum(st.depositAgreed), cur))+'</span></div>' +
+    (led.length ? '<div class="pay-sub">'+esc(pt("ledger"))+'</div>' + led.map(function(e){
+      return '<div class="pay-line"><span dir="ltr">'+esc(e.month)+'</span><span>'+esc(e.type === "release" ? pt("release") : pt("hold"))+'</span><b>'+esc(payMoney(e.amount, cur))+'</b></div>';
+    }).join("") : '') + '</div>';
+
+  // Resignation
+  var rs = st.resignation || {};
+  html += '<div class="card"><div class="section-title">'+esc(pt("resign"))+'</div>';
+  if(st.status === "closed"){
+    html += '<div class="pay-note">'+esc(pt("closedAcct"))+(rs.releasedAt ? ' · '+esc(rs.releasedAt.slice(0, 10)) : '')+'</div>';
+  } else {
+    html += '<div class="field"><label for="pfResDate">'+esc(pt("resignDate"))+'</label><input type="date" id="pfResDate" value="'+esc(rs.submitted || "")+'"></div>';
+    if(rs.acceptedAt){
+      html += '<div class="pay-line"><span>'+esc(pt("accepted"))+'</span><b dir="ltr">'+esc(rs.acceptedAt.slice(0, 10))+'</b></div>' +
+        '<div class="pay-line"><span>'+esc(pt("releaseOn"))+'</span><b dir="ltr">'+esc(rs.releaseDate || "")+'</b></div>' +
+        '<button type="button" class="btn btn-primary" id="pfRelease" '+(rs.releaseDate && payToday() >= rs.releaseDate ? "" : "disabled")+'>'+esc(pt("releaseNow"))+'</button>';
+    } else {
+      html += '<button type="button" class="btn btn-secondary" id="pfAccept">'+esc(pt("acceptResign"))+'</button>';
+    }
+  }
+  html += '</div>';
+
+  // Warnings
+  var ws = P.warn.filter(function(w){ return String(w.did) === String(did); }).sort(function(a, b){ return (a.date || "") < (b.date || "") ? 1 : -1; });
+  html += '<div class="card"><div class="section-title">'+esc(pt("warnings"))+' <span class="att-tag '+(wc >= 3 ? "absent" : wc ? "late" : "on_time")+'">'+esc(pt("warnCount", {n: wc}))+'</span></div>' +
+    ws.map(function(w){
+      return '<div class="pay-warn">' + (w.image ? '<img src="'+esc(w.image)+'" alt="" data-warn-img="'+esc(w.id)+'">' : '') +
+        '<div><b dir="ltr">'+esc(w.date || "")+'</b><div>'+esc(w.reason || "")+'</div>' +
+        '<button type="button" class="pay-link" data-del-warn="'+esc(w.id)+'">'+esc(pt("del"))+'</button></div></div>';
+    }).join("") +
+    '<div class="pay-gap"></div><div class="pay-grid">' + payFieldHtml("pfWarnDate", pt("date"), payToday(), "date") + payFieldHtml("pfWarnWhy", pt("reason"), "") + '</div>' +
+    '<div class="field"><label for="pfWarnImg">'+esc(pt("scan"))+'</label><input type="file" id="pfWarnImg" accept="image/*"></div>' +
+    '<button type="button" class="btn btn-secondary" id="pfAddWarn">+ '+esc(pt("addWarn"))+'</button></div>';
+  main.innerHTML = html;
+  payBind();
+}
+
+/** Shrinks a photo so it fits inside one Firestore document (kept private by the rules). */
+function payCompressImage(file, cb){
+  var fr = new FileReader();
+  fr.onload = function(){
+    var img = new Image();
+    img.onload = function(){
+      var max = 1600, w = img.width, h = img.height;
+      if(w > max || h > max){ var k = Math.min(max / w, max / h); w = Math.round(w * k); h = Math.round(h * k); }
+      var c = document.createElement("canvas"); c.width = w; c.height = h;
+      c.getContext("2d").drawImage(img, 0, 0, w, h);
+      var q = 0.8, out = c.toDataURL("image/jpeg", q);
+      while(out.length > 700000 && q > 0.3){ q -= 0.1; out = c.toDataURL("image/jpeg", q); }
+      if(out.length > 700000){ c.width = Math.round(w * 0.6); c.height = Math.round(h * 0.6); c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); out = c.toDataURL("image/jpeg", 0.6); }
+      cb(out);
+    };
+    img.onerror = function(){ cb(null); };
+    img.src = fr.result;
+  };
+  fr.onerror = function(){ cb(null); };
+  fr.readAsDataURL(file);
+}
+
+function payByName(){ return (S.currentUser && S.currentUser.fullName) || ""; }
+function paySaveStaff(did, patch){
+  var P = S.pay, st = Object.assign({}, P.staff[did] || {}, patch);
+  var b = S.db.batch();
+  b.set(S.db.doc("pay_staff/" + did), Object.assign({did: String(did), updatedAt: new Date().toISOString()}, patch), {merge: true});
+  b.set(S.db.doc("hr_staff/" + did), {did: String(did), name: st.name || payName(did), active: st.status !== "closed"}, {merge: true});
+  return b.commit();
+}
+function payAddAdvance(did, amount, note, extra){
+  var m = (extra && extra.month) || (isHRUser() ? S.hr.month : S.pay.month) || payMonthNow(), id = payNewId(), key = did + "_" + m, totRef = S.db.doc("pay_adv_totals/" + key);
+  return totRef.get().then(function(snap){
+    var before = snap.exists ? payNum(snap.data().total) : 0;
+    var b = S.db.batch();
+    b.set(S.db.doc("pay_advances/" + id), Object.assign({did: String(did), month: m, amount: amount, note: note || "", date: payToday(),
+      by: S.currentUser.id, byName: payByName(), approvedOver: false, createdAt: new Date().toISOString()}, extra || {}));
+    b.set(totRef, {did: String(did), month: m, total: before + amount, lastId: id});
+    return b.commit();
+  });
+}
+function payDelAdvance(a){
+  var key = a.did + "_" + a.month, totRef = S.db.doc("pay_adv_totals/" + key);
+  return totRef.get().then(function(snap){
+    var b = S.db.batch();
+    b.delete(S.db.doc("pay_advances/" + a.id));
+    if(snap.exists) b.set(totRef, {total: Math.max(0, payNum(snap.data().total) - payNum(a.amount)), lastId: ""}, {merge: true});
+    return b.commit();
+  });
+}
+function payCloseMonth(){
+  var P = S.pay, m = P.month, ids = payEmployeeIds(), snapshot = {}, b = S.db.batch();
+  ids.forEach(function(did){
+    var r = payCalc(did);
+    if(!r.hasSalary) return;
+    snapshot[did] = r;
+    if(r.depHold > 0) b.set(S.db.doc("pay_deposit/" + m + "_" + did + "_hold"), {did: String(did), month: m, type: "hold", amount: r.depHold});
+    if(r.depRelease > 0){
+      b.set(S.db.doc("pay_deposit/" + m + "_" + did + "_rel"), {did: String(did), month: m, type: "release", amount: r.depRelease});
+      b.set(S.db.doc("pay_staff/" + did), {status: "closed", resignation: Object.assign({}, (P.staff[did] || {}).resignation, {released: true, releasedAt: new Date().toISOString()})}, {merge: true});
+      b.set(S.db.doc("hr_staff/" + did), {active: false}, {merge: true});
+    }
+  });
+  b.set(S.db.doc("pay_months/" + m), {closed: true, closedAt: new Date().toISOString(), snapshot: snapshot}, {merge: true});
+  return b.commit();
+}
+function payReopenMonth(){
+  var P = S.pay, m = P.month, b = S.db.batch();
+  P.dep.filter(function(e){ return e.month === m; }).forEach(function(e){ b.delete(S.db.doc("pay_deposit/" + e.id)); });
+  b.set(S.db.doc("pay_months/" + m), {closed: false, snapshot: firebase.firestore.FieldValue.delete()}, {merge: true});
+  return b.commit();
+}
+
+function payBind(){
+  var P = S.pay;
+  var on = function(id, fn){ var el = document.getElementById(id); if(el) el.onclick = fn; };
+  var val = function(id){ var el = document.getElementById(id); return el ? el.value : ""; };
+  var fail = function(err){ toast(describeFirebaseError(err)); };
+  on("payPrev", function(){ P.month = payShiftMonth(P.month, -1); subscribePayrollMonth(); renderPayroll(); });
+  on("payNext", function(){ P.month = payShiftMonth(P.month, 1); subscribePayrollMonth(); renderPayroll(); });
+  on("payBack", function(){ P.sel = null; renderPayroll(); window.scrollTo(0, 0); });
+  on("payToggleClosed", function(){ P.showClosed = !P.showClosed; renderPayroll(); });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-pay-open]"), function(el){
+    el.onclick = function(){ P.sel = this.getAttribute("data-pay-open"); renderPayroll(); window.scrollTo(0, 0); };
+  });
+  on("paySaveSet", function(){
+    S.db.doc("pay_settings/main").set({lateGrace: payNum(val("paySetGrace")), lateMult: payNum(val("paySetLate")), otMult: payNum(val("paySetOt"))}, {merge: true})
+      .then(function(){ toast(pt("settingsSaved")); }).catch(fail);
+  });
+  on("payAddEmp", function(){
+    var did = val("payNewId").trim(), nm = val("payNewName").trim();
+    if(!did || !nm){ toast(pt("needName")); return; }
+    paySaveStaff(did, {name: nm}).then(function(){ toast(pt("saved")); P.sel = did; renderPayroll(); }).catch(fail);
+  });
+  on("payReopen", function(){ if(confirm(pt("reopenConfirm", {m: P.month}))) payReopenMonth().catch(fail); });
+  on("payClose", function(){ if(confirm(pt("closeConfirm", {m: P.month}))) payCloseMonth().then(function(){ toast(pt("saved")); }).catch(fail); });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-abs-ok]"), function(el){
+    el.onclick = function(){
+      var did = this.getAttribute("data-abs-ok"), upd = {review: {}};
+      upd.review[did] = {confirmed: true, at: new Date().toISOString()};
+      S.db.doc("pay_months/" + P.month).set(upd, {merge: true}).catch(fail);
+    };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-abs-disc]"), function(el){
+    el.onclick = function(){
+      var did = this.getAttribute("data-abs-disc"), n = this.getAttribute("data-abs-n");
+      var amt = prompt(pt("amount"), this.getAttribute("data-abs-amt"));
+      if(amt === null || !(payNum(amt) > 0)) return;
+      S.db.collection("pay_discounts").add({did: String(did), month: P.month, amount: payNum(amt), reason: (S.lang === "ar" ? "غياب " : "Absence ") + n,
+        date: payToday(), by: S.currentUser.id, byName: payByName(), createdAt: new Date().toISOString()}).then(function(){ toast(pt("saved")); }).catch(fail);
+    };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-req-ok],[data-req-no]"), function(el){
+    el.onclick = function(){
+      var id = this.getAttribute("data-req-ok") || this.getAttribute("data-req-no"), ok = this.hasAttribute("data-req-ok");
+      var r = P.req.filter(function(x){ return x.id === id; })[0];
+      if(!r) return;
+      var done = function(){ return S.db.doc("pay_requests/" + id).update({status: ok ? "approved" : "rejected", decidedAt: new Date().toISOString()}); };
+      if(!ok){ done().then(function(){ toast(pt("rejected")); }).catch(fail); return; }
+      var keep = P.month; P.month = r.month;
+      payAddAdvance(r.did, payNum(r.amount), r.note, {approvedOver: true, month: r.month || S.pay.month, by: r.by, byName: r.byName || "", approvedBy: payByName(), requestId: id})
+        .then(done).then(function(){ toast(pt("approved")); }).catch(fail).then(function(){ P.month = keep; });
+    };
+  });
+  // Employee detail
+  var did = P.sel;
+  if(!did) return;
+  on("pfSave", function(){
+    paySaveStaff(did, {name: val("pfName").trim() || payName(did), baseSalary: payNum(val("pfBase")), currency: val("pfCur"),
+      hoursPerDay: payNum(val("pfHours")) || 9, advanceLimit: payNum(val("pfLimit")), depositAgreed: payNum(val("pfDep")),
+      depositPerMonth: payNum(val("pfDepM")), notes: val("pfNotes")}).then(function(){ toast(pt("saved")); }).catch(fail);
+  });
+  on("pfAddAdv", function(){
+    var a = payNum(val("pfAdvAmt")); if(!(a > 0)){ toast(pt("needAmount")); return; }
+    payAddAdvance(did, a, val("pfAdvNote"), {approvedOver: true}).then(function(){ toast(pt("saved")); }).catch(fail);
+  });
+  on("pfAddDisc", function(){
+    var a = payNum(val("pfDiscAmt")); if(!(a > 0)){ toast(pt("needAmount")); return; }
+    S.db.collection("pay_discounts").add({did: String(did), month: P.month, amount: a, reason: val("pfDiscWhy"), date: payToday(),
+      by: S.currentUser.id, byName: payByName(), createdAt: new Date().toISOString()}).then(function(){ toast(pt("saved")); }).catch(fail);
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-del-adv]"), function(el){
+    el.onclick = function(){ var id = this.getAttribute("data-del-adv"), a = P.adv.filter(function(x){ return x.id === id; })[0];
+      if(a && confirm(pt("delConfirm"))) payDelAdvance(a).catch(fail); };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-del-disc]"), function(el){
+    el.onclick = function(){ var id = this.getAttribute("data-del-disc"); if(confirm(pt("delConfirm"))) S.db.doc("pay_discounts/" + id).delete().catch(fail); };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-del-warn]"), function(el){
+    el.onclick = function(){ var id = this.getAttribute("data-del-warn"); if(confirm(pt("delConfirm"))) S.db.doc("pay_warnings/" + id).delete().catch(fail); };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-warn-img]"), function(el){
+    el.onclick = function(){ openImageLightbox(this.src); };
+  });
+  var resDate = document.getElementById("pfResDate");
+  if(resDate) resDate.onchange = function(){
+    var rs = Object.assign({}, (P.staff[did] || {}).resignation, {submitted: this.value});
+    if(rs.acceptedAt && this.value) rs.releaseDate = payAddDays(this.value, 15);
+    paySaveStaff(did, {resignation: rs, status: this.value ? "resigned" : "active"}).catch(fail);
+  };
+  on("pfAccept", function(){
+    var d = val("pfResDate"); if(!d){ toast(pt("resignDate")); return; }
+    paySaveStaff(did, {status: "resigned", resignation: {submitted: d, acceptedAt: new Date().toISOString(), releaseDate: payAddDays(d, 15)}})
+      .then(function(){ toast(pt("saved")); }).catch(fail);
+  });
+  on("pfRelease", function(){
+    if(!confirm(pt("releaseConfirm"))) return;
+    var held = payDepositHeld(did), b = S.db.batch(), m = payMonthNow();
+    if(held > 0) b.set(S.db.doc("pay_deposit/" + m + "_" + did + "_rel"), {did: String(did), month: m, type: "release", amount: held, manual: true});
+    b.set(S.db.doc("pay_staff/" + did), {status: "closed", resignation: Object.assign({}, (P.staff[did] || {}).resignation, {released: true, releasedAt: new Date().toISOString()})}, {merge: true});
+    b.set(S.db.doc("hr_staff/" + did), {active: false}, {merge: true});
+    b.commit().then(function(){ toast(pt("saved")); }).catch(fail);
+  });
+  on("pfAddWarn", function(){
+    var f = document.getElementById("pfWarnImg"), file = f && f.files && f.files[0], why = val("pfWarnWhy").trim(), d = val("pfWarnDate");
+    if(!why || !d){ toast(pt("reason")); return; }
+    if(!file){ toast(pt("noScan")); return; }
+    var btn = document.getElementById("pfAddWarn"); btn.disabled = true;
+    payCompressImage(file, function(dataUrl){
+      if(!dataUrl){ btn.disabled = false; toast(pt("noScan")); return; }
+      S.db.collection("pay_warnings").add({did: String(did), date: d, reason: why, image: dataUrl, by: payByName(), createdAt: new Date().toISOString()})
+        .then(function(){
+          toast(pt("warnAdded"));
+          if(payWarnCount(did) + 1 >= 3) setTimeout(function(){ alert(payName(did) + ": " + pt("warnEligible")); }, 300);
+        }).catch(function(err){ btn.disabled = false; fail(err); });
+    });
+  });
+}
+
+// ---------------- HR: advances and discounts ----------------
+S.hr = {month: payMonthNow(), staff: {}, adv: [], disc: [], req: [], unsubs: [], monthUnsubs: [], did: "", over: null};
+function stopHR(){ S.hr.unsubs = payUnsub(S.hr.unsubs); S.hr.monthUnsubs = payUnsub(S.hr.monthUnsubs); }
+function hrRerender(){ if(S.appMode === "hradv") renderHR(); }
+function subscribeHR(){
+  var H = S.hr;
+  if(!S.db || H.unsubs.length) return;
+  H.unsubs.push(S.db.collection("hr_staff").onSnapshot(function(s){ var o = {}; s.forEach(function(d){ o[d.id] = d.data(); }); H.staff = o; hrRerender(); }, function(){}));
+  H.unsubs.push(S.db.collection("pay_requests").where("by", "==", S.currentUser.id).onSnapshot(function(s){ H.req = s.docs.map(function(d){ return Object.assign({id: d.id}, d.data()); }); hrRerender(); }, function(){}));
+  subscribeHRMonth();
+}
+function subscribeHRMonth(){
+  var H = S.hr;
+  H.monthUnsubs = payUnsub(H.monthUnsubs);
+  H.monthUnsubs.push(S.db.collection("pay_advances").where("month", "==", H.month).onSnapshot(function(s){ H.adv = s.docs.map(function(d){ return Object.assign({id: d.id}, d.data()); }); hrRerender(); }, function(){}));
+  H.monthUnsubs.push(S.db.collection("pay_discounts").where("month", "==", H.month).onSnapshot(function(s){ H.disc = s.docs.map(function(d){ return Object.assign({id: d.id}, d.data()); }); hrRerender(); }, function(){}));
+}
+function hrName(did){ var s = S.hr.staff[did]; return (s && s.name) || ("#" + did); }
+function renderHR(){
+  var H = S.hr, main = document.getElementById("main");
+  if(!H.unsubs.length) subscribeHR();
+  var ids = Object.keys(H.staff).filter(function(k){ return H.staff[k].active !== false; }).sort(function(a, b){ return hrName(a).localeCompare(hrName(b)); });
+  var html = payMonthNav(H.month);
+  html += '<div class="card"><div class="section-title">'+esc(pt("hrTab"))+'</div><div class="section-sub">'+esc(pt("hrSub"))+'</div>' +
+    '<div class="field"><label for="hrEmp">'+esc(pt("hrEmp"))+'</label><select id="hrEmp"><option value="">'+esc(pt("hrPick"))+'</option>' +
+    ids.map(function(k){ return '<option value="'+esc(k)+'"'+(H.did === k ? " selected" : "")+'>#'+esc(k)+' '+esc(hrName(k))+'</option>'; }).join("") + '</select></div>' +
+    '<div class="pay-grid">' + payFieldHtml("hrAmt", pt("amount"), "", "number", 'min="0" step="any"') + payFieldHtml("hrNote", pt("hrNote") + " / " + pt("reason"), "") + '</div>' +
+    '<div class="pay-grid"><button type="button" class="btn btn-primary" id="hrAddAdv">+ '+esc(pt("addAdv"))+'</button>' +
+    '<button type="button" class="btn btn-secondary" id="hrAddDisc">+ '+esc(pt("addDisc"))+'</button></div>';
+  if(H.over){
+    html += '<div class="pay-alert">⛔ '+esc(pt("overLimit"))+'<button type="button" class="btn btn-secondary pay-sm" id="hrSendReq">'+esc(pt("sendReq"))+'</button></div>';
+  }
+  html += '</div>';
+  var list = function(items, title){
+    return '<div class="card"><div class="section-title">'+esc(title)+'</div>' + (items.length ? items.slice().sort(function(a, b){ return (a.createdAt || "") < (b.createdAt || "") ? 1 : -1; }).map(function(a){
+      return '<div class="pay-line"><span class="nm">'+esc(hrName(a.did))+'</span><b>'+esc(payNum(a.amount).toLocaleString("en-US"))+'</b><span dir="ltr" class="meta">'+esc(a.date || "")+'</span><span class="meta">'+esc(a.byName || "")+((a.note || a.reason) ? ' · '+esc(a.note || a.reason) : '')+'</span></div>';
+    }).join("") : '<div class="pay-note">'+esc(pt("none"))+'</div>') + '</div>';
+  };
+  html += list(H.adv, pt("advList")) + list(H.disc, pt("discList"));
+  if(H.req.length){
+    html += '<div class="card"><div class="section-title">'+esc(pt("myReqs"))+'</div>' + H.req.slice().sort(function(a, b){ return (a.createdAt || "") < (b.createdAt || "") ? 1 : -1; }).map(function(r){
+      var cls = r.status === "approved" ? "on_time" : r.status === "rejected" ? "absent" : "late";
+      return '<div class="pay-line"><span class="nm">'+esc(hrName(r.did))+'</span><b>'+esc(payNum(r.amount).toLocaleString("en-US"))+'</b><span class="meta" dir="ltr">'+esc(r.month)+'</span><span class="att-tag '+cls+'">'+esc(pt("st_" + r.status))+'</span></div>';
+    }).join("") + '</div>';
+  }
+  main.innerHTML = html;
+  var on = function(id, fn){ var el = document.getElementById(id); if(el) el.onclick = fn; };
+  var val = function(id){ var el = document.getElementById(id); return el ? el.value : ""; };
+  var sel = document.getElementById("hrEmp"); if(sel) sel.onchange = function(){ H.did = this.value; H.over = null; };
+  on("payPrev", function(){ H.month = payShiftMonth(H.month, -1); subscribeHRMonth(); renderHR(); });
+  on("payNext", function(){ H.month = payShiftMonth(H.month, 1); subscribeHRMonth(); renderHR(); });
+  on("hrAddAdv", function(){
+    var did = val("hrEmp"), a = payNum(val("hrAmt")), note = val("hrNote");
+    if(!did){ toast(pt("hrPick")); return; }
+    if(!(a > 0)){ toast(pt("needAmount")); return; }
+    var keep = S.pay.month; S.pay.month = H.month;
+    payAddAdvance(did, a, note).then(function(){ H.over = null; toast(pt("hrAdvAdded")); renderHR(); })
+      .catch(function(err){
+        if(err && err.code === "permission-denied"){ H.over = {did: did, amount: a, note: note, month: H.month}; renderHR(); }
+        else toast(describeFirebaseError(err));
+      }).then(function(){ S.pay.month = keep; });
+  });
+  on("hrAddDisc", function(){
+    var did = val("hrEmp"), a = payNum(val("hrAmt"));
+    if(!did){ toast(pt("hrPick")); return; }
+    if(!(a > 0)){ toast(pt("needAmount")); return; }
+    S.db.collection("pay_discounts").add({did: String(did), month: H.month, amount: a, reason: val("hrNote"), date: payToday(),
+      by: S.currentUser.id, byName: payByName(), createdAt: new Date().toISOString()}).then(function(){ toast(pt("hrDiscAdded")); }).catch(function(err){ toast(describeFirebaseError(err)); });
+  });
+  on("hrSendReq", function(){
+    var o = H.over; if(!o) return;
+    S.db.collection("pay_requests").add({did: String(o.did), amount: o.amount, note: o.note || "", month: o.month, status: "pending",
+      by: S.currentUser.id, byName: payByName(), createdAt: new Date().toISOString()}).then(function(){ H.over = null; toast(pt("reqSent")); renderHR(); })
+      .catch(function(err){ toast(describeFirebaseError(err)); });
+  });
+}
+
 function render(){
   updateAuthChrome();
   updateNotifBanner();
@@ -5336,7 +6007,16 @@ function render(){
     if(isManagerUser()) renderFeedback(); else { S.appMode = "handover"; render(); }
   } else if(S.appMode === "attendance"){
     applyBrand("shoppies");   // attendance is Shoppies' own: show it in Shoppies red
-    if(isAttendanceOwner()) renderAttendance(); else { S.appMode = "handover"; render(); }
+    if(isAttendanceOwner() || isHRUser()) renderAttendance(); else { S.appMode = isHRUser() ? "hradv" : "handover"; render(); }
+  } else if(S.appMode === "payroll"){
+    applyBrand("shoppies");
+    if(isAttendanceOwner()) renderPayroll(); else { S.appMode = isHRUser() ? "hradv" : "handover"; render(); }
+  } else if(S.appMode === "hradv"){
+    applyBrand("shoppies");
+    if(isHRUser()) renderHR(); else { S.appMode = "handover"; render(); }
+  } else if(isHRUser()){
+    // HR only has attendance and advances
+    S.appMode = "hradv"; render();
   } else if(S.appMode === "delivery"){
     applyBrand("");
     if(isManagerUser() || isViewerUser()) renderDelivery(); else { S.appMode = "handover"; render(); }
@@ -5364,6 +6044,8 @@ document.getElementById("logoutBtn").onclick = function(){
   S.view = "form";
   stopDelivery();
   stopAttendance();
+  stopPayroll();
+  stopHR();
   var wasViewer = isViewerUser();
   if(S.auth) S.auth.signOut().then(function(){ if(wasViewer) location.reload(); }); // onAuthStateChanged picks this up and clears S.currentUser
 };
@@ -5373,6 +6055,8 @@ document.getElementById("deptAccountsBtn").onclick = function(){ S.appMode = "ac
 document.getElementById("deptDeliveryBtn").onclick = function(){ S.appMode = "delivery"; render(); playSectionTransition(); };
 document.getElementById("deptFeedbackBtn").onclick = function(){ S.appMode = "feedback"; render(); playSectionTransition(); };
 document.getElementById("deptAttendanceBtn").onclick = function(){ S.appMode = "attendance"; render(); playSectionTransition(); };
+document.getElementById("deptPayrollBtn").onclick = function(){ S.appMode = "payroll"; S.pay.sel = null; render(); playSectionTransition(); };
+document.getElementById("deptHrBtn").onclick = function(){ S.appMode = "hradv"; render(); playSectionTransition(); };
 document.getElementById("deptExpiryBtn").onclick = function(){ S.appMode = "expiry"; S.view = "form"; logActivity("view"); render(); playSectionTransition(); };
 
 function resolvePhotoUrls(doc){
