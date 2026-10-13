@@ -867,7 +867,7 @@ en:{
   itemPh:"Item name", supplierPh:"Company / supplier",
   addItemBtn:"Add manually", removeItemBtn:"Remove", scanItemBtn:"Scan item barcode", itemAddedToast:"Item added to the order.",
   itemsCountLabel:"items",
-  shortagesTitle:"Stock shortages", shortagesSub:"Any items currently out of stock or running low — separate from the order above.",
+  shortagesTitle:"Stock shortages", shortagesSub:"Log each missing or low item separately — it's tracked until a manager marks it resolved.",
   shortagesPh:"List missing or low items…",
   merchSubmit:"Submit report", merchReqError:"Please fill in the merchandiser name, branch, and date before submitting.",
   merchSaved:"Report logged.",
@@ -1198,7 +1198,7 @@ ar:{
   itemPh:"اسم الصنف", supplierPh:"الشركة / المورد",
   addItemBtn:"إضافة يدوية", removeItemBtn:"حذف", scanItemBtn:"مسح باركود الصنف", itemAddedToast:"تمت إضافة الصنف للطلبية.",
   itemsCountLabel:"صنف",
-  shortagesTitle:"نواقص البضاعة", shortagesSub:"أي أصناف ناقصة حاليًا أو أوشكت تخلص — منفصلة عن الطلبية فوق.",
+  shortagesTitle:"نواقص البضاعة", shortagesSub:"سجّل كل صنف ناقص لحاله — بضل مسجّل لحتى المدير يعلّمه إنه تمت معالجته.",
   shortagesPh:"اذكر الأصناف الناقصة أو الموشكة تخلص…",
   merchSubmit:"إرسال التقرير", merchReqError:"يرجى تعبئة اسم المارشندايزر والفرع والتاريخ قبل الإرسال.",
   merchSaved:"تم تسجيل التقرير.",
@@ -2907,28 +2907,45 @@ function filteredLogs(){
   });
 }
 
+// Shared "quick shortages" board: every item logged with the Quick
+// shortage button — by a supervisor from the Handover screen or a
+// merchandiser from the Merchandising screen, same collection, same
+// display — with a Resolved button per item. Shown on both dashboards so
+// a manager sees it wherever they're already looking.
+function renderOpenShortagesBoard(){
+  if(!isManagerUser() && !isViewerUser()) return "";
+  var openShortages = S.quickShortages.filter(function(s){ return !s.resolved; });
+  var html = '<div class="card">' +
+    '<div class="section-title">'+t("quickShortagesTitle")+'</div>';
+  if(!S.quickShortagesLoaded){
+    html += '<p class="hint">'+t("loading")+'</p>';
+  } else if(!openShortages.length){
+    html += '<p class="hint">'+t("quickShortagesEmpty")+'</p>';
+  } else {
+    html += openShortages.map(function(s){
+      return '<div class="alert-row">' +
+        '<div style="flex:1; min-width:0;"><b style="font-size:13.5px; display:block;">'+esc(s.item)+'</b>' +
+        '<span class="hint">'+esc(companyName(s.company))+' · '+esc(s.fullName||"")+' · '+fmtDateTime(s.createdAt)+'</span></div>' +
+        (isViewerUser() ? '' : '<button type="button" class="link-btn" data-resolve-shortage="'+s.id+'">'+t("quickShortageResolveBtn")+'</button>') +
+      '</div>';
+    }).join("");
+  }
+  html += '</div>';
+  return html;
+}
+function wireOpenShortagesBoard(){
+  Array.prototype.forEach.call(document.querySelectorAll("[data-resolve-shortage]"), function(btn){
+    btn.onclick = function(){
+      var id = this.getAttribute("data-resolve-shortage");
+      S.db.doc("quick_shortages/"+id).update({resolved:true}).catch(function(){ toast(t("connError")); });
+    };
+  });
+}
+
 function renderDashboard(){
   var html = "";
 
-  if(isManagerUser() || isViewerUser()){
-    var openShortages = S.quickShortages.filter(function(s){ return !s.resolved; });
-    html += '<div class="card">' +
-      '<div class="section-title">'+t("quickShortagesTitle")+'</div>';
-    if(!S.quickShortagesLoaded){
-      html += '<p class="hint">'+t("loading")+'</p>';
-    } else if(!openShortages.length){
-      html += '<p class="hint">'+t("quickShortagesEmpty")+'</p>';
-    } else {
-      html += openShortages.map(function(s){
-        return '<div class="alert-row">' +
-          '<div style="flex:1; min-width:0;"><b style="font-size:13.5px; display:block;">'+esc(s.item)+'</b>' +
-          '<span class="hint">'+esc(companyName(s.company))+' · '+esc(s.fullName||"")+' · '+fmtDateTime(s.createdAt)+'</span></div>' +
-          (isViewerUser() ? '' : '<button type="button" class="link-btn" data-resolve-shortage="'+s.id+'">'+t("quickShortageResolveBtn")+'</button>') +
-        '</div>';
-      }).join("");
-    }
-    html += '</div>';
-  }
+  html += renderOpenShortagesBoard();
 
   var companyOpts = '<option value="">'+t("filterAll")+'</option>' + visibleCompanies().map(function(c){
     return '<option value="'+c.id+'"'+(S.filters.company===c.id?" selected":"")+'>'+esc(S.lang==="ar"?c.ar:c.en)+'</option>';
@@ -3090,12 +3107,7 @@ function catLogBlock(label, cat){
 }
 
 function wireDashboard(){
-  Array.prototype.forEach.call(document.querySelectorAll("[data-resolve-shortage]"), function(btn){
-    btn.onclick = function(){
-      var id = this.getAttribute("data-resolve-shortage");
-      S.db.doc("quick_shortages/"+id).update({resolved:true}).catch(function(){ toast(t("connError")); });
-    };
-  });
+  wireOpenShortagesBoard();
   document.getElementById("filt_company").onchange = function(){ S.filters.company = this.value; applyBrand(S.filters.company || S.form.company); renderDashboard(); };
   document.getElementById("filt_status").onchange = function(){ S.filters.status = this.value; renderDashboard(); };
   document.getElementById("filt_range").onchange = function(){ S.filters.range = this.value; renderDashboard(); };
@@ -3220,10 +3232,14 @@ function renderMerchForm(){
     : '') +
   '</div>';
 
+  // Shortages are logged one at a time with the same "Quick shortage"
+  // button the supervisors use — each item lands in the shared
+  // quick_shortages list with a Resolved button, instead of being buried
+  // as one paragraph of free text inside this visit.
   html += '<div class="card">' +
     '<div class="section-title">'+t("shortagesTitle")+'</div>' +
     '<div class="section-sub">'+t("shortagesSub")+'</div>' +
-    '<div class="field"><textarea id="m_shortages" placeholder="'+t("shortagesPh")+'">'+esc(f.shortages)+'</textarea></div>' +
+    '<button type="button" class="quick-fab-btn" id="openQuickShortageBtn" style="width:100%; justify-content:center; padding:13px;">'+ICONS.plus+' '+t("quickShortageBtn")+'</button>' +
   '</div>';
 
   html += '<button type="submit" class="btn btn-primary" id="merchSubmitBtn">'+(f.submitting?t("submitting"):t("merchSubmit"))+'</button>';
@@ -3240,8 +3256,9 @@ function wireMerchForm(){
   document.getElementById("m_date").onchange = function(){ f.date = this.value; };
   document.getElementById("m_time").onchange = function(){ f.time = this.value; };
   document.getElementById("m_displayNotes").oninput = function(){ f.display.notes = this.value; };
-  document.getElementById("m_shortages").oninput = function(){ f.shortages = this.value; };
   document.getElementById("m_hasOrder").onchange = function(){ f.hasOrder = this.checked; renderMerchForm(); };
+  var qsBtn = document.getElementById("openQuickShortageBtn");
+  if(qsBtn) qsBtn.onclick = openQuickShortageModal;
 
   Array.prototype.forEach.call(document.querySelectorAll("[data-mdisplay-status]"), function(btn){
     btn.onclick = function(){
@@ -3396,7 +3413,8 @@ function renderMerchDashboard(){
     return '<option value="'+r[0]+'"'+(S.merchFilters.range===r[0]?" selected":"")+'>'+r[1]+'</option>';
   }).join("");
 
-  var html = '<div class="filters">' +
+  var html = renderOpenShortagesBoard();
+  html += '<div class="filters">' +
     '<select id="mfilt_company">'+companyOpts+'</select>' +
     '<select id="mfilt_status">'+statusOpts+'</select>' +
     '<select id="mfilt_range">'+rangeOpts+'</select>' +
@@ -3459,6 +3477,7 @@ function merchLogCard(l){
 }
 
 function wireMerchDashboard(){
+  wireOpenShortagesBoard();
   document.getElementById("mfilt_company").onchange = function(){ S.merchFilters.company = this.value; applyBrand(S.merchFilters.company || S.merchForm.company); renderMerchDashboard(); };
   document.getElementById("mfilt_status").onchange = function(){ S.merchFilters.status = this.value; renderMerchDashboard(); };
   document.getElementById("mfilt_range").onchange = function(){ S.merchFilters.range = this.value; renderMerchDashboard(); };
