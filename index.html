@@ -981,7 +981,7 @@ en:{
   quickShortagesEmpty:"No shortages logged.",
   quickShortageResolveBtn:"Resolved",
   quickShortageResolvedTag:"Resolved",
-  categoryLabel:"Category", uncategorizedLabel:"Uncategorized",
+  categoryLabel:"Category", uncategorizedLabel:"Uncategorized", trackCatAllTab:"All",
   changeCategoryBtn:"Change category",
   historyCategoryChanged:"Category changed to",
   activityTitle:"Employee activity", activitySub:"Points weight real actions (adding or deleting a product) higher than just viewing the page.",
@@ -1312,7 +1312,7 @@ ar:{
   quickShortagesEmpty:"ما في نواقص مسجّلة.",
   quickShortageResolveBtn:"تمت المعالجة",
   quickShortageResolvedTag:"تمت المعالجة",
-  categoryLabel:"القسم", uncategorizedLabel:"بدون قسم",
+  categoryLabel:"القسم", uncategorizedLabel:"بدون قسم", trackCatAllTab:"الكل",
   changeCategoryBtn:"تغيير القسم",
   historyCategoryChanged:"تم تغيير القسم إلى",
   activityTitle:"نشاط الموظفين", activitySub:"الأفعال الحقيقية (إضافة أو حذف منتج) آخذة نقاط أكتر من مجرد فتح الصفحة.",
@@ -1460,7 +1460,7 @@ var S = {
   trackedItems: [],
   trackedItemsLoaded: false,
   trackExpanded: {},
-  trackFilters: {company:"", employee:""},
+  trackFilters: {company:"", employee:"", category:""},
   trackContext: null,
   quickShortages: [],
   quickShortagesLoaded: false,
@@ -4754,22 +4754,45 @@ function renderTrackedDashboard(){
   } else if(!list.length){
     html += '<div class="empty">'+t("itemsEmptyState")+'</div>';
   } else {
-    var groups = {};
-    var order = [];
+    // Category tabs: each department scanned items were tagged with is its
+    // own tab, so switching between e.g. Food and Non-Food never means
+    // scrolling past a thousand items of the other category to get there.
+    var counts = {};
     list.forEach(function(l){
       var key = l.category || "";
-      if(!groups[key]){ groups[key] = []; order.push(key); }
-      groups[key].push(l);
+      counts[key] = (counts[key] || 0) + 1;
     });
-    order.sort(function(a,b){
-      if(a === "") return 1;
-      if(b === "") return -1;
-      return deptLabel(a).localeCompare(deptLabel(b));
-    });
-    order.forEach(function(key){
-      html += '<div class="section-title" style="margin:18px 0 6px;">'+(key ? esc(deptLabel(key)) : t("uncategorizedLabel"))+'</div>';
-      groups[key].forEach(function(l){ html += trackedItemCard(l); });
-    });
+    var order = MERCH_DEPARTMENTS.map(function(d){ return d.id; }).filter(function(id){ return counts[id]; });
+    if(counts[""]) order.push("");
+    // If the category this view was left on has no items anymore (company
+    // switched, items recategorized), fall back to "All" rather than
+    // showing an empty tab with no obvious way out.
+    if(S.trackFilters.category && order.indexOf(S.trackFilters.category) === -1){
+      S.trackFilters.category = "";
+    }
+    if(order.length > 1){
+      var tabChips = '<button type="button" class="chip'+(S.trackFilters.category===""?" sel":"")+'" data-track-cat="">'+t("trackCatAllTab")+' ('+list.length+')</button>' +
+        order.map(function(key){
+          var label = key ? deptLabel(key) : t("uncategorizedLabel");
+          return '<button type="button" class="chip'+(S.trackFilters.category===key?" sel":"")+'" data-track-cat="'+esc(key)+'">'+esc(label)+' ('+counts[key]+')</button>';
+        }).join("");
+      html += '<div class="chip-row" style="margin:10px 0 14px;">'+tabChips+'</div>';
+    }
+    var shown = S.trackFilters.category ?
+      list.filter(function(l){ return (l.category||"") === S.trackFilters.category; }) :
+      list;
+    if(S.trackFilters.category){
+      shown.forEach(function(l){ html += trackedItemCard(l); });
+    } else {
+      // "All" still groups by category with a header, same as before, so
+      // a quick scan from the top isn't just a flat unlabeled list.
+      order.forEach(function(key){
+        var group = shown.filter(function(l){ return (l.category||"") === key; });
+        if(!group.length) return;
+        html += '<div class="section-title" style="margin:18px 0 6px;">'+(key ? esc(deptLabel(key)) : t("uncategorizedLabel"))+'</div>';
+        group.forEach(function(l){ html += trackedItemCard(l); });
+      });
+    }
   }
 
   document.getElementById("main").innerHTML = html;
@@ -4832,6 +4855,9 @@ function wireTrackedDashboard(){
   if(fc) fc.onchange = function(){ S.trackFilters.company = this.value; renderTrackedDashboard(); };
   var fe = document.getElementById("tfilt_employee");
   if(fe) fe.onchange = function(){ S.trackFilters.employee = this.value; renderTrackedDashboard(); };
+  Array.prototype.forEach.call(document.querySelectorAll("[data-track-cat]"), function(btn){
+    btn.onclick = function(){ S.trackFilters.category = this.getAttribute("data-track-cat"); renderTrackedDashboard(); };
+  });
 
   var saveThr = document.getElementById("saveThresholdsBtn");
   if(saveThr) saveThr.onclick = function(){
