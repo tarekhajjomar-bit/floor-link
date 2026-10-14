@@ -855,6 +855,7 @@ en:{
   yesLabel:"Yes", noLabel:"No",
   requiredTag:"Required", reqPhotoMissing:"Add a photo for: ",
   photoUpFailed:"A photo didn't upload. Tap ↻ on it to try again.", photosStillUploading:"Photos are still uploading. Wait a moment, then submit.",
+  sigUploadFailed:"The signature couldn't upload — check your connection and tap Submit again.",
   camGallery:"Gallery", camShoot:"Take photo", camDone:"Done", camTaken:"taken", camUnavailable:"The camera couldn't open inside the app. Allow camera access, or use the phone camera.", camUsePhone:"Use phone camera",
   reqPhotosBlocked:"Photo upload needs edit access on this device, so these required photos can't be captured here. Ask an editor to submit this handover, or open it from a device with edit access.",
   deptHandoverLabel:"Shift Handover", deptMerchLabel:"Merchandising",
@@ -1186,6 +1187,7 @@ ar:{
   yesLabel:"نعم", noLabel:"لا",
   requiredTag:"إلزامي", reqPhotoMissing:"أضف صورة لـ: ",
   photoUpFailed:"لم تُرفع إحدى الصور. اضغط ↻ عليها لإعادة المحاولة.", photosStillUploading:"الصور ما زالت تُرفع. انتظر قليلاً ثم أرسل.",
+  sigUploadFailed:"تعذر رفع التوقيع — تحقق من الاتصال واضغط إرسال مرة أخرى.",
   camGallery:"المعرض", camShoot:"التقاط", camDone:"تم", camTaken:"صور", camUnavailable:"لم تفتح الكاميرا داخل التطبيق. اسمح باستخدام الكاميرا، أو استعمل كاميرا التلفون.", camUsePhone:"كاميرا التلفون",
   reqPhotosBlocked:"رفع الصور يتطلب صلاحية تعديل على هذا الجهاز، لذا لا يمكن التقاط هذه الصور الإلزامية من هنا. اطلب من شخص لديه صلاحية تعديل إرسال هذا التسليم، أو افتحه من جهاز لديه صلاحية تعديل.",
   deptHandoverLabel:"تسليم الوردية", deptMerchLabel:"المارشندايزينج",
@@ -2527,6 +2529,23 @@ function wireForm(){
    so a slow or failed upload can never knock out a different photo. Phone photos are
    shrunk before upload so they go up fast on mobile data. A failed photo stays on
    screen with a retry button instead of disappearing. */
+// How long an upload is allowed to hang before we give up on it and let the
+// retry logic take over. Mobile data / shop wifi can accept a request and then
+// just never answer — without a timeout, fetch() waits forever and the UI is
+// stuck showing a spinner with no way out.
+var UPLOAD_TIMEOUT_MS = 25000;
+function fetchWithTimeout(url, options, ms){
+  if(typeof AbortController === "undefined") return fetch(url, options);
+  var ctrl = new AbortController();
+  var opts = {}; for(var k in options){ opts[k] = options[k]; }
+  opts.signal = ctrl.signal;
+  var timer = setTimeout(function(){ ctrl.abort(); }, ms);
+  return fetch(url, opts).then(function(res){ clearTimeout(timer); return res; }, function(err){
+    clearTimeout(timer);
+    if(err && err.name === "AbortError") throw new Error("Upload timed out");
+    throw err;
+  });
+}
 function shrinkPhoto(file){
   return new Promise(function(resolve){
     if(!file || !/^image\//.test(file.type || "image/") || /gif|svg/.test(file.type || "")){ resolve(file); return; }
@@ -2542,6 +2561,11 @@ function shrinkPhoto(file){
     };
     img.onerror = function(){ URL.revokeObjectURL(url); resolve(file); };
     img.src = url;
+    // Belt-and-suspenders: on some phones a corrupt/odd file fires neither
+    // onload nor onerror, which would leave this promise — and the upload
+    // behind it — pending forever. Fall back to the original file so the
+    // upload still proceeds instead of hanging.
+    setTimeout(function(){ resolve(file); }, 8000);
   });
 }
 function startPhotoUpload(item, rerender, onDone){
@@ -2553,7 +2577,7 @@ function startPhotoUpload(item, rerender, onDone){
       throw err;
     });
   };
-  shrinkPhoto(item._file).then(function(blob){ return tryUp(blob, 1); }).then(function(res){
+  shrinkPhoto(item._file).then(function(blob){ return tryUp(blob, 2); }).then(function(res){
     item.id = res.id; item.url = res.url; item.pending = false; item.failed = false; delete item._file;
     if(onDone) onDone();
     rerender();
@@ -2714,14 +2738,25 @@ function restoreFormDraft(){
 }
 
 function canvasToUpload(which){
-  return new Promise(function(resolve){
+  return new Promise(function(resolve, reject){
     var st = sigCtx[which];
+    // Nothing drawn (or nothing to upload with) is not a failure — there's
+    // simply no signature image to send.
     if(!st || !st.dirty || !S.assets){ resolve(null); return; }
     st.canvas.toBlob(function(blob){
       if(!blob){ resolve(null); return; }
-      S.assets.upload(blob, {type:"image/png"}).then(function(res){
-        resolve({id:res.id, url:res.url});
-      }).catch(function(){ resolve(null); });
+      // A signature WAS drawn here, so from this point a failed/timed-out
+      // upload must be treated as an error, not quietly swapped for "no
+      // signature" — otherwise a flaky connection could save a handover
+      // that's missing the exact proof (the signature) it exists to capture,
+      // while looking to the person like the submit just hung.
+      var tryUp = function(left){
+        return S.assets.upload(blob, {type:"image/png"}).catch(function(err){
+          if(left > 0) return new Promise(function(r){ setTimeout(r, 1500); }).then(function(){ return tryUp(left-1); });
+          throw err;
+        });
+      };
+      tryUp(1).then(function(res){ resolve({id:res.id, url:res.url}); }).catch(reject);
     }, "image/png");
   });
 }
@@ -2793,6 +2828,19 @@ function submitHandover(){
     if(sigs[0]) f.outgoingSig = sigs[0];
     if(sigs[1]) f.incomingSig = sigs[1];
 
+    submitHandoverAfterSigs(f, isHandover);
+  }).catch(function(){
+    // A signature was drawn but never made it up (timed out / connection
+    // dropped even after retrying) — stop here instead of either hanging
+    // forever or quietly saving the handover without it. The signature
+    // itself is untouched, so re-pressing submit retries just the upload.
+    f.submitting = false;
+    renderForm();
+    toast(t("sigUploadFailed"));
+  });
+}
+
+function submitHandoverAfterSigs(f, isHandover){
     var photoIds = function(cat){
       return f[cat].photos.filter(function(p){ return p.id; }).map(function(p){ return p.id; });
     };
@@ -2874,7 +2922,6 @@ function submitHandover(){
       setActiveTab();
       render();
     });
-  });
 }
 
 /* ================= DASHBOARD VIEW ================= */
@@ -5954,7 +6001,13 @@ function boot(){
         var fd = new FormData();
         fd.append("image", fileOrBlob);
         var uploadUrl = "https://api.imgbb.com/1/upload?key=" + YOUR_IMGBB_CONFIG.apiKey;
-        return fetch(uploadUrl, {method:"POST", body:fd}).then(function(res){
+        // Busy mornings mean weak/congested wifi at the shop — a plain fetch() has
+        // no built-in timeout, so a stalled connection (request sent, response never
+        // arrives) used to leave the photo/signature spinning forever with no error
+        // and no way to retry. UPLOAD_TIMEOUT_MS bounds every upload attempt so it
+        // always either succeeds or fails within ~25s, which the retry logic above
+        // this function then acts on.
+        return fetchWithTimeout(uploadUrl, {method:"POST", body:fd}, UPLOAD_TIMEOUT_MS).then(function(res){
           return res.text().then(function(bodyText){
             var json = null;
             try{ json = JSON.parse(bodyText); }catch(e){}
