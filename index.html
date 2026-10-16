@@ -2570,6 +2570,20 @@ var UPLOAD_TIMEOUT_MS = 25000;
 function retryDelayMs(err){
   return (err && err.rateLimited) ? (7000 + Math.random()*4000) : 1500;
 }
+// How long an evidentiary photo/signature (handover checkpoints, merch
+// display photos, order-item identification photos, signatures) is kept
+// before ImgBB deletes it on its own — a deliberate choice to keep storage
+// from growing forever, since there's no bulk-delete tool the app could
+// drive on a schedule otherwise. This is a ROLLING window per photo (each
+// one expires 14 days after IT was uploaded, not on a fixed calendar date),
+// and once a photo is gone ImgBB has deleted it — there is no way to get it
+// back, including for Claude. Old handover/merch records past that age will
+// show a broken image where the photo used to be; everything else about
+// the record (names, notes, statuses, signatures' existence) stays intact.
+// This does NOT apply to Expiry Control's catalog/product photos, which are
+// standing reference data meant to last indefinitely — see the comment at
+// their upload call.
+var PHOTO_RETENTION_SECONDS = 14 * 24 * 3600;
 function fetchWithTimeout(url, options, ms){
   // IMPORTANT: this does NOT use AbortController. Attaching an abort signal
   // to a fetch() whose body is FormData (which is what every photo/signature
@@ -2630,7 +2644,10 @@ function startPhotoUpload(item, rerender, onDone){
   if(!S.assets) return;
   item.pending = true; item.failed = false; rerender();
   var tryUp = function(blob, left){
-    return S.assets.upload(blob).catch(function(err){
+    // Every photo through this shared function is an evidentiary, per-visit
+    // photo (handover checkpoints, merch display/order-item photos) — see
+    // PHOTO_RETENTION_SECONDS above for why these auto-delete after 14 days.
+    return S.assets.upload(blob, {expiresInSeconds: PHOTO_RETENTION_SECONDS}).catch(function(err){
       if(left > 0) return new Promise(function(r){ setTimeout(r, retryDelayMs(err)); }).then(function(){ return tryUp(blob, left-1); });
       throw err;
     });
@@ -2824,7 +2841,11 @@ function canvasToUpload(which){
       // that's missing the exact proof (the signature) it exists to capture,
       // while looking to the person like the submit just hung.
       var tryUp = function(left){
-        return S.assets.upload(blob, {type:"image/png"}).catch(function(err){
+        // Signatures auto-delete on the same 14-day schedule as every other
+        // handover photo (an explicit choice — the signature image itself
+        // expires, but the handover record, both names, and the fact that
+        // the dual-presence check passed all stay in Firestore forever).
+        return S.assets.upload(blob, {expiresInSeconds: PHOTO_RETENTION_SECONDS}).catch(function(err){
           if(left > 0) return new Promise(function(r){ setTimeout(r, retryDelayMs(err)); }).then(function(){ return tryUp(left-1); });
           throw err;
         });
@@ -5367,6 +5388,13 @@ function wireScanner(){
     if(imgAdd) imgAdd.onchange = function(){
       var file = this.files && this.files[0];
       if(!file || !S.assets) return;
+      // Deliberately NOT passing expiresInSeconds here, unlike every other
+      // photo upload in the app. This is the Expiry Control catalog photo —
+      // it's saved once per barcode and reused by every future scan of that
+      // same product (see catalog/<barcode> in Firestore), potentially for
+      // months. If it expired after 14 days like an ordinary visit photo,
+      // the product picture would silently vanish from the catalog and keep
+      // reappearing as a re-photograph chore on a schedule nobody asked for.
       S.assets.upload(file).then(function(res){
         tf.image = {id:res.id, url:res.url};
         renderScanner();
@@ -6140,10 +6168,15 @@ function boot(){
   var imgbbKeys = (YOUR_IMGBB_CONFIG.apiKeys || []).filter(function(k){ return k && k.indexOf("PASTE_") !== 0; });
   if(imgbbKeys.length){
     var imgbbKeyCursor = 0;
-    var uploadToImgbbWithKey = function(fileOrBlob, apiKey){
+    var uploadToImgbbWithKey = function(fileOrBlob, apiKey, expiresInSeconds){
       var fd = new FormData();
       fd.append("image", fileOrBlob);
       var uploadUrl = "https://api.imgbb.com/1/upload?key=" + apiKey;
+      // ImgBB deletes the image itself once this many seconds pass after
+      // THIS upload — a per-image countdown, not a fixed calendar date.
+      // Omitted entirely for images meant to last indefinitely (see the
+      // Expiry Control catalog photo's own upload call for why).
+      if(expiresInSeconds) uploadUrl += "&expiration=" + Math.round(expiresInSeconds);
       // Busy mornings mean weak/congested wifi at the shop — a plain fetch() has
       // no built-in timeout, so a stalled connection (request sent, response never
       // arrives) used to leave the photo/signature spinning forever with no error
@@ -6176,7 +6209,11 @@ function boot(){
       });
     };
     assetsApi = {
-      upload: function(fileOrBlob){
+      // opts.expiresInSeconds: pass PHOTO_RETENTION_SECONDS for an ordinary
+      // visit photo/signature, or omit it entirely for something meant to
+      // last indefinitely (a catalog/reference photo).
+      upload: function(fileOrBlob, opts){
+        var expiresInSeconds = opts && opts.expiresInSeconds;
         // Spread uploads round-robin across every configured key, and the
         // moment one comes back rate-limited, retry the SAME upload on the
         // next key right away — no waiting — before giving up. Only once
@@ -6186,7 +6223,7 @@ function boot(){
         imgbbKeyCursor = (imgbbKeyCursor + 1) % imgbbKeys.length;
         var tryKey = function(offset){
           var key = imgbbKeys[(startIdx + offset) % imgbbKeys.length];
-          return uploadToImgbbWithKey(fileOrBlob, key).catch(function(err){
+          return uploadToImgbbWithKey(fileOrBlob, key, expiresInSeconds).catch(function(err){
             if(err && err.rateLimited && offset < imgbbKeys.length - 1){
               return tryKey(offset + 1);
             }
