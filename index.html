@@ -6174,7 +6174,6 @@ function boot(){
 
   var imgbbKeys = (YOUR_IMGBB_CONFIG.apiKeys || []).filter(function(k){ return k && k.indexOf("PASTE_") !== 0; });
   if(imgbbKeys.length){
-    var imgbbKeyCursor = 0;
     var uploadToImgbbWithKey = function(fileOrBlob, apiKey, expiresInSeconds){
       var fd = new FormData();
       fd.append("image", fileOrBlob);
@@ -6234,13 +6233,19 @@ function boot(){
       // last indefinitely (a catalog/reference photo).
       upload: function(fileOrBlob, opts){
         var expiresInSeconds = opts && opts.expiresInSeconds;
-        // Spread uploads round-robin across every configured key, and the
+        // Pick a random key for EACH upload (not a round-robin counter).
+        // Two phones doing a handover together start their JS fresh at
+        // roughly the same moment, so a counter that always starts at the
+        // same place (or increments in lockstep) can land both phones on
+        // the same key for every single photo of that handover, not just
+        // the first one. An independent random pick per upload means a
+        // collision on one photo says nothing about the next — it can't
+        // get "stuck" repeating the same collision all handover long. The
         // moment one comes back rate-limited, retry the SAME upload on the
         // next key right away — no waiting — before giving up. Only once
         // every key has been tried and all are rate-limited does this fall
         // through to the caller's own (much slower) backoff-and-retry.
-        var startIdx = imgbbKeyCursor % imgbbKeys.length;
-        imgbbKeyCursor = (imgbbKeyCursor + 1) % imgbbKeys.length;
+        var startIdx = Math.floor(Math.random() * imgbbKeys.length);
         var tryKey = function(offset){
           var key = imgbbKeys[(startIdx + offset) % imgbbKeys.length];
           return uploadToImgbbWithKey(fileOrBlob, key, expiresInSeconds).catch(function(err){
