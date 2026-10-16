@@ -363,6 +363,15 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
 .order-card-thumb{width:42px; height:42px; border-radius:10px; object-fit:cover; flex:none; background:var(--paper); border:1px solid var(--line);}
 .order-card-thumb-empty{display:flex; align-items:center; justify-content:center; color:var(--ink-dim);}
 .order-card-thumb-empty svg{width:18px; height:18px;}
+.order-card-thumb-wrap{position:relative; width:42px; height:42px; flex:none;}
+.order-card-thumb-wrap .order-card-thumb{width:100%; height:100%;}
+.order-card-thumb-wrap.up::after{content:""; position:absolute; inset:0; background:rgba(0,0,0,.35); border-radius:10px; pointer-events:none;}
+.order-card-thumb-wrap.up::before{content:""; position:absolute; z-index:1; top:50%; left:50%; width:14px; height:14px; margin:-7px 0 0 -7px; border-radius:50%; border:2px solid rgba(255,255,255,.4); border-top-color:#fff; animation:ph-spin .8s linear infinite; pointer-events:none;}
+.order-card-thumb-wrap .retry{position:absolute; inset:0; z-index:1; border:0; border-radius:10px; background:rgba(180,40,30,.72); color:#fff; font-size:16px; font-weight:700; cursor:pointer;}
+.order-card-thumb-needphoto{display:flex; align-items:center; justify-content:center; color:var(--teal); border:1.5px dashed var(--teal); cursor:pointer; background:transparent;}
+.order-card-thumb-needphoto svg{width:17px; height:17px;}
+.order-card-unresolved{border-color:var(--teal);}
+.order-card-unresolved-label{color:var(--teal);}
 .order-card-info{flex:1; min-width:0; display:flex; flex-direction:column; gap:1px; cursor:pointer;}
 .order-card-info b{font-size:13.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
 .order-card-info span{font-size:12px; color:var(--ink-soft);}
@@ -868,6 +877,9 @@ en:{
   itemPh:"Item name", supplierPh:"Company / supplier",
   addItemBtn:"Add manually", removeItemBtn:"Remove", scanItemBtn:"Scan item barcode", itemAddedToast:"Item added to the order.",
   itemsCountLabel:"items",
+  orderItemUnresolvedToast:"This barcode isn't in our catalog — take a photo of the item so we know what it is.",
+  orderItemUnresolved:"Unidentified item — tap to take a photo", orderItemUnresolvedHint:"Tap the icon to photograph it",
+  orderItemPhotoTitle:"Photo of the item", orderItemPhotoRequired:"Take a photo of the unidentified item(s) before submitting.",
   shortagesTitle:"Stock shortages", shortagesSub:"Log each missing or low item separately — it's tracked until a manager marks it resolved.",
   shortagesPh:"List missing or low items…",
   merchSubmit:"Submit report", merchReqError:"Please fill in the merchandiser name, branch, and date before submitting.",
@@ -1200,6 +1212,9 @@ ar:{
   itemPh:"اسم الصنف", supplierPh:"الشركة / المورد",
   addItemBtn:"إضافة يدوية", removeItemBtn:"حذف", scanItemBtn:"مسح باركود الصنف", itemAddedToast:"تمت إضافة الصنف للطلبية.",
   itemsCountLabel:"صنف",
+  orderItemUnresolvedToast:"هذا الباركود غير موجود بالكتالوج — صوّر الصنف حتى نعرف شو هو.",
+  orderItemUnresolved:"صنف غير معروف — اضغط للتصوير", orderItemUnresolvedHint:"اضغط على الأيقونة لتصويره",
+  orderItemPhotoTitle:"صورة الصنف", orderItemPhotoRequired:"صوّر الصنف غير المعروف قبل الإرسال.",
   shortagesTitle:"نواقص البضاعة", shortagesSub:"سجّل كل صنف ناقص لحاله — بضل مسجّل لحتى المدير يعلّمه إنه تمت معالجته.",
   shortagesPh:"اذكر الأصناف الناقصة أو الموشكة تخلص…",
   merchSubmit:"إرسال التقرير", merchReqError:"يرجى تعبئة اسم المارشندايزر والفرع والتاريخ قبل الإرسال.",
@@ -2593,7 +2608,9 @@ function startPhotoUpload(item, rerender, onDone){
    can't open here, it falls back to the phone's own camera / gallery picker. */
 var CAM = null, CAM_BYPASS = false;
 function camAdd(target, file){
-  if(target === "merch") uploadMerchPhoto(file); else uploadPhoto(target, file);
+  if(target === "merch") uploadMerchPhoto(file);
+  else if(target.indexOf("orderItem:") === 0) uploadOrderItemPhoto(parseInt(target.slice(10),10), file);
+  else uploadPhoto(target, file);
 }
 function camClose(){
   if(!CAM) return;
@@ -2675,7 +2692,8 @@ document.addEventListener("click", function(e){
     target = input.getAttribute("data-photo-add");
     title = target.indexOf("reqOut:") === 0 ? t(target.slice(7)) :
             target.indexOf("reqIn:") === 0 ? t(target.slice(6)) :
-            target.indexOf("req:") === 0 ? t(target.slice(4)) : t(target);
+            target.indexOf("req:") === 0 ? t(target.slice(4)) :
+            target.indexOf("orderItem:") === 0 ? t("orderItemPhotoTitle") : t(target);
   }
   camOpen(target, title, input);
 }, true);
@@ -3194,6 +3212,17 @@ function uploadMerchPhoto(file){
   S.merchForm.display.photos.push(item);
   startPhotoUpload(item, renderMerchForm);
 }
+// One photo per unidentified order-scan row — just enough for whoever reviews
+// the order to see what the product actually is, since the barcode alone
+// didn't tell us (it wasn't in our catalog or found online).
+function uploadOrderItemPhoto(idx, file){
+  if(!S.assets) return;
+  var row = S.merchForm.orderItems[idx];
+  if(!row) return;
+  var item = {url:URL.createObjectURL(file), id:null, pending:true, _file:file};
+  row.itemPhoto = item;
+  startPhotoUpload(item, renderMerchForm);
+}
 
 function renderMerchForm(){
   var f = S.merchForm;
@@ -3230,11 +3259,30 @@ function renderMerchForm(){
       '</div>';
     }
     var label = row.item.trim() || t("itemPh");
-    return '<div class="order-card" data-order-row="'+i+'">' +
-      (row.image ? '<img class="order-card-thumb" src="'+esc(row.image)+'" alt="" data-img-zoom="'+esc(row.image)+'">' : '<div class="order-card-thumb order-card-thumb-empty">'+ICONS.barcode+'</div>') +
+    // A row scanned from a barcode that isn't in our catalog and wasn't
+    // found online has no name to show — a bare barcode number doesn't
+    // tell anyone what the product is. It stays "unresolved" until the
+    // merchandiser attaches a photo of the actual item, which is what
+    // identifies it instead.
+    var unresolved = !!row.needsPhoto && !(row.itemPhoto && row.itemPhoto.id);
+    var thumbHtml;
+    if(row.itemPhoto && row.itemPhoto.url){
+      thumbHtml = '<div class="order-card-thumb-wrap'+(row.itemPhoto.pending?" up":"")+'">' +
+        '<img class="order-card-thumb" src="'+esc(row.itemPhoto.url)+'" alt="" data-img-zoom="'+esc(row.itemPhoto.url)+'">' +
+        (row.itemPhoto.failed ? '<button class="retry" type="button" data-orderphoto-retry="'+i+'" aria-label="retry">↻</button>' : '') +
+      '</div>';
+    } else if(row.image){
+      thumbHtml = '<img class="order-card-thumb" src="'+esc(row.image)+'" alt="" data-img-zoom="'+esc(row.image)+'">';
+    } else if(unresolved && S.canWriteAssets){
+      thumbHtml = '<label class="order-card-thumb order-card-thumb-needphoto photo-add" title="'+esc(t("orderItemUnresolvedHint"))+'">'+ICONS.camera+'<input type="file" accept="image/*" capture="environment" data-photo-add="orderItem:'+i+'"></label>';
+    } else {
+      thumbHtml = '<div class="order-card-thumb order-card-thumb-empty">'+ICONS.barcode+'</div>';
+    }
+    return '<div class="order-card'+(unresolved?" order-card-unresolved":"")+'" data-order-row="'+i+'">' +
+      thumbHtml +
       '<div class="order-card-info" data-order-edit="'+i+'">' +
-        '<b>'+esc(label)+'</b>' +
-        (row.supplier ? '<span>'+esc(row.supplier)+'</span>' : '<span class="order-card-noSupplier">'+t("supplierPh")+'</span>') +
+        (unresolved ? '<b class="order-card-unresolved-label">'+t("orderItemUnresolved")+'</b>' : '<b>'+esc(label)+'</b>') +
+        (row.supplier ? '<span>'+esc(row.supplier)+'</span>' : '<span class="order-card-noSupplier">'+(unresolved ? t("orderItemUnresolvedHint") : t("supplierPh"))+'</span>') +
       '</div>' +
       '<button type="button" class="order-card-rm" data-order-rm="'+i+'">'+ICONS.trash+'</button>' +
     '</div>';
@@ -3349,6 +3397,13 @@ function wireMerchForm(){
       renderMerchForm();
     };
   });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-orderphoto-retry]"), function(btn){
+    btn.onclick = function(e){
+      e.preventDefault(); e.stopPropagation();
+      var row = f.orderItems[parseInt(this.getAttribute("data-orderphoto-retry"),10)];
+      if(row && row.itemPhoto && row.itemPhoto.failed) startPhotoUpload(row.itemPhoto, renderMerchForm);
+    };
+  });
   Array.prototype.forEach.call(document.querySelectorAll("[data-order-edit]"), function(el){
     el.onclick = function(){ f.orderEditIdx = parseInt(this.getAttribute("data-order-edit"),10); renderMerchForm(); };
   });
@@ -3358,7 +3413,7 @@ function wireMerchForm(){
   var addItemBtn = document.getElementById("m_addItem");
   if(addItemBtn){
     addItemBtn.onclick = function(){
-      f.orderItems.push({item:"", supplier:"", image:""});
+      f.orderItems.push({item:"", supplier:"", image:"", barcode:"", needsPhoto:false, itemPhoto:null});
       f.orderEditIdx = f.orderItems.length - 1;
       renderMerchForm();
     };
@@ -3377,12 +3432,30 @@ function submitMerchVisit(){
     return;
   }
   if(anyPhotoUploading(f.display.photos)){ toast(t("photosStillUploading")); return; }
+  if(f.hasOrder){
+    // A row whose barcode came up with nothing (not in our catalog, not
+    // found online) can't be submitted nameless — it must have a photo
+    // attached so whoever reviews the order can see what it actually is.
+    if(f.orderItems.some(function(r){ return r.needsPhoto && !(r.itemPhoto && r.itemPhoto.id); })){
+      toast(t("orderItemPhotoRequired"));
+      return;
+    }
+    if(f.orderItems.some(function(r){ return r.itemPhoto && r.itemPhoto.pending; })){
+      toast(t("photosStillUploading"));
+      return;
+    }
+  }
   f.submitting = true;
   renderMerchForm();
 
   var photoIds = f.display.photos.filter(function(p){ return p.id; }).map(function(p){ return p.id; });
-  var items = f.hasOrder ? f.orderItems.filter(function(r){ return r.item.trim() || r.supplier.trim(); }).map(function(r){
-    return {item:r.item.trim(), supplier:r.supplier.trim(), image:r.image||""};
+  var items = f.hasOrder ? f.orderItems.filter(function(r){
+    return r.item.trim() || r.supplier.trim() || r.barcode || (r.itemPhoto && r.itemPhoto.id);
+  }).map(function(r){
+    return {
+      item:r.item.trim(), supplier:r.supplier.trim(), image:r.image||"",
+      barcode:r.barcode||"", itemPhoto:(r.itemPhoto && r.itemPhoto.id) ? r.itemPhoto.id : null
+    };
   }) : [];
 
   var doc = {
@@ -3506,7 +3579,12 @@ function merchLogCard(l){
     '</div>';
     if(l.hasOrder && l.orderItems && l.orderItems.length){
       body += l.orderItems.map(function(r){
-        return '<p class="log-note">'+esc(r.item)+(r.supplier ? ' — '+esc(r.supplier) : '')+'</p>';
+        var img = r.itemPhoto || r.image || "";
+        var nameHtml = r.item ? esc(r.item) : '<span style="color:var(--teal);">'+t("orderItemUnresolved")+(r.barcode ? ' ('+esc(r.barcode)+')' : '')+'</span>';
+        return '<div style="display:flex; align-items:center; gap:8px; margin:4px 0;">' +
+          (img ? '<img class="thumb-sm" src="'+esc(img)+'" style="border-radius:8px; flex:none;">' : '') +
+          '<p class="log-note" style="margin:0;">'+nameHtml+(r.supplier ? ' — '+esc(r.supplier) : '')+'</p>' +
+        '</div>';
       }).join("");
     }
     body += '</div>';
@@ -5049,12 +5127,12 @@ function handleScannedBarcode(barcode){
 }
 
 function addOrderItemFromScan(barcode){
-  var finish = function(name, supplier, image){
+  var finish = function(name, supplier, image, needsPhoto){
     var f = S.merchForm;
-    var row = {item:name, supplier:supplier || "", image: image || "", barcode: barcode};
+    var row = {item:name, supplier:supplier || "", image: image || "", barcode: barcode, needsPhoto: !!needsPhoto, itemPhoto: null};
     f.orderItems.push(row);
     closeScanner();
-    toast(t("itemAddedToast"));
+    toast(needsPhoto ? t("orderItemUnresolvedToast") : t("itemAddedToast"));
     renderMerchForm();
   };
   var tryOnline = function(){
@@ -5067,15 +5145,19 @@ function addOrderItemFromScan(barcode){
             source: "openfoodfacts"
           }, {merge:true}).catch(function(){});
         }
-        finish(online.name, online.supplier, online.image);
+        finish(online.name, online.supplier, online.image, false);
       } else {
-        finish(barcode, "", "");
+        // Not in our own catalog and not found online either — a bare
+        // barcode number isn't a name, so instead of saving it as one we
+        // ask the merchandiser to photograph the item right here. The
+        // photo is what identifies it to whoever reviews the order.
+        finish("", "", "", true);
       }
     });
   };
   if(!S.db){ tryOnline(); return; }
   S.db.doc("catalog/"+encodeURIComponent(barcode)).get().then(function(snap){
-    if(snap.exists){ var d = snap.data(); finish(d.name || barcode, d.supplier || "", d.image || ""); }
+    if(snap.exists){ var d = snap.data(); finish(d.name || barcode, d.supplier || "", d.image || "", false); }
     else { tryOnline(); }
   }).catch(function(){ tryOnline(); });
 }
