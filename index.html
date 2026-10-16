@@ -865,6 +865,8 @@ en:{
   requiredTag:"Required", reqPhotoMissing:"Add a photo for: ",
   photoUpFailed:"A photo didn't upload. Tap ↻ on it to try again.", photosStillUploading:"Photos are still uploading. Wait a moment, then submit.",
   sigUploadFailed:"The signature couldn't upload — check your connection and tap Submit again.",
+  photoRateLimited:"Too many photos uploading at once right now. Wait about a minute, then tap ↻ to try again.",
+  sigRateLimited:"Too many photos uploading at once right now. Wait about a minute, then tap Submit again.",
   camGallery:"Gallery", camShoot:"Take photo", camDone:"Done", camTaken:"taken", camUnavailable:"The camera couldn't open inside the app. Allow camera access, or use the phone camera.", camUsePhone:"Use phone camera",
   reqPhotosBlocked:"Photo upload needs edit access on this device, so these required photos can't be captured here. Ask an editor to submit this handover, or open it from a device with edit access.",
   deptHandoverLabel:"Shift Handover", deptMerchLabel:"Merchandising",
@@ -1200,6 +1202,8 @@ ar:{
   requiredTag:"إلزامي", reqPhotoMissing:"أضف صورة لـ: ",
   photoUpFailed:"لم تُرفع إحدى الصور. اضغط ↻ عليها لإعادة المحاولة.", photosStillUploading:"الصور ما زالت تُرفع. انتظر قليلاً ثم أرسل.",
   sigUploadFailed:"تعذر رفع التوقيع — تحقق من الاتصال واضغط إرسال مرة أخرى.",
+  photoRateLimited:"في ضغط كبير على رفع الصور هلأ (كتير صور عم ترفع بنفس الوقت). انتظر دقيقة تقريباً وبعدين اضغط ↻.",
+  sigRateLimited:"في ضغط كبير على رفع الصور هلأ (كتير صور عم ترفع بنفس الوقت). انتظر دقيقة تقريباً وبعدين اضغط إرسال.",
   camGallery:"المعرض", camShoot:"التقاط", camDone:"تم", camTaken:"صور", camUnavailable:"لم تفتح الكاميرا داخل التطبيق. اسمح باستخدام الكاميرا، أو استعمل كاميرا التلفون.", camUsePhone:"كاميرا التلفون",
   reqPhotosBlocked:"رفع الصور يتطلب صلاحية تعديل على هذا الجهاز، لذا لا يمكن التقاط هذه الصور الإلزامية من هنا. اطلب من شخص لديه صلاحية تعديل إرسال هذا التسليم، أو افتحه من جهاز لديه صلاحية تعديل.",
   deptHandoverLabel:"تسليم الوردية", deptMerchLabel:"المارشندايزينج",
@@ -2549,6 +2553,15 @@ function wireForm(){
 // just never answer — without a timeout, fetch() waits forever and the UI is
 // stuck showing a spinner with no way out.
 var UPLOAD_TIMEOUT_MS = 25000;
+// All phones in the shop share one ImgBB API key, so a burst of uploads at
+// the same time (opening, a handover) can trip ImgBB's anti-abuse rate
+// limit. Retrying that instantly just adds to the same burst and makes it
+// worse — so a rate-limited attempt waits much longer (with a little random
+// jitter so several phones retrying at once don't land on the same instant
+// again) before trying again, instead of the normal short retry delay.
+function retryDelayMs(err){
+  return (err && err.rateLimited) ? (7000 + Math.random()*4000) : 1500;
+}
 function fetchWithTimeout(url, options, ms){
   // IMPORTANT: this does NOT use AbortController. Attaching an abort signal
   // to a fetch() whose body is FormData (which is what every photo/signature
@@ -2610,7 +2623,7 @@ function startPhotoUpload(item, rerender, onDone){
   item.pending = true; item.failed = false; rerender();
   var tryUp = function(blob, left){
     return S.assets.upload(blob).catch(function(err){
-      if(left > 0) return new Promise(function(r){ setTimeout(r, 1500); }).then(function(){ return tryUp(blob, left-1); });
+      if(left > 0) return new Promise(function(r){ setTimeout(r, retryDelayMs(err)); }).then(function(){ return tryUp(blob, left-1); });
       throw err;
     });
   };
@@ -2621,12 +2634,19 @@ function startPhotoUpload(item, rerender, onDone){
   }).catch(function(err){
     item.pending = false; item.failed = true;
     rerender();
-    // Include the real reason in the toast (not just "a photo didn't upload")
-    // so if this keeps happening, the actual cause — a network error, or
-    // ImgBB itself rejecting the request — is visible on screen and can be
-    // reported back instead of guessed at blind.
-    var reason = err && err.message ? " (" + err.message + ")" : "";
-    toast(t("photoUpFailed") + reason);
+    if(err && err.rateLimited){
+      // A clear, plain-language explanation beats a raw "Rate limit reached"
+      // string — this isn't a broken photo or a broken phone, it's several
+      // phones uploading to the same shared key at once.
+      toast(t("photoRateLimited"));
+    } else {
+      // Include the real reason in the toast (not just "a photo didn't
+      // upload") so if this keeps happening, the actual cause — a network
+      // error, or ImgBB itself rejecting the request — is visible on screen
+      // and can be reported back instead of guessed at blind.
+      var reason = err && err.message ? " (" + err.message + ")" : "";
+      toast(t("photoUpFailed") + reason);
+    }
   });
 }
 /* In-app camera. Opening the phone's camera app sends the browser to the background,
@@ -2797,7 +2817,7 @@ function canvasToUpload(which){
       // while looking to the person like the submit just hung.
       var tryUp = function(left){
         return S.assets.upload(blob, {type:"image/png"}).catch(function(err){
-          if(left > 0) return new Promise(function(r){ setTimeout(r, 1500); }).then(function(){ return tryUp(left-1); });
+          if(left > 0) return new Promise(function(r){ setTimeout(r, retryDelayMs(err)); }).then(function(){ return tryUp(left-1); });
           throw err;
         });
       };
@@ -2881,8 +2901,12 @@ function submitHandover(){
     // itself is untouched, so re-pressing submit retries just the upload.
     f.submitting = false;
     renderForm();
-    var reason = err && err.message ? " (" + err.message + ")" : "";
-    toast(t("sigUploadFailed") + reason);
+    if(err && err.rateLimited){
+      toast(t("sigRateLimited"));
+    } else {
+      var reason = err && err.message ? " (" + err.message + ")" : "";
+      toast(t("sigUploadFailed") + reason);
+    }
   });
 }
 
@@ -6124,7 +6148,15 @@ function boot(){
             if(!res.ok || !json || !json.success){
               var reason = (json && json.error && json.error.message) || bodyText.slice(0,200) || ("HTTP " + res.status);
               console.error("ImgBB upload failed:", res.status, reason);
-              throw new Error("ImgBB upload failed: " + reason);
+              var upErr = new Error("ImgBB upload failed: " + reason);
+              // The whole shop shares one ImgBB API key across every phone, so a
+              // burst of uploads at the same time (several people opening/handing
+              // over at once) can trip ImgBB's own anti-abuse throttling — that's
+              // what "Rate limit reached" means, not a broken photo or a broken
+              // phone. Tag it so the retry logic waits it out properly instead of
+              // hammering the same limit again within a second or two.
+              if(res.status === 429 || /rate.?limit/i.test(reason)) upErr.rateLimited = true;
+              throw upErr;
             }
             var url = (json.data && (json.data.display_url || json.data.url)) || "";
             return {id: url, url: url};
