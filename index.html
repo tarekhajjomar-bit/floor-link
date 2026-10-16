@@ -35,8 +35,16 @@
     appId: "1:1002443478349:web:9b103544895158c3775304"
   };
   var YOUR_FCM_VAPID_KEY = "BPj2g7zg_qMqsIAJkWcKZo2zgv8p4eEDiecsB_I_EuDl8kCTLGCvYTCO939zBF6kkiPw58OeZdGuW4GjvIc_g70";
+  // One free ImgBB account's API key gets rate-limited when several phones in
+  // the shop upload at the same busy moment (opening, a handover) — it's one
+  // shared quota for the whole business. Listing MORE free ImgBB keys here
+  // (each from its own free imgbb.com account, no card needed) raises the
+  // effective capacity: uploads are spread round-robin across all of them,
+  // and the moment one key is rate-limited, the SAME upload is retried
+  // immediately on the next key instead of waiting. One key still works
+  // exactly as before — this is purely additive.
   var YOUR_IMGBB_CONFIG = {
-    apiKey: "65f47cfbdd68220add021626940dd010"
+    apiKeys: ["65f47cfbdd68220add021626940dd010"]
   };
 </script>
 <script>
@@ -6129,46 +6137,67 @@ function boot(){
     }
   }catch(e){ console.error("Firebase init failed — check YOUR_FIREBASE_CONFIG in index.html", e); }
 
-  if(YOUR_IMGBB_CONFIG.apiKey.indexOf("PASTE_") !== 0){
+  var imgbbKeys = (YOUR_IMGBB_CONFIG.apiKeys || []).filter(function(k){ return k && k.indexOf("PASTE_") !== 0; });
+  if(imgbbKeys.length){
+    var imgbbKeyCursor = 0;
+    var uploadToImgbbWithKey = function(fileOrBlob, apiKey){
+      var fd = new FormData();
+      fd.append("image", fileOrBlob);
+      var uploadUrl = "https://api.imgbb.com/1/upload?key=" + apiKey;
+      // Busy mornings mean weak/congested wifi at the shop — a plain fetch() has
+      // no built-in timeout, so a stalled connection (request sent, response never
+      // arrives) used to leave the photo/signature spinning forever with no error
+      // and no way to retry. UPLOAD_TIMEOUT_MS bounds every upload attempt so it
+      // always either succeeds or fails within ~25s, which the retry logic above
+      // this function then acts on.
+      return fetchWithTimeout(uploadUrl, {method:"POST", body:fd}, UPLOAD_TIMEOUT_MS).then(function(res){
+        return res.text().then(function(bodyText){
+          var json = null;
+          try{ json = JSON.parse(bodyText); }catch(e){}
+          if(!res.ok || !json || !json.success){
+            var reason = (json && json.error && json.error.message) || bodyText.slice(0,200) || ("HTTP " + res.status);
+            console.error("ImgBB upload failed:", res.status, reason);
+            var upErr = new Error("ImgBB upload failed: " + reason);
+            // Each ImgBB key is its own free account with its own quota, so a
+            // burst of uploads at the same time (several people opening/handing
+            // over at once) can trip just THAT key's anti-abuse throttling —
+            // that's what "Rate limit reached" means, not a broken photo or a
+            // broken phone. Tag it so the caller can fail over to another key
+            // immediately instead of hammering the same limited one again.
+            if(res.status === 429 || /rate.?limit/i.test(reason)) upErr.rateLimited = true;
+            throw upErr;
+          }
+          var url = (json.data && (json.data.display_url || json.data.url)) || "";
+          return {id: url, url: url};
+        });
+      }).catch(function(err){
+        console.error("ImgBB upload error (network or parsing):", err);
+        throw err;
+      });
+    };
     assetsApi = {
       upload: function(fileOrBlob){
-        var fd = new FormData();
-        fd.append("image", fileOrBlob);
-        var uploadUrl = "https://api.imgbb.com/1/upload?key=" + YOUR_IMGBB_CONFIG.apiKey;
-        // Busy mornings mean weak/congested wifi at the shop — a plain fetch() has
-        // no built-in timeout, so a stalled connection (request sent, response never
-        // arrives) used to leave the photo/signature spinning forever with no error
-        // and no way to retry. UPLOAD_TIMEOUT_MS bounds every upload attempt so it
-        // always either succeeds or fails within ~25s, which the retry logic above
-        // this function then acts on.
-        return fetchWithTimeout(uploadUrl, {method:"POST", body:fd}, UPLOAD_TIMEOUT_MS).then(function(res){
-          return res.text().then(function(bodyText){
-            var json = null;
-            try{ json = JSON.parse(bodyText); }catch(e){}
-            if(!res.ok || !json || !json.success){
-              var reason = (json && json.error && json.error.message) || bodyText.slice(0,200) || ("HTTP " + res.status);
-              console.error("ImgBB upload failed:", res.status, reason);
-              var upErr = new Error("ImgBB upload failed: " + reason);
-              // The whole shop shares one ImgBB API key across every phone, so a
-              // burst of uploads at the same time (several people opening/handing
-              // over at once) can trip ImgBB's own anti-abuse throttling — that's
-              // what "Rate limit reached" means, not a broken photo or a broken
-              // phone. Tag it so the retry logic waits it out properly instead of
-              // hammering the same limit again within a second or two.
-              if(res.status === 429 || /rate.?limit/i.test(reason)) upErr.rateLimited = true;
-              throw upErr;
+        // Spread uploads round-robin across every configured key, and the
+        // moment one comes back rate-limited, retry the SAME upload on the
+        // next key right away — no waiting — before giving up. Only once
+        // every key has been tried and all are rate-limited does this fall
+        // through to the caller's own (much slower) backoff-and-retry.
+        var startIdx = imgbbKeyCursor % imgbbKeys.length;
+        imgbbKeyCursor = (imgbbKeyCursor + 1) % imgbbKeys.length;
+        var tryKey = function(offset){
+          var key = imgbbKeys[(startIdx + offset) % imgbbKeys.length];
+          return uploadToImgbbWithKey(fileOrBlob, key).catch(function(err){
+            if(err && err.rateLimited && offset < imgbbKeys.length - 1){
+              return tryKey(offset + 1);
             }
-            var url = (json.data && (json.data.display_url || json.data.url)) || "";
-            return {id: url, url: url};
+            throw err;
           });
-        }).catch(function(err){
-          console.error("ImgBB upload error (network or parsing):", err);
-          throw err;
-        });
+        };
+        return tryKey(0);
       }
     };
   } else {
-    console.warn("ImgBB not configured — YOUR_IMGBB_CONFIG.apiKey is still the placeholder in index.html. Photo/signature upload is disabled.");
+    console.warn("ImgBB not configured — YOUR_IMGBB_CONFIG.apiKeys is empty or still the placeholder in index.html. Photo/signature upload is disabled.");
   }
 
   S.db = db;
