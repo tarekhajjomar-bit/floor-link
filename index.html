@@ -2695,31 +2695,30 @@ function camFallback(input){
   CAM_BYPASS = true;
   try{ input.click(); }finally{ setTimeout(function(){ CAM_BYPASS = false; }, 0); }
 }
-function camGallery(target){
-  var inp = document.createElement("input");
-  inp.type = "file"; inp.accept = "image/*"; inp.multiple = true; inp.style.display = "none";
-  inp.onchange = function(){
-    Array.prototype.slice.call(this.files || []).forEach(function(file){ camAdd(target, file); });
-    if(inp.parentNode) inp.parentNode.removeChild(inp);
-  };
-  document.body.appendChild(inp);
-  inp.click();
-}
 function camOpen(target, title, input){
   camClose();
   var el = document.createElement("div");
   el.id = "flCam";
+  // Deliberately no "choose from gallery" button here — these photos are
+  // evidence that the checkpoint/signature/item was actually seen in person
+  // at the time of the visit, so the in-app camera only offers a live shot.
+  // The native-camera fallback below (camFallback/camUsePhone) only shows up
+  // if the in-app camera itself fails to open (permissions, unsupported
+  // browser) — it's a last resort to let the person take a photo at all,
+  // not a way to pick an old one; its "capture=environment" input still
+  // pushes most phones straight to their camera app instead of the gallery.
   el.innerHTML = '<div class="cam-top"><span class="cam-title">'+esc(title)+'</span><span class="cam-count" id="camCount"></span></div>' +
     '<div class="cam-view"><video id="camVideo" playsinline muted autoplay></video><div class="cam-flash" id="camFlash"></div></div>' +
     '<div class="cam-strip" id="camStrip"></div>' +
-    '<div class="cam-bar"><button type="button" class="cam-btn" id="camGal">'+t("camGallery")+'</button>' +
-    '<button type="button" class="cam-shot" id="camShot" aria-label="'+esc(t("camShoot"))+'" disabled></button>' +
+    // Empty spacer div keeps the 3-column layout (grid-template-columns:
+    // 1fr auto 1fr) intact now that the left-column button is gone, so the
+    // shutter button stays centered instead of sliding to the left edge.
+    '<div class="cam-bar"><span></span><button type="button" class="cam-shot" id="camShot" aria-label="'+esc(t("camShoot"))+'" disabled></button>' +
     '<button type="button" class="cam-btn cam-done" id="camDone">'+t("camDone")+'</button></div>';
   document.body.appendChild(el);
   CAM = {el:el, stream:null, n:0};
   var me = CAM, video = el.querySelector("#camVideo"), shot = el.querySelector("#camShot");
   el.querySelector("#camDone").onclick = camClose;
-  el.querySelector("#camGal").onclick = function(){ camClose(); camGallery(target); };
   var fail = function(){
     if(CAM !== me) return;
     el.querySelector(".cam-view").innerHTML = '<div class="cam-msg">'+t("camUnavailable")+'<br><br><button type="button" class="cam-btn" id="camNative">'+t("camUsePhone")+'</button></div>';
