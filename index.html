@@ -3514,15 +3514,22 @@ function submitMerchVisit(){
   }
   if(anyPhotoUploading(f.display.photos)){ toast(t("photosStillUploading")); return; }
   if(f.hasOrder){
+    // Check "still uploading" FIRST. A photo that was just taken is pending
+    // (no .id yet) for a few seconds — checking "needs a photo" first would
+    // wrongly tell someone who already took the photo to go take it again,
+    // instead of the accurate "still uploading, wait a moment".
+    if(f.orderItems.some(function(r){ return r.itemPhoto && r.itemPhoto.pending; })){
+      toast(t("photosStillUploading"));
+      return;
+    }
     // A row whose barcode came up with nothing (not in our catalog, not
     // found online) can't be submitted nameless — it must have a photo
     // attached so whoever reviews the order can see what it actually is.
+    // By this point nothing is pending, so a missing .id here means the
+    // photo was never taken, or its upload failed outright (see the retry
+    // icon on that row) — either way, this message is now accurate.
     if(f.orderItems.some(function(r){ return r.needsPhoto && !(r.itemPhoto && r.itemPhoto.id); })){
       toast(t("orderItemPhotoRequired"));
-      return;
-    }
-    if(f.orderItems.some(function(r){ return r.itemPhoto && r.itemPhoto.pending; })){
-      toast(t("photosStillUploading"));
       return;
     }
   }
