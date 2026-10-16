@@ -6215,6 +6215,19 @@ function boot(){
         throw err;
       });
     };
+    // A person filling out a handover/opening checklist tends to take several
+    // checkpoint photos within a second or two of each other, and each one
+    // used to fire its upload immediately — so a single phone could send a
+    // burst of 2-3 simultaneous uploads on its own, independent of what any
+    // other phone in the shop was doing, and trip the shared key's anti-abuse
+    // limit all by itself. uploadQueue makes every upload from THIS phone
+    // wait its turn instead of firing in parallel — one request in flight at
+    // a time — which removes that self-inflicted burst entirely. It doesn't
+    // fix bursts from several different phones at once (that's what the
+    // multi-key failover above is for), but most of the "rate limit" hits
+    // seen in practice are a single busy phone taking several photos in a
+    // row, so this alone should cut them sharply.
+    var uploadQueue = Promise.resolve();
     assetsApi = {
       // opts.expiresInSeconds: pass PHOTO_RETENTION_SECONDS for an ordinary
       // visit photo/signature, or omit it entirely for something meant to
@@ -6237,7 +6250,12 @@ function boot(){
             throw err;
           });
         };
-        return tryKey(0);
+        // Chain onto the queue regardless of whether the previous upload
+        // succeeded or failed, so one failed/rate-limited photo never jams
+        // every photo after it — each upload still gets its own turn.
+        var run = uploadQueue.then(function(){ return tryKey(0); });
+        uploadQueue = run.catch(function(){});
+        return run;
       }
     };
   } else {
