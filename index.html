@@ -2618,10 +2618,15 @@ function startPhotoUpload(item, rerender, onDone){
     item.id = res.id; item.url = res.url; item.pending = false; item.failed = false; delete item._file;
     if(onDone) onDone();
     rerender();
-  }).catch(function(){
+  }).catch(function(err){
     item.pending = false; item.failed = true;
     rerender();
-    toast(t("photoUpFailed"));
+    // Include the real reason in the toast (not just "a photo didn't upload")
+    // so if this keeps happening, the actual cause — a network error, or
+    // ImgBB itself rejecting the request — is visible on screen and can be
+    // reported back instead of guessed at blind.
+    var reason = err && err.message ? " (" + err.message + ")" : "";
+    toast(t("photoUpFailed") + reason);
   });
 }
 /* In-app camera. Opening the phone's camera app sends the browser to the background,
@@ -2869,14 +2874,15 @@ function submitHandover(){
     if(sigs[1]) f.incomingSig = sigs[1];
 
     submitHandoverAfterSigs(f, isHandover);
-  }).catch(function(){
+  }).catch(function(err){
     // A signature was drawn but never made it up (timed out / connection
     // dropped even after retrying) — stop here instead of either hanging
     // forever or quietly saving the handover without it. The signature
     // itself is untouched, so re-pressing submit retries just the upload.
     f.submitting = false;
     renderForm();
-    toast(t("sigUploadFailed"));
+    var reason = err && err.message ? " (" + err.message + ")" : "";
+    toast(t("sigUploadFailed") + reason);
   });
 }
 
