@@ -694,7 +694,7 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
              on every deploy, purely so a build mismatch (stale cache / an
              app that hasn't actually picked up the latest deploy) can be
              told apart from an actual code bug just by reading this. -->
-        <span id="appBuild" style="display:block; font-size:10px; opacity:0.5; margin-top:2px;">build v16</span>
+        <span id="appBuild" style="display:block; font-size:10px; opacity:0.5; margin-top:2px;">build v17</span>
       </div>
     </div>
     <div class="header-controls">
@@ -3268,7 +3268,17 @@ function submitHandover(){
     return;
   }
   f.submitting = true;
-  renderForm();
+  // Deliberately NOT calling renderForm() here. A full re-render rebuilds
+  // the form via innerHTML, which destroys the signature <canvas> DOM
+  // element and recreates a blank one (setupSigCanvas() resets sigCtx[]
+  // with dirty:false) — and that was happening BEFORE canvasToUpload()
+  // below ever got a chance to read the just-drawn signature. The result:
+  // every single submit silently wiped the signature the user had just
+  // drawn, then correctly (but misleadingly) reported "nothing was drawn".
+  // Updating the submit button in place avoids touching the canvas at all
+  // until canvasToUpload() has safely read it.
+  var submitBtnEl = document.getElementById("submitBtn");
+  if(submitBtnEl){ submitBtnEl.disabled = true; submitBtnEl.textContent = t("submitting"); }
 
   if(!isHandover){
     // Solo entry: one device does the whole thing, same as always — both
