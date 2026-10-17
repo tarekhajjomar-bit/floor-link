@@ -224,7 +224,7 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
   background:var(--surface); border:1px solid var(--line-soft); border-radius:var(--radius);
   padding:18px; margin-bottom:14px; box-shadow:var(--shadow-sm);
 }
-.jd{text-align:right;}
+.jd{text-align:start;}
 .jd-head h2{font-size:19px; margin:2px 0 12px; letter-spacing:-.2px;}
 .jd-kicker{font-size:12px; font-weight:700; color:var(--teal); letter-spacing:.2px;}
 .jd-info{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
@@ -6370,26 +6370,73 @@ var JOB_DESC = {
     ["التزامه الشخصي","صفر تأخير وصفر غياب دون عذر","البصمة"]],
   account: "أي تقصير في المهام المذكورة يُحاسَب عليه المشرف وفق المادة (56) من النظام الداخلي. ويُعتبر هذا الوصف الوظيفي جزءاً مكمّلاً للنظام الداخلي."
 };
+JOB_DESC.L = {goal:"هدف الوظيفة", tasks:"أولاً: المهام", report:"ثانياً: محتوى الهاند أوفر",
+  reportSub:"لا يوجد تقرير ورقي منفصل. يُكتب في الهاند أوفر، إضافةً إلى الصور، أربعة أسطر فقط:",
+  perms:"ثالثاً: الصلاحيات", alone:"يقرّر وحده", ask:"يرجع فيه للإدارة قبل التنفيذ",
+  kpis:"رابعاً: مؤشرات التقييم", kpisSub:"يُقيَّم المشرف شهرياً على المؤشرات التالية:", account:"خامساً: المحاسبة"};
+var JOB_DESC_EN = {
+  title: "Job Description",
+  sub: "Shift Supervisor",
+  info: [["Position","Shift Supervisor"],["Reports to","General Manager"],["Shift","Morning or evening – one supervisor per shift in each branch"],["Supervises","All staff on the shift in the branch"]],
+  goal: "The supervisor is the person primarily responsible for the branch during their shift: the staff, the cash, the stock, the cleanliness of the branch and customer satisfaction. They are accountable for any shortcoming during their shift, whether their own or that of the staff they supervise.",
+  tasks: [
+    ["Start of shift", [
+      "Take over the shift from the previous supervisor, read the handover and follow up on any open issue in it.",
+      "Walk through the branch and the fridges, and photograph the opening on Floor Link.",
+      "Make sure staff arrive on time, and record any lateness or absence.",
+      "Assign tasks to the staff, and hand the float (petty cash) to the cashiers."]],
+    ["During the shift", [
+      "Make sure every employee does their job and follows the internal regulations.",
+      "Give permission for breaks, going out and smoking, so that no till or section is left uncovered.",
+      "Follow up on shelf restocking and shortages, know who has not finished their shelves, and check cleanliness and displays in all sections and fridges.",
+      "Follow up on expiry dates on Floor Link, per Article (51).",
+      "Receive floor deliveries from suppliers (bread, labneh, cheese, etc.), checking quantity and expiry before signing.",
+      "Handle customer complaints and problems personally, and escalate anything beyond their authority to management immediately.",
+      "Process voids and returns, and fill in the returns form for every returned or damaged item."]],
+    ["End of shift", [
+      "Close the shifts on the tills, count the cash with each cashier on the system, and sign the handover record, per Article (46).",
+      "Photograph the shelves after restocking, and submit the handover on Floor Link per Article (56).",
+      "Evening supervisor: close the branch after checking that the tills and doors are locked and the fridges are running, per Article (54)."]]
+  ],
+  report: [["Attendance","Who was late, absent, or left with permission."],["Cash","Any shortage or surplus in the tills."],["Stock","Returns, damaged items and important shortages."],["Open issues","Anything unresolved that needs follow-up by the next shift or management."]],
+  alone: ["Assigning tasks to staff during the shift.","Permission for breaks, short outings and smoking.","Voids and returns on the tills.","Handling ordinary customer complaints.","Receiving floor deliveries from suppliers.","Giving a verbal warning to any employee who breaks the rules."],
+  ask: ["Any financial compensation to a customer.","Sending an employee home before the end of their shift.","Swapping shifts or days off between employees.","Any written warning, deduction or penalty.","Any shortage in cash or stock.","A problem with a supplier, or a fault in the fridges or equipment.","Any theft, accident or major problem in the branch."],
+  kpis: [
+    ["Opening & handover","Both submitted complete and on time","Every day"],
+    ["Expiry","Zero expired products on the shelves","Management walk + customers"],
+    ["Cash","Zero unexplained till differences","Handover records"],
+    ["Shelves & shortages","No empty shelves at inspection","Surprise management walk"],
+    ["Cleanliness & display","Fridges and sections clean and tidy","Surprise management walk"],
+    ["Customer complaints","No complaint reaches management without their follow-up","Complaints reaching management"],
+    ["Staff discipline","Every lateness or violation on their shift recorded in the handover","Checked against fingerprint and cameras"],
+    ["Personal commitment","Zero lateness and zero unexcused absence","Fingerprint"]],
+  account: "Any shortcoming in the tasks above is subject to accountability under Article (56) of the internal regulations. This job description is an integral part of the internal regulations.",
+  L: {goal:"Purpose of the role", tasks:"1. Tasks", report:"2. What goes in the handover",
+    reportSub:"There is no separate paper report. Besides the photos, the handover includes just four lines:",
+    perms:"3. Authority", alone:"Decides alone", ask:"Checks with management first",
+    kpis:"4. Performance indicators", kpisSub:"The supervisor is evaluated monthly on the following:", account:"5. Accountability"}
+};
 function renderJobDesc(){
-  var J = JOB_DESC, n = 0, h = '<div class="jd" dir="rtl" lang="ar">';
+  var en = S.lang === "en", J = en ? JOB_DESC_EN : JOB_DESC, L = J.L, n = 0;
+  var h = '<div class="jd" dir="'+(en?"ltr":"rtl")+'" lang="'+(en?"en":"ar")+'">';
   h += '<div class="card jd-head"><div class="jd-kicker">'+esc(J.title)+'</div><h2>'+esc(J.sub)+'</h2>' +
        '<div class="jd-info">'+J.info.map(function(r){ return '<div><span>'+esc(r[0])+'</span><b>'+esc(r[1])+'</b></div>'; }).join('')+'</div></div>';
-  h += '<div class="card"><div class="section-title">هدف الوظيفة</div><p class="jd-p">'+esc(J.goal)+'</p></div>';
-  h += '<div class="card"><div class="section-title">أولاً: المهام</div>';
+  h += '<div class="card"><div class="section-title">'+esc(L.goal)+'</div><p class="jd-p">'+esc(J.goal)+'</p></div>';
+  h += '<div class="card"><div class="section-title">'+esc(L.tasks)+'</div>';
   J.tasks.forEach(function(g){
     h += '<div class="jd-sub">'+esc(g[0])+'</div><ol class="jd-list" start="'+(n+1)+'">';
     g[1].forEach(function(x){ n++; h += '<li>'+esc(x)+'</li>'; });
     h += '</ol>';
   });
   h += '</div>';
-  h += '<div class="card"><div class="section-title">ثانياً: محتوى الهاند أوفر</div><div class="section-sub">لا يوجد تقرير ورقي منفصل. يُكتب في الهاند أوفر، إضافةً إلى الصور، أربعة أسطر فقط:</div>' +
+  h += '<div class="card"><div class="section-title">'+esc(L.report)+'</div><div class="section-sub">'+esc(L.reportSub)+'</div>' +
        J.report.map(function(r){ return '<div class="jd-rep"><b>'+esc(r[0])+'</b><span>'+esc(r[1])+'</span></div>'; }).join('')+'</div>';
-  h += '<div class="card"><div class="section-title">ثالثاً: الصلاحيات</div><div class="jd-perm">' +
-       '<div class="jd-perm-col ok"><div class="jd-perm-h">يقرّر وحده</div><ul>'+J.alone.map(function(x){ return '<li>'+esc(x)+'</li>'; }).join('')+'</ul></div>' +
-       '<div class="jd-perm-col ask"><div class="jd-perm-h">يرجع فيه للإدارة قبل التنفيذ</div><ul>'+J.ask.map(function(x){ return '<li>'+esc(x)+'</li>'; }).join('')+'</ul></div></div></div>';
-  h += '<div class="card"><div class="section-title">رابعاً: مؤشرات التقييم</div><div class="section-sub">يُقيَّم المشرف شهرياً على المؤشرات التالية:</div>' +
+  h += '<div class="card"><div class="section-title">'+esc(L.perms)+'</div><div class="jd-perm">' +
+       '<div class="jd-perm-col ok"><div class="jd-perm-h">'+esc(L.alone)+'</div><ul>'+J.alone.map(function(x){ return '<li>'+esc(x)+'</li>'; }).join('')+'</ul></div>' +
+       '<div class="jd-perm-col ask"><div class="jd-perm-h">'+esc(L.ask)+'</div><ul>'+J.ask.map(function(x){ return '<li>'+esc(x)+'</li>'; }).join('')+'</ul></div></div></div>';
+  h += '<div class="card"><div class="section-title">'+esc(L.kpis)+'</div><div class="section-sub">'+esc(L.kpisSub)+'</div>' +
        J.kpis.map(function(k){ return '<div class="jd-kpi"><b>'+esc(k[0])+'</b><div>'+esc(k[1])+'</div><small>'+esc(k[2])+'</small></div>'; }).join('')+'</div>';
-  h += '<div class="card"><div class="section-title">خامساً: المحاسبة</div><p class="jd-p">'+esc(J.account)+'</p></div>';
+  h += '<div class="card"><div class="section-title">'+esc(L.account)+'</div><p class="jd-p">'+esc(J.account)+'</p></div>';
   h += '</div>';
   document.getElementById("main").innerHTML = h;
 }
