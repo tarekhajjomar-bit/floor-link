@@ -4411,19 +4411,28 @@ function subscribeUsers(){
   S.db.collection("users").orderBy("createdAt","asc").limit(500).onSnapshot(function(snap){
     S.users = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data() || {}); });
     S.usersLoaded = true;
+    var forcedSignOut = false;
     if(S.currentUser){
       var mine = S.users.filter(function(u){ return u.id === S.currentUser.id; })[0];
       if(mine){
         if(mine.disabled){
           S.currentUser = null;
           S.authView = "login";
+          forcedSignOut = true;
           if(S.auth) S.auth.signOut();
         } else {
           S.currentUser = mine;
         }
       }
     }
-    render();
+    // This fires on ANY account change, anywhere — someone else signing
+    // up, a manager editing an unrelated account, a role change — not just
+    // something relevant to whoever is looking at this screen right now.
+    // Nothing in the handover form actually reads S.users live, so there's
+    // no reason to force a mid-typing/mid-signature re-render over it; the
+    // one case that genuinely can't wait is this very device's own account
+    // just having been disabled (it must sign the person out immediately).
+    if(forcedSignOut || !(S.appMode === "handover" && S.view === "form")) render();
   }, function(){});
 }
 
