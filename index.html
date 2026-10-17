@@ -897,6 +897,7 @@ en:{
   cancelHandoverBtn:"Cancel this handover & start over",
   cancelHandoverConfirm:"This will discard everything in this handover on BOTH phones — every photo, note and signature — and start a brand new one from scratch. This can't be undone. Continue?",
   sigRedraw:"Redraw",
+  sigRequiredFirst:"Please draw your signature in the box below before submitting — nothing was saved yet.",
   chicken:"Chicken area", cheese:"Cheese", olives:"Olives", eggs:"Eggs", breadSelfService:"Bread — Self Service",
   reqNoteLabel:"Confirmation checklist (required)",
   reqNoteMissing:" (confirmation checklist)",
@@ -1241,6 +1242,7 @@ ar:{
   cancelHandoverBtn:"إلغاء هالهاند أوفر وابدأ من جديد",
   cancelHandoverConfirm:"هاد رح يمسح كل شي بهالهاند أوفر من التليفونين الاثنين — كل الصور والملاحظات والتوقيعين — وتبلّش وحدة جديدة من الصفر. ما فيك ترجع فيه. بدك تكمل؟",
   sigRedraw:"إعادة التوقيع",
+  sigRequiredFirst:"لازم توقّع بالخانة تحت قبل ما ترسل — لسه ما انحفظ شي.",
   chicken:"منطقة الدجاج", cheese:"الأجبان", olives:"الزيتون", eggs:"البيض", breadSelfService:"الخبز — سيلف سيرفس",
   reqNoteLabel:"قائمة فحص التأكيد (إلزامي)",
   reqNoteMissing:" (قائمة الفحص)",
@@ -3304,6 +3306,20 @@ function submitHandover(){
           .update(buildDraftUpdatePayload(f, myRole, [myRole === "out" ? "outgoingSig" : "incomingSig"]))
           .catch(function(){});
       }
+    }
+    var mySigNow = myRole === "out" ? f.outgoingSig : f.incomingSig;
+    if(!(mySigNow && mySigNow.id)){
+      // canvasToUpload() resolves null for an empty/undrawn canvas too, not
+      // only for an upload error — that's "nothing to upload", not a
+      // failure. Without this check, tapping Submit on a still-blank
+      // signature pad fell straight through to the generic "Saved your
+      // side, waiting for {peer}" message below, which — read on its own —
+      // says the opposite of what actually happened: nothing from this
+      // device was saved at all, because nothing was ever drawn.
+      f.submitting = false;
+      renderForm();
+      toast(t("sigRequiredFirst"));
+      return;
     }
     var bothSigned = f.outgoingSig && f.outgoingSig.id && f.incomingSig && f.incomingSig.id;
     if(!bothSigned){
