@@ -1572,6 +1572,35 @@ function buildDraftUpdatePayload(f, role, onlyKeys){
   keys.forEach(function(k){ payload["draft." + k] = draftFieldValue(f, k); });
   return payload;
 }
+// Key-order-independent structural equality. JSON.stringify comparison
+// (an earlier version of this fix) looks equivalent but isn't: a plain
+// object round-tripped through Firestore can come back with its keys in a
+// different order than the locally-built object that produced it, even
+// when every value is identical — and JSON.stringify bakes key order into
+// the string, so a pure self-echo could still compare "different" forever,
+// on every single draft push. That's a strictly worse version of the exact
+// bug being fixed here (a false "changed" forcing a needless re-render),
+// just intermittent instead of constant, which is why it kept surfacing
+// in different shapes (a signature still vanishing, a text field losing
+// focus on every keystroke) even after the JSON.stringify version shipped.
+function deepEqualDraftValue(a, b){
+  if(a === b) return true;
+  if(a === null || b === null || typeof a !== "object" || typeof b !== "object") return false;
+  if(Array.isArray(a) !== Array.isArray(b)) return false;
+  if(Array.isArray(a)){
+    if(a.length !== b.length) return false;
+    for(var i=0; i<a.length; i++){ if(!deepEqualDraftValue(a[i], b[i])) return false; }
+    return true;
+  }
+  var ak = Object.keys(a), bk = Object.keys(b);
+  if(ak.length !== bk.length) return false;
+  for(var j=0; j<ak.length; j++){
+    var k = ak[j];
+    if(!Object.prototype.hasOwnProperty.call(b, k)) return false;
+    if(!deepEqualDraftValue(a[k], b[k])) return false;
+  }
+  return true;
+}
 // Merges the parts of a remote draft snapshot this device does NOT own
 // into S.form — i.e. everything except this device's own role-exclusive
 // keys (DRAFT_SHARED_KEYS included, since the remote copy is just as valid
@@ -1597,8 +1626,12 @@ function mergeForeignDraft(f, draft, role){
     // kept vanishing the instant a finger lifted (a re-render landing
     // between touchend and the next render tick) and why a draft could
     // be stuck unable to finish: the canvas was never allowed to stay
-    // "dirty" long enough to actually upload at submit time.
-    if(JSON.stringify(next) === JSON.stringify(f[k])) return;
+    // "dirty" long enough to actually upload at submit time. Same root
+    // cause also explains a text field (like staff notes) losing focus on
+    // every keystroke: any shared field push re-renders the WHOLE form,
+    // including every other field's DOM element, wherever the false
+    // "changed" came from.
+    if(deepEqualDraftValue(next, f[k])) return;
     f[k] = next;
     changed = true;
   });
