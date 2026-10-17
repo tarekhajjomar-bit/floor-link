@@ -855,6 +855,8 @@ en:{
   reqPhotosOutgoingHead:"{name} — outgoing (handing over)", reqPhotosIncomingHead:"{name} — incoming (receiving)",
   reqRoleYouTag:"You", notYourCheckpointErr:"This checkpoint belongs to the other supervisor — you can only add your own photos.",
   reqBothMustCapture:"Both supervisors must personally take at least one checkpoint photo before this can be submitted.",
+  reqWaitingForPeer:"Saved your side. Waiting for {name} to finish on their own phone — tap Submit again once they have.",
+  sigWaitingForPeer:"{name} will sign on their own phone — it will appear here automatically.",
   handoverGateTitle:"Confirm both supervisors are present", handoverGateIntro:"A handover needs both the outgoing and incoming supervisor to confirm, from their own phones, within 15 minutes of each other.",
   handoverGateStartBtn:"Start — I'm the outgoing supervisor", handoverGateJoinRow:"{name} started a handover and is waiting", handoverGateJoinBtn:"Join — I'm the incoming supervisor",
   handoverGateWaitingTitle:"Waiting for the incoming supervisor", handoverGateWaitingSub:"{name} confirmed. Now the incoming supervisor needs to open Floor Link on their own phone and join within the time shown.",
@@ -1192,6 +1194,8 @@ ar:{
   reqPhotosOutgoingHead:"{name} — المغادر (التسليم)", reqPhotosIncomingHead:"{name} — المستلم (الاستلام)",
   reqRoleYouTag:"أنت", notYourCheckpointErr:"هاد القسم خاص بالمشرف التاني — فيك تضيف بس صورك أنت.",
   reqBothMustCapture:"لازم الاثنين (المغادر والمستلم) يصوّروا أقل شي صورة واحدة بنفسهم قبل إمكانية الإرسال.",
+  reqWaitingForPeer:"تم حفظ قسمك. بانتظار {name} يخلص من تليفونه هو — دوس إرسال مرة تانية بعد ما يخلص.",
+  sigWaitingForPeer:"{name} رح يوقع من تليفونه هو — رح يطلع هون أوتوماتيكياً.",
   handoverGateTitle:"تأكيد حضور المشرفين الاثنين", handoverGateIntro:"الهاند أوفر لازم يتأكد فيه المشرف المغادر والمستلم، كل واحد من تليفونه، بفارق ما يتجاوز ١٥ دقيقة بين الاثنين.",
   handoverGateStartBtn:"بلّش — أنا المشرف المغادر", handoverGateJoinRow:"{name} بلّش هاند أوفر وعم ينتظر", handoverGateJoinBtn:"انضمام — أنا المشرف المستلم",
   handoverGateWaitingTitle:"بانتظار المشرف المستلم", handoverGateWaitingSub:"{name} أكّد. هلق لازم المشرف المستلم يفتح فلور لينك من تليفونه هو وينضم خلال الوقت المتبقي.",
@@ -1441,6 +1445,97 @@ var MERCH_DEPARTMENTS = [
 
 var REQUIRED_PHOTO_KEYS = ["chicken","cheese","olives","eggs","breadSelfService"];
 var REQUIRED_NOTE_KEYS = ["chicken","cheese"];
+
+/* ================= HANDOVER LIVE DRAFT (two-device sync) =================
+   A "handover" entry is filled in from TWO phones at once (the outgoing and
+   incoming supervisor, each on their own device). Everything in S.form
+   beyond the dual-presence gate — checkpoint photos, checklist, notes,
+   signatures — used only to live in that one phone's local memory, with no
+   way for the other phone to see it. Whichever device eventually hit
+   Submit would see the OTHER person's half as entirely missing, even
+   though they'd genuinely already done it on their own phone — that's the
+   exact bug this section fixes.
+   handover_drafts/{sessionId} (same id as the handover_sessions gate doc)
+   is the shared live copy both phones read and write. These three lists —
+   kept in lockstep with the matching lists in firestore.rules — say who's
+   allowed to write which field:
+     - *_OUT fields / outgoingSig / ackOut: only the outgoing supervisor's
+       account may write these — the same anti-collusion guarantee the
+       required-photo split was always meant to have.
+     - *_IN fields / incomingSig / ackIn: only the incoming supervisor's
+       account, same reasoning.
+     - DRAFT_SHARED_KEYS: ordinary shift-report content (cash, inventory,
+       cleanliness, pending issues, staff notes, date/time) — not evidence
+       of either person's presence, so either account may write these.
+   Firestore security rules enforce this server-side too (see
+   firestore.rules); the client-side gating below (isMyReqRole, sigBlock's
+   editable check, etc.) is what keeps the UI honest about it, not the only
+   thing stopping a tampered client. */
+var DRAFT_OUT_ONLY_KEYS = ["requiredPhotosOut","requiredNotesOut","outgoingSig","ackOut"];
+var DRAFT_IN_ONLY_KEYS = ["requiredPhotosIn","requiredNotesIn","incomingSig","ackIn"];
+var DRAFT_SHARED_KEYS = ["cash","inventory","cleanliness","pending","staffNotes","closingCheck","date","time"];
+
+// The fields THIS device is allowed to push to the shared draft, given
+// which role (if any) the signed-in account holds on the current session.
+function draftOwnedKeys(role){
+  if(role === "out") return DRAFT_OUT_ONLY_KEYS.concat(DRAFT_SHARED_KEYS);
+  if(role === "in") return DRAFT_IN_ONLY_KEYS.concat(DRAFT_SHARED_KEYS);
+  return [];
+}
+
+// Only COMPLETED photos (an ImgBB id already assigned) are ever synced —
+// never a pending upload or, especially, the raw File object attached to
+// an in-progress one (_file isn't JSON-serializable and has no meaning on
+// another device anyway). A photo still uploading on this phone simply
+// isn't visible to the other phone until the upload finishes; the next
+// draft push after it completes picks it up like any other change.
+function draftKeepPhotos(arr){
+  return (arr || []).filter(function(p){ return p && p.id; })
+    .map(function(p){ return {id:p.id, url:p.url, byName:p.byName||null, byUserId:p.byUserId||null}; });
+}
+function draftPhotoSetValue(obj){
+  var out = {};
+  REQUIRED_PHOTO_KEYS.forEach(function(k){ out[k] = draftKeepPhotos(obj[k]); });
+  return out;
+}
+// The Firestore-safe value for one field of S.form, keyed exactly as the
+// field appears in both S.form and the draft document.
+function draftFieldValue(f, key){
+  if(key === "requiredPhotosOut") return draftPhotoSetValue(f.requiredPhotosOut);
+  if(key === "requiredPhotosIn") return draftPhotoSetValue(f.requiredPhotosIn);
+  if(key === "cash" || key === "inventory" || key === "cleanliness"){
+    var c = f[key];
+    return {status: c.status, notes: c.notes, photos: draftKeepPhotos(c.photos)};
+  }
+  return f[key];
+}
+// Builds the {"draft.<key>": value, ...} payload for an update() call,
+// restricted to the keys this device actually owns (and further to just
+// `onlyKeys` when given, e.g. "only push what actually changed").
+function buildDraftUpdatePayload(f, role, onlyKeys){
+  var keys = draftOwnedKeys(role);
+  if(onlyKeys) keys = keys.filter(function(k){ return onlyKeys.indexOf(k) !== -1; });
+  var payload = {};
+  keys.forEach(function(k){ payload["draft." + k] = draftFieldValue(f, k); });
+  return payload;
+}
+// Merges the parts of a remote draft snapshot this device does NOT own
+// into S.form — i.e. everything except this device's own role-exclusive
+// keys (DRAFT_SHARED_KEYS included, since the remote copy is just as valid
+// as this device's own pending edit to those — last write wins, same as
+// any shared notes field). Returns true if anything actually changed.
+function mergeForeignDraft(f, draft, role){
+  if(!draft) return false;
+  var mine = role === "out" ? DRAFT_OUT_ONLY_KEYS : role === "in" ? DRAFT_IN_ONLY_KEYS : [];
+  var changed = false;
+  Object.keys(draft).forEach(function(k){
+    if(mine.indexOf(k) !== -1) return; // never let a remote echo touch what only I write
+    if(!(k in f)) return; // unknown field — ignore rather than inventing a new one
+    f[k] = draft[k];
+    changed = true;
+  });
+  return changed;
+}
 var REQUIRED_CHECKLIST_ITEMS = [
   {key:"arranged", labelKey:"reqCheckArranged"},
   {key:"clean", labelKey:"reqCheckClean"},
@@ -1505,7 +1600,8 @@ var S = {
   handoverSession: null,
   handoverSessionTick: null,
   openHandoverSessions: [],
-  handoverGateCleared: false
+  handoverGateCleared: false,
+  handoverDraftUnsub: null
 };
 
 function freshRequiredPhotoSet(){
@@ -1671,11 +1767,69 @@ function watchHandoverSession(sessionId){
 function abandonHandoverSession(){
   if(S.handoverSession && S.handoverSession.id && S.db){
     S.db.collection("handover_sessions").doc(S.handoverSession.id).delete().catch(function(){});
+    S.db.collection("handover_drafts").doc(S.handoverSession.id).delete().catch(function(){});
   }
+  stopWatchingHandoverDraft();
   stopWatchingHandoverSession();
   S.handoverSession = null;
   S.handoverGateCleared = false;
   render();
+}
+
+/* ---------- handover_drafts: the live two-device sync itself ---------- */
+function stopWatchingHandoverDraft(){
+  if(S.handoverDraftUnsub){ try{ S.handoverDraftUnsub(); }catch(e){} S.handoverDraftUnsub = null; }
+}
+
+// Called once by BOTH devices right after the gate clears. Both send the
+// identical company/outgoingUserId/incomingUserId (read from the same
+// confirmed session), so it doesn't matter which device's write actually
+// creates the document — the other one just becomes a harmless no-op
+// update (see firestore.rules: re-sending unchanged values reports no
+// affected keys, so it always passes).
+function ensureHandoverDraftDoc(sessionId){
+  if(!S.db) return;
+  var f = S.form;
+  S.db.collection("handover_drafts").doc(sessionId).set({
+    company: f.company, outgoingUserId: f.outgoingUserId, incomingUserId: f.incomingUserId
+  }, {merge:true}).catch(function(){});
+}
+
+// Subscribes to the shared draft and merges in whatever this device
+// doesn't itself own (see mergeForeignDraft). This is the fix for the
+// actual reported bug: without this, each phone only ever knew about the
+// photos/checklist/signature IT had captured, so whichever phone finally
+// hit Submit saw the other supervisor's half as entirely missing — even
+// though they'd genuinely already finished it on their own phone.
+function watchHandoverDraft(sessionId){
+  stopWatchingHandoverDraft();
+  if(!S.db) return;
+  var ref = S.db.collection("handover_drafts").doc(sessionId);
+  S.handoverDraftUnsub = ref.onSnapshot(function(snap){
+    if(!snap.exists) return;
+    var d = snap.data();
+    var role = myReqRole();
+    if(mergeForeignDraft(S.form, d.draft, role)){
+      if(S.appMode === "handover" && S.view === "form") renderForm();
+    }
+  }, function(){});
+}
+
+// Debounced push of this device's own fields to the shared draft — wired
+// up alongside the existing local-draft save (saveFormDraft), so every
+// place that already triggers a local save (typing, a checklist tap, a
+// photo finishing its upload) also pushes to the other phone, with no
+// separate wiring needed at each call site.
+var _handoverDraftPushT = null;
+function pushHandoverDraftSoon(){
+  if(!S.db || !S.form.handoverSessionId || !S.handoverGateCleared) return;
+  var role = myReqRole();
+  if(!role) return; // not a confirmed participant on this session — nothing to push
+  clearTimeout(_handoverDraftPushT);
+  _handoverDraftPushT = setTimeout(function(){
+    var payload = buildDraftUpdatePayload(S.form, role);
+    S.db.collection("handover_drafts").doc(S.form.handoverSessionId).update(payload).catch(function(){});
+  }, 400);
 }
 
 function fmtCountdown(ms){
@@ -1746,6 +1900,8 @@ function wireHandoverGate(){
     S.form.incomingName = S.handoverSession.incoming.fullName;
     S.form.incomingUserId = S.handoverSession.incoming.userId;
     S.handoverGateCleared = true;
+    ensureHandoverDraftDoc(S.form.handoverSessionId);
+    watchHandoverDraft(S.form.handoverSessionId);
     render();
   };
 }
@@ -2259,8 +2415,18 @@ function sigBlock(which, label, personName, ackKey){
   var sigVal = which === "out" ? f.outgoingSig : f.incomingSig;
   var ackVal = which === "out" ? f.ackOut : f.ackIn;
   var ackText = t(ackKey || (which === "out" ? "ackOutgoing" : "ackIncoming"));
+  // A handover is filled in from two separate phones — the outgoing
+  // supervisor's phone has no business drawing the incoming signature (it
+  // was never theirs to give) and vice versa. Each device can only draw
+  // ITS OWN side; the other side shows what has synced from the other
+  // phone, read-only, same as a required-photo checkpoint it doesn't own.
+  var editable = f.entryType !== "handover" || myReqRole() === which;
   var body = "";
-  if(S.canWriteAssets){
+  if(!editable){
+    body = sigVal && sigVal.url ?
+      '<div class="sig-synced"><img src="'+esc(sigVal.url)+'" alt="" style="width:100%; height:190px; object-fit:contain; border:1px solid var(--border, #333); border-radius:8px;"></div>' :
+      '<p class="hint">'+t("sigWaitingForPeer").replace("{name}", esc(personName || ""))+'</p>';
+  } else if(S.canWriteAssets){
     body = '<canvas class="sig-box" id="sigCanvas_'+which+'" width="300" height="200" style="width:100%; height:190px;" data-sig="'+which+'"></canvas>' +
       '<div class="sig-actions"><span class="hint">'+esc(personName || "")+'</span>' +
       '<button type="button" class="link-btn" data-sig-clear="'+which+'">'+t("clear")+'</button></div>';
@@ -2808,6 +2974,10 @@ function saveFormDraft(){
     d.requiredPhotosIn = {}; REQUIRED_PHOTO_KEYS.forEach(function(k){ d.requiredPhotosIn[k] = keep(f.requiredPhotosIn[k]); });
     localStorage.setItem(FORM_DRAFT_KEY, JSON.stringify({at:Date.now(), form:d}));
   }catch(e){}
+  // Every place that already calls saveFormDraft() (typing, a checklist
+  // tap, a photo finishing its upload) is exactly the set of moments the
+  // OTHER phone needs to hear about too — see pushHandoverDraftSoon.
+  pushHandoverDraftSoon();
 }
 function clearFormDraft(){ try{ localStorage.removeItem(FORM_DRAFT_KEY); }catch(e){} }
 function restoreFormDraft(){
@@ -2917,24 +3087,62 @@ function submitHandover(){
   f.submitting = true;
   renderForm();
 
-  Promise.all([canvasToUpload("out"), canvasToUpload("in")]).then(function(sigs){
-    if(sigs[0]) f.outgoingSig = sigs[0];
-    if(sigs[1]) f.incomingSig = sigs[1];
+  if(!isHandover){
+    // Solo entry: one device does the whole thing, same as always — both
+    // canvases (really just "out") belong to it, upload them both.
+    Promise.all([canvasToUpload("out"), canvasToUpload("in")]).then(function(sigs){
+      if(sigs[0]) f.outgoingSig = sigs[0];
+      if(sigs[1]) f.incomingSig = sigs[1];
+      submitHandoverAfterSigs(f, isHandover);
+    }).catch(function(err){
+      f.submitting = false;
+      renderForm();
+      if(err && err.rateLimited) toast(t("sigRateLimited"));
+      else toast(t("sigUploadFailed") + (err && err.message ? " (" + err.message + ")" : ""));
+    });
+    return;
+  }
 
+  // Handover entry: this device only ever owns ONE of the two signatures
+  // (sigBlock only renders a drawable canvas for myReqRole() — see there).
+  // Upload just that one, push it to the shared draft so the other phone
+  // sees it immediately, and only actually finalize the handover once
+  // BOTH signatures are present — which, thanks to the live draft sync,
+  // might already be true the instant this upload finishes (the other
+  // supervisor got there first) or might need this device's OWN earlier
+  // tap of Submit to be what finally completes it once their upload lands.
+  var myRole = myReqRole();
+  // If an earlier tap of Submit already uploaded my signature (I was just
+  // waiting on the other person), don't upload it again — re-drawing isn't
+  // required to retry, so the canvas is often still "dirty" from before.
+  var mySigAlready = myRole === "out" ? f.outgoingSig : f.incomingSig;
+  var sigUploadPromise = (mySigAlready && mySigAlready.id) ? Promise.resolve(null) : canvasToUpload(myRole);
+  sigUploadPromise.then(function(sig){
+    if(sig){
+      if(myRole === "out") f.outgoingSig = sig; else f.incomingSig = sig;
+      // Push immediately rather than waiting for the usual 400ms debounce —
+      // the other phone being able to see "they've signed" right away is
+      // the whole point of a signature being the very last step.
+      if(S.form.handoverSessionId && S.db){
+        S.db.collection("handover_drafts").doc(S.form.handoverSessionId)
+          .update(buildDraftUpdatePayload(f, myRole, [myRole === "out" ? "outgoingSig" : "incomingSig"]))
+          .catch(function(){});
+      }
+    }
+    var bothSigned = f.outgoingSig && f.outgoingSig.id && f.incomingSig && f.incomingSig.id;
+    if(!bothSigned){
+      f.submitting = false;
+      renderForm();
+      var peerName = myRole === "out" ? f.incomingName : f.outgoingName;
+      toast(t("reqWaitingForPeer").replace("{name}", peerName));
+      return;
+    }
     submitHandoverAfterSigs(f, isHandover);
   }).catch(function(err){
-    // A signature was drawn but never made it up (timed out / connection
-    // dropped even after retrying) — stop here instead of either hanging
-    // forever or quietly saving the handover without it. The signature
-    // itself is untouched, so re-pressing submit retries just the upload.
     f.submitting = false;
     renderForm();
-    if(err && err.rateLimited){
-      toast(t("sigRateLimited"));
-    } else {
-      var reason = err && err.message ? " (" + err.message + ")" : "";
-      toast(t("sigUploadFailed") + reason);
-    }
+    if(err && err.rateLimited) toast(t("sigRateLimited"));
+    else toast(t("sigUploadFailed") + (err && err.message ? " (" + err.message + ")" : ""));
   });
 }
 
@@ -3003,13 +3211,11 @@ function submitHandoverAfterSigs(f, isHandover){
       createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
     };
 
-    saveOrQueue("handovers", doc, function(queued){
+    var afterSaved = function(queued){
       toast(queued ? t("offlineSavedToast") : t("savedToast"));
       clearFormDraft();
-      // A submitted handover consumes its dual-presence session for good —
-      // delete it and stop watching so it can never be reused or resumed.
       if(isHandover){
-        if(f.handoverSessionId && S.db){ S.db.collection("handover_sessions").doc(f.handoverSessionId).delete().catch(function(){}); }
+        stopWatchingHandoverDraft();
         stopWatchingHandoverSession();
         S.handoverSession = null;
         S.handoverGateCleared = false;
@@ -3019,7 +3225,48 @@ function submitHandoverAfterSigs(f, isHandover){
       S.view = "dashboard";
       setActiveTab();
       render();
-    });
+    };
+
+    if(!isHandover){
+      saveOrQueue("handovers", doc, afterSaved);
+      return;
+    }
+
+    // Handover: BOTH phones can end up here — whichever one finishes
+    // uploading its own signature last is the one whose Submit tap
+    // actually has everything needed to finalize (see submitHandover).
+    // If both happen to land here within the same moment, this
+    // transaction is what stops it from becoming two separate records:
+    // it only creates the handover and cleans up if the dual-presence
+    // session doc is STILL there. Whichever device's transaction runs
+    // first deletes it as part of the same atomic write, so the other
+    // device's transaction finds it already gone — meaning its peer
+    // already finished the job — and simply does nothing further here.
+    if(S.db && navigator.onLine && f.handoverSessionId){
+      var sessionRef = S.db.collection("handover_sessions").doc(f.handoverSessionId);
+      var draftRef = S.db.collection("handover_drafts").doc(f.handoverSessionId);
+      S.db.runTransaction(function(tx){
+        return tx.get(sessionRef).then(function(snap){
+          if(snap.exists){
+            tx.set(S.db.collection("handovers").doc(), doc);
+            tx.delete(sessionRef);
+            tx.delete(draftRef);
+          }
+        });
+      }).then(function(){
+        afterSaved(false);
+      }).catch(function(){
+        // Offline mid-transaction, or some other transient failure — fall
+        // back to the plain save rather than leaving Submit stuck. Carries
+        // a small residual risk of a duplicate record if both phones hit
+        // this exact fallback at the exact same moment while offline —
+        // rare, and a duplicate is a visible, fixable mistake, never
+        // silent data loss.
+        saveOrQueue("handovers", doc, afterSaved);
+      });
+    } else {
+      saveOrQueue("handovers", doc, afterSaved);
+    }
 }
 
 /* ================= DASHBOARD VIEW ================= */

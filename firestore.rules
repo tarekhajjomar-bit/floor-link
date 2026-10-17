@@ -135,6 +135,69 @@ service cloud.firestore {
                         || (resource.data.incoming != null && resource.data.incoming.userId == request.auth.uid));
     }
 
+    // ---------------- handover_drafts ----------------
+    // Once the dual-presence gate above is cleared, the outgoing and
+    // incoming supervisor fill in the rest of the handover from their OWN,
+    // SEPARATE phones at the same time (checkpoint photos, their own
+    // checklist, their own signature). This document is what makes that
+    // actually show up on the other person's screen in real time, instead
+    // of each phone only knowing about what it captured itself.
+    //
+    // The id is the same id as the handover_sessions document it belongs
+    // to. Every field lives under "draft", split into two fixed groups —
+    // which group a field is in is NOT just a UI convention, it's enforced
+    // here: the outgoing supervisor's account can only ever write the
+    // outgoing-owned fields, and the incoming supervisor's account can only
+    // ever write the incoming-owned fields. This is the same anti-collusion
+    // guarantee the required-photo split was always meant to have — a
+    // tampered client still can't let one side quietly fill in the other's
+    // checkpoints or signature.
+    match /handover_drafts/{sessionId} {
+      allow read: if isSignedIn();
+
+      // Created empty (no "draft" field yet) by whichever of the two
+      // participants' devices gets there first — both send the identical
+      // company/outgoingUserId/incomingUserId, so it doesn't matter which
+      // one actually wins the race.
+      allow create: if isSignedIn()
+                    && request.resource.data.keys().hasOnly(['company','outgoingUserId','incomingUserId'])
+                    && request.resource.data.outgoingUserId is string
+                    && request.resource.data.incomingUserId is string
+                    && request.auth.uid in [request.resource.data.outgoingUserId, request.resource.data.incomingUserId];
+
+      // Field ownership within "draft":
+      //  - requiredPhotosOut / requiredNotesOut / outgoingSig / ackOut:
+      //    outgoing-only — this is the anti-collusion guarantee.
+      //  - requiredPhotosIn / requiredNotesIn / incomingSig / ackIn:
+      //    incoming-only — same guarantee, other side.
+      //  - cash / inventory / cleanliness / pending / staffNotes /
+      //    closingCheck / date / time: descriptive shift-report content,
+      //    not evidence of either person's presence, so either participant
+      //    may write these (last write wins, same as a shared notes field
+      //    always behaved before this device ever had its own copy).
+      allow update: if isSignedIn()
+                    && (request.auth.uid == resource.data.outgoingUserId || request.auth.uid == resource.data.incomingUserId)
+                    // The identity fields are permanent — only "draft" ever changes.
+                    && request.resource.data.company == resource.data.company
+                    && request.resource.data.outgoingUserId == resource.data.outgoingUserId
+                    && request.resource.data.incomingUserId == resource.data.incomingUserId
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['draft'])
+                    && (
+                         (request.auth.uid == resource.data.outgoingUserId &&
+                          request.resource.data.draft.diff(resource.data.get('draft', {})).affectedKeys()
+                            .hasOnly(['requiredPhotosOut','requiredNotesOut','outgoingSig','ackOut','cash','inventory','cleanliness','pending','staffNotes','closingCheck','date','time']))
+                         ||
+                         (request.auth.uid == resource.data.incomingUserId &&
+                          request.resource.data.draft.diff(resource.data.get('draft', {})).affectedKeys()
+                            .hasOnly(['requiredPhotosIn','requiredNotesIn','incomingSig','ackIn','cash','inventory','cleanliness','pending','staffNotes','closingCheck','date','time']))
+                       );
+
+      // Either participant can delete — cleanup once the handover is
+      // actually submitted, or if it's abandoned before that.
+      allow delete: if isSignedIn()
+                    && (resource.data.outgoingUserId == request.auth.uid || resource.data.incomingUserId == request.auth.uid);
+    }
+
     // ---------------- expiry_items ----------------
     // Any signed-in employee can read, create, and make ordinary edits
     // (quantity, category). Only a manager can touch the two fields that
@@ -307,10 +370,10 @@ service cloud.firestore {
     //  - account documents (users) are only written through their own rules (Oct 2026).
     match /{collection}/{document=**} {
       allow read: if isSignedIn()
-                  && !(collection in ['handovers', 'handover_sessions', 'attendance_days', 'attendance_reports', 'merch_visits', 'quick_shortages', 'expiry_items', 'delivery_shifts', 'feedback', 'feedback_codes', 'feedback_rate'])
+                  && !(collection in ['handovers', 'handover_sessions', 'handover_drafts', 'attendance_days', 'attendance_reports', 'merch_visits', 'quick_shortages', 'expiry_items', 'delivery_shifts', 'feedback', 'feedback_codes', 'feedback_rate'])
                   && (!isViewer() || collection in ['catalog', 'settings']);
       allow write: if canWrite()
-                   && !(collection in ['handovers', 'handover_sessions', 'attendance_days', 'attendance_reports', 'merch_visits', 'quick_shortages', 'expiry_items', 'delivery_shifts', 'feedback', 'feedback_codes', 'feedback_rate', 'users']);
+                   && !(collection in ['handovers', 'handover_sessions', 'handover_drafts', 'attendance_days', 'attendance_reports', 'merch_visits', 'quick_shortages', 'expiry_items', 'delivery_shifts', 'feedback', 'feedback_codes', 'feedback_rate', 'users']);
     }
   }
 }
