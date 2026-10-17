@@ -894,6 +894,8 @@ en:{
   handoverGateContinueBtn:"Continue to the handover form",
   handoverSameAccountErr:"You're already the outgoing supervisor on this session — the incoming confirmation needs a different account.",
   handoverSameDeviceErr:"This device already confirmed the outgoing side — the incoming supervisor needs to confirm from their own phone.",
+  cancelHandoverBtn:"Cancel this handover & start over",
+  cancelHandoverConfirm:"This will discard everything in this handover on BOTH phones — every photo, note and signature — and start a brand new one from scratch. This can't be undone. Continue?",
   chicken:"Chicken area", cheese:"Cheese", olives:"Olives", eggs:"Eggs", breadSelfService:"Bread — Self Service",
   reqNoteLabel:"Confirmation checklist (required)",
   reqNoteMissing:" (confirmation checklist)",
@@ -1235,6 +1237,8 @@ ar:{
   handoverGateContinueBtn:"متابعة لتعبئة الهاند أوفر",
   handoverSameAccountErr:"أنت أصلاً المشرف المغادر بهالجلسة — تأكيد الاستلام لازم يكون من حساب تاني.",
   handoverSameDeviceErr:"هالجهاز أكّد التسليم أصلاً — المشرف المستلم لازم يأكّد من تليفونه هو.",
+  cancelHandoverBtn:"إلغاء هالهاند أوفر وابدأ من جديد",
+  cancelHandoverConfirm:"هاد رح يمسح كل شي بهالهاند أوفر من التليفونين الاثنين — كل الصور والملاحظات والتوقيعين — وتبلّش وحدة جديدة من الصفر. ما فيك ترجع فيه. بدك تكمل؟",
   chicken:"منطقة الدجاج", cheese:"الأجبان", olives:"الزيتون", eggs:"البيض", breadSelfService:"الخبز — سيلف سيرفس",
   reqNoteLabel:"قائمة فحص التأكيد (إلزامي)",
   reqNoteMissing:" (قائمة الفحص)",
@@ -2592,6 +2596,8 @@ function renderForm(){
       '<div class="field"><label>'+t("time")+'</label><input type="time" id="f_time" value="'+esc(f.time)+'"></div>' +
     '</div>' +
     nameFieldsHtml +
+    (f.entryType === "handover" ?
+      '<button type="button" class="link-btn" id="cancelHandoverBtn" style="margin-top:10px;">'+t("cancelHandoverBtn")+'</button>' : "") +
   '</div>';
 
   html += '<div class="card">' +
@@ -2730,6 +2736,27 @@ function wireForm(){
       renderForm();
     };
   });
+  var cancelHandoverBtn = document.getElementById("cancelHandoverBtn");
+  if(cancelHandoverBtn) cancelHandoverBtn.onclick = function(){
+    if(!window.confirm(t("cancelHandoverConfirm"))) return;
+    // Throws away everything about this handover attempt — BOTH phones'
+    // checkpoint photos, notes and signatures — not just this device's
+    // local draft, since the whole point of asking is that someone wants
+    // a clean slate rather than resuming test/stale data every time the
+    // app reopens (handover_sessions/handover_drafts are deliberately
+    // resumable across app restarts; this is the explicit opt-out of
+    // that). abandonHandoverSession() deletes both Firestore docs; the
+    // local form is then rebuilt from scratch, keeping only the branch
+    // selection, and lands back on the dual-presence gate so a fresh
+    // handover can be started right away.
+    var company = f.company;
+    abandonHandoverSession();
+    clearFormDraft();
+    S.form = freshForm();
+    S.form.company = company;
+    S.form.entryType = "handover";
+    renderForm();
+  };
   Array.prototype.forEach.call(document.querySelectorAll("[data-cat-status]"), function(btn){
     btn.onclick = function(){
       var parts = this.getAttribute("data-cat-status").split(":");
