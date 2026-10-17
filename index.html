@@ -1968,6 +1968,17 @@ function wireHandoverGate(){
     S.form.incomingName = S.handoverSession.incoming.fullName;
     S.form.incomingUserId = S.handoverSession.incoming.userId;
     S.handoverGateCleared = true;
+    // watchHandoverSession() started a 1-second setInterval purely to redraw
+    // the countdown while waiting at the gate — it was never stopped once
+    // the gate actually cleared, so it kept calling render() (a full
+    // renderForm() rebuild) every single second for the ENTIRE rest of the
+    // handover. That's what was actually wiping the signature canvas
+    // (and anything else mid-interaction) on a steady 1-second cadence,
+    // independent of — and in addition to — the draft-sync echo bug fixed
+    // earlier. Nothing past this point needs either the tick or the live
+    // handover_sessions listener (the draft doc, watched below, is the
+    // live source of truth from here on), so stop both now.
+    stopWatchingHandoverSession();
     ensureHandoverDraftDoc(S.form.handoverSessionId);
     watchHandoverDraft(S.form.handoverSessionId);
     render();
