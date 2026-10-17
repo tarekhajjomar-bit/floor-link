@@ -851,7 +851,8 @@ en:{
   pwMismatch:"Passwords don't match.", pwTooShort:"Use at least 4 characters.",
   pwSaved:"Manager password saved.", close:"Close",
   reqPhotosTitle:"Mandatory photo checkpoints", reqPhotosSub:"A photo is required for each area below before the handover can be submitted.",
-  reqPhotosHandoverSub:"Each supervisor photographs every area independently, from their own phone. Nobody can add a photo to the other person's set.",
+  reqPhotosHandoverSub:"The outgoing supervisor documents the shelves/merchandising deliveries from their shift; the incoming supervisor confirms the fridge & self-service checkpoints they're taking over. Each photographs their own areas, from their own phone — nobody can add a photo to the other person's set.",
+  shelves:"Shelves & merchandising deliveries (food zone, non-food zone, juice fridge, etc.)",
   reqPhotosOutgoingHead:"{name} — outgoing (handing over)", reqPhotosIncomingHead:"{name} — incoming (receiving)",
   reqRoleYouTag:"You", notYourCheckpointErr:"This checkpoint belongs to the other supervisor — you can only add your own photos.",
   reqBothMustCapture:"Both supervisors must personally take at least one checkpoint photo before this can be submitted.",
@@ -1190,7 +1191,8 @@ ar:{
   pwMismatch:"كلمتا المرور غير متطابقتين.", pwTooShort:"استخدم 4 أحرف على الأقل.",
   pwSaved:"تم حفظ كلمة مرور المدير.", close:"إغلاق",
   reqPhotosTitle:"صور إلزامية", reqPhotosSub:"صورة واحدة على الأقل مطلوبة لكل منطقة أدناه قبل إمكانية إرسال التسليم.",
-  reqPhotosHandoverSub:"كل مشرف يصوّر كل منطقة بنفسه من تليفونه الخاص. ما حدا يقدر يضيف صورة بقسم التاني.",
+  reqPhotosHandoverSub:"المشرف المغادر بيوثّق الرفوف والتسليمات من شيفته، والمشرف المستلم بيأكد استلام براد الدجاج والأجبان والزيتون والبيض والخبز اللي رح يكمّل عليهم. كل واحد بيصوّر قسمه بس من تليفونه. ما حدا يقدر يضيف صورة بقسم التاني.",
+  shelves:"الرفوف والتسليمات (زون فود، زون نو فود، براد العصير، إلخ)",
   reqPhotosOutgoingHead:"{name} — المغادر (التسليم)", reqPhotosIncomingHead:"{name} — المستلم (الاستلام)",
   reqRoleYouTag:"أنت", notYourCheckpointErr:"هاد القسم خاص بالمشرف التاني — فيك تضيف بس صورك أنت.",
   reqBothMustCapture:"لازم الاثنين (المغادر والمستلم) يصوّروا أقل شي صورة واحدة بنفسهم قبل إمكانية الإرسال.",
@@ -1446,6 +1448,22 @@ var MERCH_DEPARTMENTS = [
 var REQUIRED_PHOTO_KEYS = ["chicken","cheese","olives","eggs","breadSelfService"];
 var REQUIRED_NOTE_KEYS = ["chicken","cheese"];
 
+/* Handover entries split the checkpoint set by role instead of making both
+   supervisors photograph the same areas twice (see the comment above
+   DRAFT_OUT_ONLY_KEYS for the sync side of this). The outgoing supervisor
+   documents the shelves/merchandising deliveries from their own shift
+   (deliberately ONE consolidated required slot, not several sub-labeled
+   ones, since it's one multi-photo category — food zone, non-food zone,
+   juice fridge, etc. — not several independent checkpoints). The incoming
+   supervisor confirms the specific fridge/self-service checkpoints they're
+   personally taking over for their own shift — the original five areas.
+   Solo (opening/closing) entries are unaffected and keep using the plain
+   REQUIRED_PHOTO_KEYS/REQUIRED_NOTE_KEYS above. */
+var HANDOVER_OUT_PHOTO_KEYS = ["shelves"];
+var HANDOVER_IN_PHOTO_KEYS = ["chicken","cheese","olives","eggs","breadSelfService"];
+var HANDOVER_OUT_NOTE_KEYS = [];
+var HANDOVER_IN_NOTE_KEYS = ["chicken","cheese"];
+
 /* ================= HANDOVER LIVE DRAFT (two-device sync) =================
    A "handover" entry is filled in from TWO phones at once (the outgoing and
    incoming supervisor, each on their own device). Everything in S.form
@@ -1493,16 +1511,16 @@ function draftKeepPhotos(arr){
   return (arr || []).filter(function(p){ return p && p.id; })
     .map(function(p){ return {id:p.id, url:p.url, byName:p.byName||null, byUserId:p.byUserId||null}; });
 }
-function draftPhotoSetValue(obj){
+function draftPhotoSetValue(obj, keys){
   var out = {};
-  REQUIRED_PHOTO_KEYS.forEach(function(k){ out[k] = draftKeepPhotos(obj[k]); });
+  keys.forEach(function(k){ out[k] = draftKeepPhotos(obj[k]); });
   return out;
 }
 // The Firestore-safe value for one field of S.form, keyed exactly as the
 // field appears in both S.form and the draft document.
 function draftFieldValue(f, key){
-  if(key === "requiredPhotosOut") return draftPhotoSetValue(f.requiredPhotosOut);
-  if(key === "requiredPhotosIn") return draftPhotoSetValue(f.requiredPhotosIn);
+  if(key === "requiredPhotosOut") return draftPhotoSetValue(f.requiredPhotosOut, HANDOVER_OUT_PHOTO_KEYS);
+  if(key === "requiredPhotosIn") return draftPhotoSetValue(f.requiredPhotosIn, HANDOVER_IN_PHOTO_KEYS);
   if(key === "cash" || key === "inventory" || key === "cleanliness"){
     var c = f[key];
     return {status: c.status, notes: c.notes, photos: draftKeepPhotos(c.photos)};
@@ -1604,14 +1622,14 @@ var S = {
   handoverDraftUnsub: null
 };
 
-function freshRequiredPhotoSet(){
+function freshRequiredPhotoSet(keys){
   var reqPhotos = {};
-  REQUIRED_PHOTO_KEYS.forEach(function(k){ reqPhotos[k] = []; });
+  (keys || REQUIRED_PHOTO_KEYS).forEach(function(k){ reqPhotos[k] = []; });
   return reqPhotos;
 }
-function freshRequiredNoteSet(){
+function freshRequiredNoteSet(keys){
   var reqNotes = {};
-  REQUIRED_NOTE_KEYS.forEach(function(k){
+  (keys || REQUIRED_NOTE_KEYS).forEach(function(k){
     var obj = {};
     REQUIRED_CHECKLIST_ITEMS.forEach(function(item){ obj[item.key] = null; });
     reqNotes[k] = obj;
@@ -1639,10 +1657,10 @@ function freshForm(){
     // device, so one person can never quietly cover for the other.
     requiredPhotos: freshRequiredPhotoSet(),
     requiredNotes: freshRequiredNoteSet(),
-    requiredPhotosOut: freshRequiredPhotoSet(),
-    requiredPhotosIn: freshRequiredPhotoSet(),
-    requiredNotesOut: freshRequiredNoteSet(),
-    requiredNotesIn: freshRequiredNoteSet(),
+    requiredPhotosOut: freshRequiredPhotoSet(HANDOVER_OUT_PHOTO_KEYS),
+    requiredPhotosIn: freshRequiredPhotoSet(HANDOVER_IN_PHOTO_KEYS),
+    requiredNotesOut: freshRequiredNoteSet(HANDOVER_OUT_NOTE_KEYS),
+    requiredNotesIn: freshRequiredNoteSet(HANDOVER_IN_NOTE_KEYS),
     outgoingSig:null, incomingSig:null,
     ackOut:false, ackIn:false,
     submitting:false
@@ -2253,10 +2271,12 @@ function computeStatus(f){
   if(f.pending.urgent || f.cash.status === "issue" || f.inventory.status === "issue" || f.cleanliness.status === "issue"){
     return "issues";
   }
-  var noteSetsToCheck = f.entryType === "handover" ? [f.requiredNotesOut, f.requiredNotesIn] : [f.requiredNotes];
-  var hasNo = noteSetsToCheck.some(function(notesObj){
-    return REQUIRED_NOTE_KEYS.some(function(k){
-      return REQUIRED_CHECKLIST_ITEMS.some(function(item){ return notesObj[k][item.key] === false; });
+  var noteSetsToCheck = f.entryType === "handover" ?
+    [{obj:f.requiredNotesOut, keys:HANDOVER_OUT_NOTE_KEYS}, {obj:f.requiredNotesIn, keys:HANDOVER_IN_NOTE_KEYS}] :
+    [{obj:f.requiredNotes, keys:REQUIRED_NOTE_KEYS}];
+  var hasNo = noteSetsToCheck.some(function(s){
+    return s.keys.some(function(k){
+      return REQUIRED_CHECKLIST_ITEMS.some(function(item){ return s.obj[k][item.key] === false; });
     });
   });
   if(hasNo){ return "issues"; }
@@ -2541,11 +2561,11 @@ function renderForm(){
       '<div class="section-sub">'+t("reqPhotosHandoverSub")+'</div>' +
       '<div class="req-role-group">' +
         '<h4 class="req-role-head'+(myRole==="out"?" req-role-mine":"")+'">'+t("reqPhotosOutgoingHead").replace("{name}", esc(f.outgoingName))+(myRole==="out"?' <span class="req-role-tag">'+t("reqRoleYouTag")+'</span>':'')+'</h4>' +
-        REQUIRED_PHOTO_KEYS.map(function(k){ return reqPhotoBlock(k, "out"); }).join("") +
+        HANDOVER_OUT_PHOTO_KEYS.map(function(k){ return reqPhotoBlock(k, "out"); }).join("") +
       '</div>' +
       '<div class="req-role-group">' +
         '<h4 class="req-role-head'+(myRole==="in"?" req-role-mine":"")+'">'+t("reqPhotosIncomingHead").replace("{name}", esc(f.incomingName))+(myRole==="in"?' <span class="req-role-tag">'+t("reqRoleYouTag")+'</span>':'')+'</h4>' +
-        REQUIRED_PHOTO_KEYS.map(function(k){ return reqPhotoBlock(k, "in"); }).join("") +
+        HANDOVER_IN_PHOTO_KEYS.map(function(k){ return reqPhotoBlock(k, "in"); }).join("") +
       '</div>' +
     '</div>';
   } else {
@@ -2970,8 +2990,8 @@ function saveFormDraft(){
     var d = JSON.parse(JSON.stringify(f, function(k, v){ return (k === "outgoingSig" || k === "incomingSig" || k === "submitting" || k === "_file") ? undefined : v; }));
     ["cash","inventory","cleanliness"].forEach(function(c){ if(d[c]) d[c].photos = keep(f[c].photos); });
     d.requiredPhotos = {}; REQUIRED_PHOTO_KEYS.forEach(function(k){ d.requiredPhotos[k] = keep(f.requiredPhotos[k]); });
-    d.requiredPhotosOut = {}; REQUIRED_PHOTO_KEYS.forEach(function(k){ d.requiredPhotosOut[k] = keep(f.requiredPhotosOut[k]); });
-    d.requiredPhotosIn = {}; REQUIRED_PHOTO_KEYS.forEach(function(k){ d.requiredPhotosIn[k] = keep(f.requiredPhotosIn[k]); });
+    d.requiredPhotosOut = {}; HANDOVER_OUT_PHOTO_KEYS.forEach(function(k){ d.requiredPhotosOut[k] = keep(f.requiredPhotosOut[k]); });
+    d.requiredPhotosIn = {}; HANDOVER_IN_PHOTO_KEYS.forEach(function(k){ d.requiredPhotosIn[k] = keep(f.requiredPhotosIn[k]); });
     localStorage.setItem(FORM_DRAFT_KEY, JSON.stringify({at:Date.now(), form:d}));
   }catch(e){}
   // Every place that already calls saveFormDraft() (typing, a checklist
@@ -3039,13 +3059,13 @@ function submitHandover(){
     return;
   }
   var allPhotos = [].concat(f.cash.photos, f.inventory.photos, f.cleanliness.photos);
-  var photoSets = isHandover ? [{label:t("reqPhotosOutgoingHead").replace("{name}", f.outgoingName), obj:f.requiredPhotosOut}, {label:t("reqPhotosIncomingHead").replace("{name}", f.incomingName), obj:f.requiredPhotosIn}]
-                              : [{label:"", obj:f.requiredPhotos}];
-  photoSets.forEach(function(s){ REQUIRED_PHOTO_KEYS.forEach(function(k){ allPhotos = allPhotos.concat(s.obj[k]); }); });
+  var photoSets = isHandover ? [{label:t("reqPhotosOutgoingHead").replace("{name}", f.outgoingName), obj:f.requiredPhotosOut, keys:HANDOVER_OUT_PHOTO_KEYS}, {label:t("reqPhotosIncomingHead").replace("{name}", f.incomingName), obj:f.requiredPhotosIn, keys:HANDOVER_IN_PHOTO_KEYS}]
+                              : [{label:"", obj:f.requiredPhotos, keys:REQUIRED_PHOTO_KEYS}];
+  photoSets.forEach(function(s){ s.keys.forEach(function(k){ allPhotos = allPhotos.concat(s.obj[k]); }); });
   if(anyPhotoUploading(allPhotos)){ toast(t("photosStillUploading")); return; }
 
   for(var si=0; si<photoSets.length; si++){
-    var missing = REQUIRED_PHOTO_KEYS.filter(function(k){
+    var missing = photoSets[si].keys.filter(function(k){
       return !photoSets[si].obj[k].some(function(p){ return p.id; });
     });
     if(missing.length){
@@ -3058,10 +3078,10 @@ function submitHandover(){
       return;
     }
   }
-  var noteSets = isHandover ? [f.requiredNotesOut, f.requiredNotesIn] : [f.requiredNotes];
+  var noteSets = isHandover ? [{obj:f.requiredNotesOut, keys:HANDOVER_OUT_NOTE_KEYS}, {obj:f.requiredNotesIn, keys:HANDOVER_IN_NOTE_KEYS}] : [{obj:f.requiredNotes, keys:REQUIRED_NOTE_KEYS}];
   for(var ni=0; ni<noteSets.length; ni++){
-    var missingNotes = REQUIRED_NOTE_KEYS.filter(function(k){
-      return REQUIRED_CHECKLIST_ITEMS.some(function(item){ return noteSets[ni][k][item.key] === null; });
+    var missingNotes = noteSets[ni].keys.filter(function(k){
+      return REQUIRED_CHECKLIST_ITEMS.some(function(item){ return noteSets[ni].obj[k][item.key] === null; });
     });
     if(missingNotes.length){
       toast(t("reqPhotoMissing") + missingNotes.map(function(k){ return t(k) + t("reqNoteMissing"); }).join(S.lang==="ar" ? "، " : ", "));
@@ -3073,8 +3093,8 @@ function submitHandover(){
   // handover on their own device, not just signed off on someone else's
   // work. This is on top of the 15-minute dual-presence confirmation.
   if(isHandover){
-    var outTouched = REQUIRED_PHOTO_KEYS.some(function(k){ return f.requiredPhotosOut[k].some(function(p){ return p.byUserId === f.outgoingUserId; }); });
-    var inTouched = REQUIRED_PHOTO_KEYS.some(function(k){ return f.requiredPhotosIn[k].some(function(p){ return p.byUserId === f.incomingUserId; }); });
+    var outTouched = HANDOVER_OUT_PHOTO_KEYS.some(function(k){ return f.requiredPhotosOut[k].some(function(p){ return p.byUserId === f.outgoingUserId; }); });
+    var inTouched = HANDOVER_IN_PHOTO_KEYS.some(function(k){ return f.requiredPhotosIn[k].some(function(p){ return p.byUserId === f.incomingUserId; }); });
     if(!outTouched || !inTouched){
       toast(t("reqBothMustCapture"));
       return;
@@ -3162,18 +3182,18 @@ function submitHandoverAfterSigs(f, isHandover){
       });
       return packed;
     }
-    function packPhotoSet(obj){
+    function packPhotoSet(obj, keys){
       var packed = {};
-      REQUIRED_PHOTO_KEYS.forEach(function(k){
+      keys.forEach(function(k){
         packed[k] = obj[k].filter(function(p){ return p.id; }).map(function(p){
           return {id: p.id, byName: p.byName || null, byUserId: p.byUserId || null};
         });
       });
       return packed;
     }
-    function packNoteSet(obj){
+    function packNoteSet(obj, keys){
       var packed = {};
-      REQUIRED_NOTE_KEYS.forEach(function(k){
+      keys.forEach(function(k){
         var o = {};
         REQUIRED_CHECKLIST_ITEMS.forEach(function(item){ o[item.key] = obj[k][item.key]; });
         packed[k] = o;
@@ -3197,11 +3217,11 @@ function submitHandoverAfterSigs(f, isHandover){
       staffNotes: f.staffNotes.trim(),
       closingCheck: f.entryType === "closing" ? !!f.closingCheck : false,
       requiredPhotos: isHandover ? null : packReqPhotoIds(f.requiredPhotos),
-      requiredNotes: isHandover ? null : packNoteSet(f.requiredNotes),
-      requiredPhotosOut: isHandover ? packPhotoSet(f.requiredPhotosOut) : null,
-      requiredPhotosIn: isHandover ? packPhotoSet(f.requiredPhotosIn) : null,
-      requiredNotesOut: isHandover ? packNoteSet(f.requiredNotesOut) : null,
-      requiredNotesIn: isHandover ? packNoteSet(f.requiredNotesIn) : null,
+      requiredNotes: isHandover ? null : packNoteSet(f.requiredNotes, REQUIRED_NOTE_KEYS),
+      requiredPhotosOut: isHandover ? packPhotoSet(f.requiredPhotosOut, HANDOVER_OUT_PHOTO_KEYS) : null,
+      requiredPhotosIn: isHandover ? packPhotoSet(f.requiredPhotosIn, HANDOVER_IN_PHOTO_KEYS) : null,
+      requiredNotesOut: isHandover ? packNoteSet(f.requiredNotesOut, HANDOVER_OUT_NOTE_KEYS) : null,
+      requiredNotesIn: isHandover ? packNoteSet(f.requiredNotesIn, HANDOVER_IN_NOTE_KEYS) : null,
       outgoingSig: f.outgoingSig ? f.outgoingSig.id : null,
       incomingSig: f.incomingSig ? f.incomingSig.id : null,
       ackOut: !!f.ackOut, ackIn: !!f.ackIn,
@@ -3400,7 +3420,15 @@ function logCard(l){
     body += catLogBlock(t("cleanliness"), l.cleanliness);
     function reqLogGroup(photosSet, notesSet, groupLabel){
       var out = "";
-      REQUIRED_PHOTO_KEYS.forEach(function(k){
+      // Driven by whatever keys the record actually has (not a hardcoded
+      // list), so old handovers (chicken/cheese/olives/eggs/bread on BOTH
+      // sides) and new ones (shelves on the outgoing side, those five on
+      // the incoming side) both render correctly without special-casing.
+      var keySeen = {}, orderedKeys = [];
+      [photosSet, notesSet].forEach(function(set){
+        Object.keys(set || {}).forEach(function(k){ if(!keySeen[k]){ keySeen[k] = true; orderedKeys.push(k); } });
+      });
+      orderedKeys.forEach(function(k){
         var entries = (photosSet && photosSet[k]) || [];
         // Older records stored plain id/url strings; newer handover
         // records store {id, byName, byUserId}. Accept both so past
