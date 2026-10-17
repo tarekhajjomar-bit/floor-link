@@ -1578,7 +1578,22 @@ function mergeForeignDraft(f, draft, role){
   Object.keys(draft).forEach(function(k){
     if(mine.indexOf(k) !== -1) return; // never let a remote echo touch what only I write
     if(!(k in f)) return; // unknown field — ignore rather than inventing a new one
-    f[k] = draft[k];
+    var next = draft[k];
+    // Only count it (and replace f[k]) when the value actually differs.
+    // Firestore's onSnapshot fires on THIS device too for its own writes
+    // (the local echo, before and after server confirmation) — without
+    // this check, every one of this device's own debounced draft pushes
+    // of a shared field (cash notes, a checklist tap, anything) would
+    // report "changed" against itself and force a full form re-render.
+    // Since renderForm() rebuilds the whole form's HTML, that re-render
+    // recreates the signature <canvas> element from scratch — wiping out
+    // whatever was mid-stroke on it, which is exactly why a signature
+    // kept vanishing the instant a finger lifted (a re-render landing
+    // between touchend and the next render tick) and why a draft could
+    // be stuck unable to finish: the canvas was never allowed to stay
+    // "dirty" long enough to actually upload at submit time.
+    if(JSON.stringify(next) === JSON.stringify(f[k])) return;
+    f[k] = next;
     changed = true;
   });
   return changed;
