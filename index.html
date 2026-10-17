@@ -6458,9 +6458,10 @@ function attBind(){
   var tt = document.getElementById("attToToday"); if(tt) tt.onclick = function(e){ e.preventDefault(); attSetDay(attTodayStr()); };
 }
 
-// ---- Supervisor job description (read-only; supervisors only) ----
+// ---- Job descriptions (read-only; supervisors and merchandisers each see their own) ----
 function canSeeJobDesc(){
-  return !!(S.currentUser && S.currentUser.role === "supervisor");
+  var r = S.currentUser && S.currentUser.role;
+  return r === "supervisor" || r === "merchandiser";
 }
 var JOB_DESC = {
   title: "الوصف الوظيفي",
@@ -6571,6 +6572,132 @@ function renderJobDesc(){
   document.getElementById("main").innerHTML = h;
 }
 
+// ---- Merchandiser job description (read-only; merchandisers only) ----
+var MERCH_DESC = {
+  title: "الوصف الوظيفي", sub: "عامل الرفوف (الميرشندايزر)",
+  info: [["الوظيفة","عامل رفوف (ميرشندايزر)"],["يرجع إلى","مشرف الوردية (السوبرفايزر)"]],
+  goal: "الميرشندايزر مسؤول عن الرفوف والقسم المكلّف به بالكامل: أن تكون مليئة، مرتبة، نظيفة، مسعّرة بشكل صحيح، وخالية من أي بضاعة منتهية الصلاحية، بحيث يجد الزبون ما يريده بسهولة في أي وقت.",
+  tasks: [
+    ["بداية الدوام", ["جولة على رفوف قسمه، وتسجيل كل النواقص.","تعبئة النواقص من الديبو فوراً، والبدء بالمنتجات الأكثر مبيعاً."]],
+    ["خلال الدوام", [
+      "تعبئة الرفوف بشكل مستمر، بحيث لا يبقى أي رف فاضٍ.",
+      "الحفاظ على الديسبلاي والفيسينج مرتبين طوال الوقت، وليس فقط بعد التعبئة.",
+      "تنظيف الرفوف والمنتجات من الغبار والانسكابات بشكل دائم.",
+      "التأكد من أن كل منتج عليه سعر، وأن سعر الرف مطابق للمنتج وللسيستم.",
+      "متابعة تواريخ الصلاحية على رفوفه، وفق قواعد الإكسبايري أدناه.",
+      "ترتيب بضاعة قسمه داخل الديبو، بحيث تكون معروفة وسهلة الوصول.",
+      "إبلاغ الإدارة على فلور لينك عن أي شركة أو مورد لم يُسلّم بضاعته، وعن أي نقص لا يمكن تعبئته من الديبو."]],
+    ["نهاية الدوام", ["ترك الرفوف مليئة ومرتبة، والممرات خالية من الكراتين والبضاعة.","إبلاغ المشرف بالنواقص التي لم يستطع تعبئتها وسبب ذلك."]]
+  ],
+  standards: [
+    ["القديم قدّام (FIFO)","المنتج الأقرب انتهاءً يُوضع في الأمام، والجديد خلفه. ممنوع وضع البضاعة الجديدة أمام القديمة."],
+    ["الفيسينج","كل منتج مسحوب إلى حافة الرف، والواجهة والاسم متجهان نحو الزبون، والصفوف مستقيمة."],
+    ["لا فراغات","لا يُترك أي مكان فاضٍ على الرف. إذا نفد المنتج من الديبو، يُبلَّغ عنه فوراً."],
+    ["ثبات الأماكن","كل منتج في مكانه المحدد دائماً، ولا يُغيَّر مكان أي منتج دون موافقة الإدارة."],
+    ["السعر","لكل منتج تسعيرة واضحة على الرف، تحت المنتج نفسه، ومطابقة للسيستم."],
+    ["التالف","أي منتج مكسور أو مفتوح أو تغليفه تالف يُسحب فوراً من الرف ويُسلَّم للمشرف مع نموذج المرتجع."],
+    ["النظافة","الرف والمنتجات نظيفة دائماً، ولا كراتين أو أكياس أو بلاستيك على الرف أو في الممر."],
+    ["السلامة","لا تُترك الكراتين في الممرات، والمنتجات الثقيلة في الرفوف السفلى، والكاتر يُستعمل بحذر ولا يُترك على الرف."],
+    ["الزبون أولاً","إذا سأل زبون عن منتج، يتوقف الموظف عن عمله ويساعده أو يوصله إلى مكانه."]],
+  expiryIntro: "الميرشندايزر هو المسؤول الأول عن صلاحية كل منتج على رفوفه، وفق القواعد التالية:",
+  expiry: [
+    "القاعدة: أي منتج يقترب تاريخ انتهائه يُسلَّم للإدارة قبل 3 أشهر من انتهاء صلاحيته، مع تسجيله على فلور لينك.",
+    "إذا فات الموظف منتج وسلّمه متأخراً، تقبله الإدارة طالما بقي على انتهاء صلاحيته 30 يوماً أو أكثر، وتنتقل مسؤوليته إلى الإدارة.",
+    "أي منتج يُسلَّم وقد بقي على انتهاء صلاحيته أقل من 30 يوماً، يُعتبر غير مُسلَّم ويبقى على مسؤولية الموظف. وإذا لم يُبَع وانتهت صلاحيته، يدفع الموظف ثمنه.",
+    "إذا وُجد منتج منتهي الصلاحية على رفوفه، أو خرج بيد زبون، يدفع الموظف ضعف ثمن كل الكمية الموجودة من هذا المنتج (مثال: قيمة الستوك 100,000 ل.ل. ← يدفع 200,000 ل.ل.)، ويُوجَّه له إنذار خطي.",
+    "إخفاء أي بضاعة منتهية أو قريبة الانتهاء لإخفاء التقصير: يدفع ضعف ثمنها كاملاً، ويُوجَّه له إنذار خطي، وفق المادة (51)."],
+  alone: ["تعبئة رفوف قسمه من الديبو.","ترتيب الفيسينج والديسبلاي ضمن أماكن المنتجات المحددة.","سحب أي منتج تالف من الرف.","تسجيل النواقص والإكسبايري على فلور لينك."],
+  ask: ["تغيير مكان أي منتج أو مساحته على الرف.","تغيير أي سعر أو تسعيرة.","إتلاف أي بضاعة أو رميها.","العمل في قسم غير قسمه.","أي مشكلة مع مورد أو مندوب شركة."],
+  kpis: [
+    ["الرفوف الفاضية","صفر رف فاضٍ في قسمه عند الجولة","جولة مفاجئة من المشرف أو الإدارة"],
+    ["الفيسينج والديسبلاي","القسم مرتب وفق الستاندرد","جولة مفاجئة"],
+    ["الإكسبايري","صفر منتج منتهي الصلاحية على رفوفه","جولة الإدارة + الزبائن"],
+    ["التسليم في المهلة","كل المنتجات تُسلَّم قبل 3 أشهر من انتهائها","فلور لينك"],
+    ["الأسعار","صفر منتج دون سعر أو بسعر خاطئ","جولة مفاجئة"],
+    ["النظافة","الرفوف والممرات نظيفة","جولة مفاجئة"],
+    ["الإبلاغ عن النواقص","كل نقص من الموردين مسجّل على فلور لينك","فلور لينك"],
+    ["الالتزام الشخصي","صفر تأخير وصفر غياب دون عذر","البصمة"]],
+  account: "أي تقصير في المهام أو الستاندرد المذكورين في هذا الوصف يُحاسَب عليه الموظف وفق الباب الخامس من النظام الداخلي (المخالفات والعقوبات). ويُعتبر هذا الوصف الوظيفي جزءاً مكمّلاً للنظام الداخلي.",
+  L: {goal:"هدف الوظيفة", tasks:"أولاً: المهام", standards:"ثانياً: ستاندرد الرفوف", standardsSub:"هذه هي القواعد التي يُقيَّم عليها الرف في أي جولة:",
+    expiry:"ثالثاً: الإكسبايري", perms:"رابعاً: الصلاحيات", alone:"يقوم به وحده", ask:"يرجع فيه للمشرف أو الإدارة",
+    kpis:"خامساً: مؤشرات التقييم", kpisSub:"يُقيَّم الميرشندايزر شهرياً على المؤشرات التالية:", account:"سادساً: المحاسبة"}
+};
+var MERCH_DESC_EN = {
+  title: "Job Description", sub: "Merchandiser (Shelf Staff)",
+  info: [["Position","Merchandiser (shelf staff)"],["Reports to","Shift Supervisor"]],
+  goal: "The merchandiser is fully responsible for the shelves and section assigned to them: full, tidy, clean, correctly priced and free of any expired product, so the customer can easily find what they want at any time.",
+  tasks: [
+    ["Start of shift", ["Walk through their section's shelves and note every shortage.","Restock shortages from the depot right away, starting with the best-selling products."]],
+    ["During the shift", [
+      "Keep restocking the shelves so that no shelf is ever left empty.",
+      "Keep the display and facing tidy at all times, not only after restocking.",
+      "Keep shelves and products clean of dust and spills at all times.",
+      "Make sure every product has a price, and that the shelf price matches the product and the system.",
+      "Follow up on expiry dates on their shelves, under the expiry rules below.",
+      "Keep their section's stock in the depot organised, labelled and easy to reach.",
+      "Report on Floor Link any company or supplier that has not delivered, and any shortage that can't be filled from the depot."]],
+    ["End of shift", ["Leave the shelves full and tidy, and the aisles clear of boxes and stock.","Tell the supervisor about any shortages they couldn't fill, and why."]]
+  ],
+  standards: [
+    ["Oldest in front (FIFO)","The product closest to expiry goes in front, the newest behind it. Never put new stock in front of old stock."],
+    ["Facing","Every product pulled to the shelf edge, front and name facing the customer, rows straight."],
+    ["No gaps","No empty space is left on the shelf. If a product runs out in the depot, report it immediately."],
+    ["Fixed locations","Every product always stays in its assigned place; no product is moved without management approval."],
+    ["Price","Every product has a clear price label on the shelf, under the product itself, matching the system."],
+    ["Damaged","Any broken, opened or damaged-packaging product is pulled from the shelf immediately and handed to the supervisor with a returns form."],
+    ["Cleanliness","Shelves and products always clean; no boxes, bags or plastic on the shelf or in the aisle."],
+    ["Safety","No boxes left in the aisles, heavy products on the lower shelves, and the cutter used carefully and never left on the shelf."],
+    ["Customer first","If a customer asks about a product, stop working and help them or walk them to it."]],
+  expiryIntro: "The merchandiser is primarily responsible for the expiry of every product on their shelves, under these rules:",
+  expiry: [
+    "The rule: any product nearing expiry is handed to management 3 months before it expires, and logged on Floor Link.",
+    "If a product was missed and handed over late, management accepts it as long as 30 days or more remain before expiry, and responsibility passes to management.",
+    "Any product handed over with less than 30 days left is treated as not handed over and stays the employee's responsibility. If it doesn't sell and expires, the employee pays for it.",
+    "If an expired product is found on their shelves, or reaches a customer, the employee pays double the value of the whole stock of that product (e.g. stock worth 100,000 LBP → pays 200,000 LBP) and receives a written warning.",
+    "Hiding expired or near-expiry stock to cover a shortcoming: pays double its full value and receives a written warning, per Article (51)."],
+  alone: ["Restocking their section's shelves from the depot.","Arranging facing and display within the products' assigned places.","Pulling any damaged product off the shelf.","Logging shortages and expiry on Floor Link."],
+  ask: ["Changing any product's place or shelf space.","Changing any price or price label.","Destroying or throwing away any stock.","Working in a section other than their own.","Any problem with a supplier or company rep."],
+  kpis: [
+    ["Empty shelves","Zero empty shelves in their section at inspection","Surprise walk by supervisor or management"],
+    ["Facing & display","Section arranged to the standard","Surprise walk"],
+    ["Expiry","Zero expired products on their shelves","Management walk + customers"],
+    ["Handover on time","Every product handed over 3 months before expiry","Floor Link"],
+    ["Prices","Zero products without a price or with a wrong price","Surprise walk"],
+    ["Cleanliness","Shelves and aisles clean","Surprise walk"],
+    ["Reporting shortages","Every supplier shortage logged on Floor Link","Floor Link"],
+    ["Personal commitment","Zero lateness and zero unexcused absence","Fingerprint"]],
+  account: "Any shortcoming in the tasks or standards in this description is subject to accountability under Part Five of the internal regulations (violations and penalties). This job description is an integral part of the internal regulations.",
+  L: {goal:"Purpose of the role", tasks:"1. Tasks", standards:"2. Shelf standards", standardsSub:"These are the rules every shelf is checked against on any inspection:",
+    expiry:"3. Expiry", perms:"4. Authority", alone:"Does on their own", ask:"Checks with the supervisor or management",
+    kpis:"5. Performance indicators", kpisSub:"The merchandiser is evaluated monthly on the following:", account:"6. Accountability"}
+};
+function renderMerchJobDesc(){
+  var en = S.lang === "en", J = en ? MERCH_DESC_EN : MERCH_DESC, L = J.L, n = 0;
+  var h = '<div class="jd" dir="'+(en?"ltr":"rtl")+'" lang="'+(en?"en":"ar")+'">';
+  h += '<div class="card jd-head"><div class="jd-kicker">'+esc(J.title)+'</div><h2>'+esc(J.sub)+'</h2>' +
+       '<div class="jd-info">'+J.info.map(function(r){ return '<div><span>'+esc(r[0])+'</span><b>'+esc(r[1])+'</b></div>'; }).join('')+'</div></div>';
+  h += '<div class="card"><div class="section-title">'+esc(L.goal)+'</div><p class="jd-p">'+esc(J.goal)+'</p></div>';
+  h += '<div class="card"><div class="section-title">'+esc(L.tasks)+'</div>';
+  J.tasks.forEach(function(g){
+    h += '<div class="jd-sub">'+esc(g[0])+'</div><ol class="jd-list" start="'+(n+1)+'">';
+    g[1].forEach(function(x){ n++; h += '<li>'+esc(x)+'</li>'; });
+    h += '</ol>';
+  });
+  h += '</div>';
+  h += '<div class="card"><div class="section-title">'+esc(L.standards)+'</div><div class="section-sub">'+esc(L.standardsSub)+'</div>' +
+       J.standards.map(function(r){ return '<div class="jd-kpi"><b>'+esc(r[0])+'</b><div>'+esc(r[1])+'</div></div>'; }).join('')+'</div>';
+  h += '<div class="card"><div class="section-title">'+esc(L.expiry)+'</div><div class="section-sub">'+esc(J.expiryIntro)+'</div><ol class="jd-list">' +
+       J.expiry.map(function(x){ return '<li>'+esc(x)+'</li>'; }).join('')+'</ol></div>';
+  h += '<div class="card"><div class="section-title">'+esc(L.perms)+'</div><div class="jd-perm">' +
+       '<div class="jd-perm-col ok"><div class="jd-perm-h">'+esc(L.alone)+'</div><ul>'+J.alone.map(function(x){ return '<li>'+esc(x)+'</li>'; }).join('')+'</ul></div>' +
+       '<div class="jd-perm-col ask"><div class="jd-perm-h">'+esc(L.ask)+'</div><ul>'+J.ask.map(function(x){ return '<li>'+esc(x)+'</li>'; }).join('')+'</ul></div></div></div>';
+  h += '<div class="card"><div class="section-title">'+esc(L.kpis)+'</div><div class="section-sub">'+esc(L.kpisSub)+'</div>' +
+       J.kpis.map(function(k){ return '<div class="jd-kpi"><b>'+esc(k[0])+'</b><div>'+esc(k[1])+'</div><small>'+esc(k[2])+'</small></div>'; }).join('')+'</div>';
+  h += '<div class="card"><div class="section-title">'+esc(L.account)+'</div><p class="jd-p">'+esc(J.account)+'</p></div>';
+  h += '</div>';
+  document.getElementById("main").innerHTML = h;
+}
+
 function render(){
   updateAuthChrome();
   updateNotifBanner();
@@ -6592,7 +6719,8 @@ function render(){
     if(isManagerUser()) renderFeedback(); else { S.appMode = "handover"; render(); }
   } else if(S.appMode === "job"){
     applyBrand("");
-    if(canSeeJobDesc()) renderJobDesc(); else { S.appMode = "handover"; render(); }
+    if(!canSeeJobDesc()){ S.appMode = "handover"; render(); }
+    else if(S.currentUser.role === "merchandiser") renderMerchJobDesc(); else renderJobDesc();
   } else if(S.appMode === "attendance"){
     applyBrand("shoppies");   // attendance is Shoppies' own: show it in Shoppies red
     if(isAttendanceOwner()) renderAttendance(); else { S.appMode = "handover"; render(); }
