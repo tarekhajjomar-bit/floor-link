@@ -896,6 +896,7 @@ en:{
   handoverSameDeviceErr:"This device already confirmed the outgoing side — the incoming supervisor needs to confirm from their own phone.",
   cancelHandoverBtn:"Cancel this handover & start over",
   cancelHandoverConfirm:"This will discard everything in this handover on BOTH phones — every photo, note and signature — and start a brand new one from scratch. This can't be undone. Continue?",
+  sigRedraw:"Redraw",
   chicken:"Chicken area", cheese:"Cheese", olives:"Olives", eggs:"Eggs", breadSelfService:"Bread — Self Service",
   reqNoteLabel:"Confirmation checklist (required)",
   reqNoteMissing:" (confirmation checklist)",
@@ -1239,6 +1240,7 @@ ar:{
   handoverSameDeviceErr:"هالجهاز أكّد التسليم أصلاً — المشرف المستلم لازم يأكّد من تليفونه هو.",
   cancelHandoverBtn:"إلغاء هالهاند أوفر وابدأ من جديد",
   cancelHandoverConfirm:"هاد رح يمسح كل شي بهالهاند أوفر من التليفونين الاثنين — كل الصور والملاحظات والتوقيعين — وتبلّش وحدة جديدة من الصفر. ما فيك ترجع فيه. بدك تكمل؟",
+  sigRedraw:"إعادة التوقيع",
   chicken:"منطقة الدجاج", cheese:"الأجبان", olives:"الزيتون", eggs:"البيض", breadSelfService:"الخبز — سيلف سيرفس",
   reqNoteLabel:"قائمة فحص التأكيد (إلزامي)",
   reqNoteMissing:" (قائمة الفحص)",
@@ -2509,6 +2511,17 @@ function sigBlock(which, label, personName, ackKey){
     body = sigVal && sigVal.url ?
       '<div class="sig-synced"><img src="'+esc(sigVal.url)+'" alt="" style="width:100%; height:190px; object-fit:contain; border:1px solid var(--border, #333); border-radius:8px;"></div>' :
       '<p class="hint">'+t("sigWaitingForPeer").replace("{name}", esc(personName || ""))+'</p>';
+  } else if(sigVal && sigVal.id){
+    // This device's OWN signature, already captured and uploaded (a
+    // previous tap of Submit — possibly just now). Show the actual saved
+    // image instead of a fresh blank canvas: rendering a blank drawable
+    // canvas here regardless of sigVal looked exactly like the signature
+    // had been lost, even though it was safely uploaded and already
+    // pushed to the other phone — which is exactly what was reported as
+    // "it says saved but nothing happens, it's not actually saving."
+    body = '<div class="sig-synced"><img src="'+esc(sigVal.url)+'" alt="" style="width:100%; height:190px; object-fit:contain; border:1px solid var(--border, #333); border-radius:8px;"></div>' +
+      '<div class="sig-actions"><span class="hint">'+esc(personName || "")+'</span>' +
+      '<button type="button" class="link-btn" data-sig-redraw="'+which+'">'+t("sigRedraw")+'</button></div>';
   } else if(S.canWriteAssets){
     body = '<canvas class="sig-box" id="sigCanvas_'+which+'" width="300" height="200" style="width:100%; height:190px;" data-sig="'+which+'"></canvas>' +
       '<div class="sig-actions"><span class="hint">'+esc(personName || "")+'</span>' +
@@ -2788,6 +2801,18 @@ function wireForm(){
       var st = sigCtx[which];
       if(st){ st.ctx.clearRect(0,0,st.canvas.width,st.canvas.height); st.dirty = false; }
       if(which === "out") f.outgoingSig = null; else f.incomingSig = null;
+    };
+  });
+  // Discard an already-uploaded signature (this device's own) and go back
+  // to a blank drawable canvas — unlike data-sig-clear above (which wipes
+  // an in-progress, not-yet-uploaded drawing and needs no re-render since
+  // it edits the live canvas directly), this swaps an <img> back to a
+  // <canvas>, which only happens on the next render.
+  Array.prototype.forEach.call(document.querySelectorAll("[data-sig-redraw]"), function(btn){
+    btn.onclick = function(){
+      var which = this.getAttribute("data-sig-redraw");
+      if(which === "out") f.outgoingSig = null; else f.incomingSig = null;
+      renderForm();
     };
   });
   Array.prototype.forEach.call(document.querySelectorAll("[data-photo-rm]"), function(btn){
