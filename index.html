@@ -224,6 +224,32 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
   background:var(--surface); border:1px solid var(--line-soft); border-radius:var(--radius);
   padding:18px; margin-bottom:14px; box-shadow:var(--shadow-sm);
 }
+.jd{text-align:right;}
+.jd-head h2{font-size:19px; margin:2px 0 12px; letter-spacing:-.2px;}
+.jd-kicker{font-size:12px; font-weight:700; color:var(--teal); letter-spacing:.2px;}
+.jd-info{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
+.jd-info div{background:var(--paper); border-radius:var(--radius-sm); padding:8px 10px;}
+.jd-info span{display:block; font-size:11.5px; color:var(--ink-soft);}
+.jd-info b{font-size:13px; font-weight:600;}
+.jd-p{font-size:13.5px; line-height:1.75; margin:6px 0 0;}
+.jd-sub{font-size:13px; font-weight:700; color:var(--teal-deep); margin:12px 0 4px;}
+.jd-list{margin:0; padding-inline-start:22px; font-size:13.5px; line-height:1.7;}
+.jd-list li{margin-bottom:4px;}
+.jd-rep{display:flex; gap:10px; align-items:baseline; padding:8px 0; border-top:1px solid var(--line-soft); font-size:13.5px;}
+.jd-rep b{flex:none; min-width:96px;}
+.jd-rep span{color:var(--ink-soft);}
+.jd-perm{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:8px;}
+.jd-perm-col{border-radius:var(--radius-sm); padding:10px 12px;}
+.jd-perm-col.ok{background:var(--green-tint);}
+.jd-perm-col.ask{background:var(--red-tint);}
+.jd-perm-h{font-size:13px; font-weight:700; margin-bottom:6px;}
+.jd-perm-col.ok .jd-perm-h{color:var(--green);}
+.jd-perm-col.ask .jd-perm-h{color:var(--red);}
+.jd-perm-col ul{margin:0; padding-inline-start:18px; font-size:13px; line-height:1.65;}
+.jd-kpi{padding:9px 0; border-top:1px solid var(--line-soft); font-size:13.5px;}
+.jd-kpi b{display:block; font-size:13.5px;}
+.jd-kpi small{display:block; font-size:11.5px; color:var(--ink-soft); margin-top:2px;}
+@media (max-width:520px){ .jd-info, .jd-perm{grid-template-columns:1fr;} }
 .section-title{font-size:14.5px; font-weight:700; margin-bottom:2px; letter-spacing:-.1px;}
 .section-sub{font-size:12px; color:var(--ink-soft); margin-bottom:12px;}
 .field{margin-bottom:12px;}
@@ -692,6 +718,7 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
     <button class="tab-btn" id="deptDeliveryBtn" type="button" style="display:none;"></button>
     <button class="tab-btn" id="deptFeedbackBtn" type="button" style="display:none;"></button>
     <button class="tab-btn" id="deptAttendanceBtn" type="button" style="display:none;"></button>
+    <button class="tab-btn" id="deptJobBtn" type="button" style="display:none;"></button>
   </div>
 </div>
 <div class="tabbar" id="subtabbar" style="max-width:640px; margin:10px auto 0; padding-inline:16px;">
@@ -1041,6 +1068,7 @@ en:{
   syncingNow:"Syncing…", pendingSyncLabel:"pending sync", offlineIndicator:"Offline",
   deptFeedbackLabel:"Feedback",
   deptAttendanceLabel:"Attendance",
+  deptJobLabel:"Job Description",
   attToday:"Today", attBackToday:"Back to today", attMonthBtn:"Month report", attDayBtn:"Daily view",
   attOnTime:"On time", attLate:"Late", attAbsent:"Absent", attNoOut:"No clock-out", attOffLeave:"Off / leave", attNotYet:"Not started",
   attNeedsAttention:"Needs attention", attAllStaff:"All staff", attNoData:"No attendance data for this day yet. The shop computer sends it every 5 minutes.",
@@ -1381,6 +1409,7 @@ ar:{
   syncingNow:"جارِ المزامنة…", pendingSyncLabel:"بانتظار المزامنة", offlineIndicator:"غير متصل",
   deptFeedbackLabel:"الفيدباك",
   deptAttendanceLabel:"الحضور",
+  deptJobLabel:"الوصف الوظيفي",
   attToday:"اليوم", attBackToday:"رجوع لليوم", attMonthBtn:"تقرير الشهر", attDayBtn:"عرض اليوم",
   attOnTime:"عالوقت", attLate:"متأخرين", attAbsent:"غايبين", attNoOut:"ما بصمو طلعة", attOffLeave:"أوف / إجازة", attNotYet:"لسّا ما بلّشو",
   attNeedsAttention:"بدها انتباه", attAllStaff:"كل الموظفين", attNoData:"لسّا ما في داتا حضور لهاليوم. كمبيوتر المحل بيبعتها كل 5 دقايق.",
@@ -1987,6 +2016,11 @@ function updateDeptSwitch(){
   var canFeedback = role === "manager" || role === "admin";
   var canAttendance = isAttendanceOwner();
   var atBtn = document.getElementById("deptAttendanceBtn");
+  var jbBtn = document.getElementById("deptJobBtn");
+  var canJob = canSeeJobDesc();
+  jbBtn.style.display = canJob ? "" : "none";
+  jbBtn.textContent = t("deptJobLabel");
+  jbBtn.classList.toggle("active", S.appMode === "job");
   atBtn.style.display = canAttendance ? "" : "none";
   atBtn.textContent = t("deptAttendanceLabel");
   atBtn.classList.toggle("active", S.appMode === "attendance");
@@ -2010,12 +2044,12 @@ function updateDeptSwitch(){
   m.classList.toggle("active", S.appMode === "merch");
   a.classList.toggle("active", S.appMode === "accounts");
   x.classList.toggle("active", S.appMode === "expiry");
-  var visibleCount = (canHandover?1:0)+(canMerch?1:0)+(canAccounts?1:0)+(canExpiry?1:0)+(canDelivery?1:0)+(canFeedback?1:0)+(canAttendance?1:0);
+  var visibleCount = (canHandover?1:0)+(canMerch?1:0)+(canAccounts?1:0)+(canExpiry?1:0)+(canDelivery?1:0)+(canFeedback?1:0)+(canAttendance?1:0)+(canJob?1:0);
   document.getElementById("deptbar").style.display = visibleCount > 1 ? "" : "none";
   var tf = document.getElementById("tabForm");
   var td = document.getElementById("tabDash");
   var sub = document.getElementById("subtabbar");
-  if(S.appMode === "accounts" || S.appMode === "delivery" || S.appMode === "feedback" || S.appMode === "attendance" || isViewerUser()){
+  if(S.appMode === "accounts" || S.appMode === "delivery" || S.appMode === "feedback" || S.appMode === "attendance" || S.appMode === "job" || isViewerUser()){
     sub.style.display = "none";
   } else {
     sub.style.display = "";
@@ -6293,6 +6327,73 @@ function attBind(){
   var tt = document.getElementById("attToToday"); if(tt) tt.onclick = function(e){ e.preventDefault(); attSetDay(attTodayStr()); };
 }
 
+// ---- Supervisor job description (read-only; supervisors + managers) ----
+function canSeeJobDesc(){
+  var r = S.currentUser && S.currentUser.role;
+  return r === "supervisor" || r === "manager" || r === "admin";
+}
+var JOB_DESC = {
+  title: "الوصف الوظيفي",
+  sub: "مشرف الوردية (السوبرفايزر)",
+  info: [["الوظيفة","مشرف وردية (سوبرفايزر)"],["يرجع إلى","المدير العام"],["الوردية","صباحية أو مسائية – مشرف واحد لكل وردية في كل فرع"],["يشرف على","جميع موظفي الوردية في الفرع"]],
+  goal: "المشرف هو المسؤول الأول عن الفرع خلال ورديته: عن الموظفين، والكاش، والبضاعة، ونظافة الفرع، ورضا الزبائن. ويُحاسَب على أي تقصير يحصل في ورديته، سواء منه أو من الموظفين الذين يشرف عليهم.",
+  tasks: [
+    ["بداية الوردية", [
+      "استلام الوردية من المشرف السابق، وقراءة الهاند أوفر ومتابعة أي مشكلة معلّقة فيه.",
+      "القيام بجولة على الفرع والبرادات، وتصوير الأوبننغ على فلور لينك.",
+      "التأكد من حضور الموظفين في الوقت المحدد، وتسجيل أي تأخير أو غياب.",
+      "توزيع المهام على الموظفين، وتسليم الفكّة (البتي كاش) للكاشيرية."]],
+    ["خلال الوردية", [
+      "متابعة التزام كل موظف بشغله وبأحكام النظام الداخلي.",
+      "إعطاء الإذن بالاستراحات والخروج والتدخين، بحيث لا يبقى أي صندوق أو قسم دون تغطية.",
+      "متابعة تعبئة الرفوف والنواقص، ومعرفة من لم يُنهِ رفوفه، ومتابعة النظافة والديسبلاي في جميع الأقسام والبرادات.",
+      "متابعة الإكسبايري على فلور لينك، وفق المادة (51).",
+      "استلام بضاعة الصالة من الموردين (الخبز، اللبنة، الأجبان وغيرها)، والتحقق من الكمية والصلاحية قبل التوقيع.",
+      "معالجة شكاوى الزبائن ومشاكلهم بنفسه، ورفع ما يتجاوز صلاحيته للإدارة فوراً.",
+      "إجراء الإلغاءات والمرتجعات، وتعبئة نموذج المرتجع لكل بضاعة مرتجعة أو تالفة."]],
+    ["نهاية الوردية", [
+      "تسكير الشفتات على الصناديق، وعدّ الكاش مع كل كاشير على السيستم، وتوقيع محضر التسليم، وفق المادة (46).",
+      "تصوير الرفوف بعد تعبئتها، وتسليم الهاند أوفر على فلور لينك وفق المادة (56).",
+      "المشرف المسائي: إغلاق الفرع بعد التأكد من إقفال الصناديق والأبواب وتشغيل البرادات، وفق المادة (54)."]]
+  ],
+  report: [["الحضور","من تأخر أو غاب أو خرج بإذن."],["الكاش","أي نقص أو زيادة في الصناديق."],["البضاعة","المرتجعات والتالف والنواقص المهمة."],["المشاكل المعلّقة","ما لم يُحلّ ويحتاج متابعة من الوردية التالية أو من الإدارة."]],
+  alone: ["توزيع المهام على الموظفين خلال الوردية.","الإذن بالاستراحات والخروج القصير والتدخين.","الإلغاءات والمرتجعات على الصناديق.","حل شكاوى الزبائن العادية.","استلام بضاعة الصالة من الموردين.","توجيه تنبيه شفهي لأي موظف مخالف."],
+  ask: ["أي تعويض مالي لزبون.","إرسال موظف إلى البيت قبل نهاية ورديته.","تبديل الورديات أو أيام العطل بين الموظفين.","أي إنذار خطي أو خصم أو عقوبة.","أي نقص في الكاش أو البضاعة.","مشكلة مع مورد، أو عطل في البرادات أو الأجهزة.","أي سرقة أو حادث أو مشكلة كبيرة داخل الفرع."],
+  kpis: [
+    ["الأوبننغ والهاند أوفر","مسلَّمان كاملين وفي وقتهما","كل يوم"],
+    ["الإكسبايري","صفر بضاعة منتهية الصلاحية على الرفوف","جولة الإدارة + الزبائن"],
+    ["الكاش","صفر فروقات غير مبرّرة في الصناديق","محاضر التسليم"],
+    ["الرفوف والنواقص","لا رفوف فاضية عند الجولة","جولة مفاجئة من الإدارة"],
+    ["النظافة والديسبلاي","البرادات والأقسام نظيفة ومرتبة","جولة مفاجئة من الإدارة"],
+    ["شكاوى الزبائن","لا شكوى تصل للإدارة دون أن يكون قد تابعها","الشكاوى الواصلة للإدارة"],
+    ["انضباط الموظفين","كل تأخير أو مخالفة في ورديته مسجّلة في الهاند أوفر","مقارنة مع البصمة والكاميرات"],
+    ["التزامه الشخصي","صفر تأخير وصفر غياب دون عذر","البصمة"]],
+  account: "أي تقصير في المهام المذكورة يُحاسَب عليه المشرف وفق المادة (56) من النظام الداخلي. ويُعتبر هذا الوصف الوظيفي جزءاً مكمّلاً للنظام الداخلي."
+};
+function renderJobDesc(){
+  var J = JOB_DESC, n = 0, h = '<div class="jd" dir="rtl" lang="ar">';
+  h += '<div class="card jd-head"><div class="jd-kicker">'+esc(J.title)+'</div><h2>'+esc(J.sub)+'</h2>' +
+       '<div class="jd-info">'+J.info.map(function(r){ return '<div><span>'+esc(r[0])+'</span><b>'+esc(r[1])+'</b></div>'; }).join('')+'</div></div>';
+  h += '<div class="card"><div class="section-title">هدف الوظيفة</div><p class="jd-p">'+esc(J.goal)+'</p></div>';
+  h += '<div class="card"><div class="section-title">أولاً: المهام</div>';
+  J.tasks.forEach(function(g){
+    h += '<div class="jd-sub">'+esc(g[0])+'</div><ol class="jd-list" start="'+(n+1)+'">';
+    g[1].forEach(function(x){ n++; h += '<li>'+esc(x)+'</li>'; });
+    h += '</ol>';
+  });
+  h += '</div>';
+  h += '<div class="card"><div class="section-title">ثانياً: محتوى الهاند أوفر</div><div class="section-sub">لا يوجد تقرير ورقي منفصل. يُكتب في الهاند أوفر، إضافةً إلى الصور، أربعة أسطر فقط:</div>' +
+       J.report.map(function(r){ return '<div class="jd-rep"><b>'+esc(r[0])+'</b><span>'+esc(r[1])+'</span></div>'; }).join('')+'</div>';
+  h += '<div class="card"><div class="section-title">ثالثاً: الصلاحيات</div><div class="jd-perm">' +
+       '<div class="jd-perm-col ok"><div class="jd-perm-h">يقرّر وحده</div><ul>'+J.alone.map(function(x){ return '<li>'+esc(x)+'</li>'; }).join('')+'</ul></div>' +
+       '<div class="jd-perm-col ask"><div class="jd-perm-h">يرجع فيه للإدارة قبل التنفيذ</div><ul>'+J.ask.map(function(x){ return '<li>'+esc(x)+'</li>'; }).join('')+'</ul></div></div></div>';
+  h += '<div class="card"><div class="section-title">رابعاً: مؤشرات التقييم</div><div class="section-sub">يُقيَّم المشرف شهرياً على المؤشرات التالية:</div>' +
+       J.kpis.map(function(k){ return '<div class="jd-kpi"><b>'+esc(k[0])+'</b><div>'+esc(k[1])+'</div><small>'+esc(k[2])+'</small></div>'; }).join('')+'</div>';
+  h += '<div class="card"><div class="section-title">خامساً: المحاسبة</div><p class="jd-p">'+esc(J.account)+'</p></div>';
+  h += '</div>';
+  document.getElementById("main").innerHTML = h;
+}
+
 function render(){
   updateAuthChrome();
   updateNotifBanner();
@@ -6312,6 +6413,9 @@ function render(){
   } else if(S.appMode === "feedback"){
     applyBrand("");
     if(isManagerUser()) renderFeedback(); else { S.appMode = "handover"; render(); }
+  } else if(S.appMode === "job"){
+    applyBrand("");
+    if(canSeeJobDesc()) renderJobDesc(); else { S.appMode = "handover"; render(); }
   } else if(S.appMode === "attendance"){
     applyBrand("shoppies");   // attendance is Shoppies' own: show it in Shoppies red
     if(isAttendanceOwner()) renderAttendance(); else { S.appMode = "handover"; render(); }
@@ -6351,6 +6455,7 @@ document.getElementById("deptAccountsBtn").onclick = function(){ S.appMode = "ac
 document.getElementById("deptDeliveryBtn").onclick = function(){ S.appMode = "delivery"; render(); playSectionTransition(); };
 document.getElementById("deptFeedbackBtn").onclick = function(){ S.appMode = "feedback"; render(); playSectionTransition(); };
 document.getElementById("deptAttendanceBtn").onclick = function(){ S.appMode = "attendance"; render(); playSectionTransition(); };
+document.getElementById("deptJobBtn").onclick = function(){ S.appMode = "job"; render(); playSectionTransition(); };
 document.getElementById("deptExpiryBtn").onclick = function(){ S.appMode = "expiry"; S.view = "form"; logActivity("view"); render(); playSectionTransition(); };
 
 function resolvePhotoUrls(doc){
