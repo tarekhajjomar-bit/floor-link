@@ -2392,12 +2392,22 @@ function reqPhotoBlock(key, role){
   var notesObj = role === "out" ? S.form.requiredNotesOut : role === "in" ? S.form.requiredNotesIn : S.form.requiredNotes;
   var arr = photosObj[key];
   var fullKey = (role === "out" ? "reqOut:" : role === "in" ? "reqIn:" : "req:") + key;
+  // Same ownership check as the "add" button below: on a handover, a
+  // checkpoint photo can only be removed by the account that owns that
+  // bucket — otherwise the outgoing device could show (and tap) a remove
+  // button sitting on the incoming supervisor's own synced photo, or vice
+  // versa. Firestore's field-ownership rule already stops that removal
+  // from ever actually reaching the other side's data (the next live
+  // snapshot would just restore it), but the button shouldn't be offered
+  // in the first place.
+  var canModify = isMyReqRole(fullKey);
   var photosHtml = "";
   arr.forEach(function(p, i){
     var byTag = p.byName ? '<span class="photo-by">'+esc(p.byName)+'</span>' : '';
     photosHtml += '<div class="photo-thumb'+(p.pending?" up":"")+'"><img src="'+esc(p.url)+'" alt="" data-img-zoom="'+esc(p.url)+'">' + byTag +
       (p.failed ? '<button class="retry" type="button" data-photo-retry="'+fullKey+'|'+i+'" aria-label="retry">↻</button>' : '') +
-      '<button class="rm" type="button" data-photo-rm="'+fullKey+'|'+i+'">'+ICONS.close+'</button></div>';
+      (canModify ? '<button class="rm" type="button" data-photo-rm="'+fullKey+'|'+i+'">'+ICONS.close+'</button>' : '') +
+    '</div>';
   });
   var addHtml = "";
   if(S.canWriteAssets && isMyReqRole(fullKey)){
@@ -2745,6 +2755,7 @@ function wireForm(){
       var key, idx;
       if(sep >= 0){ key = raw.slice(0, sep); idx = parseInt(raw.slice(sep+1), 10); }
       else { var parts = raw.split(":"); key = parts[0]; idx = parseInt(parts[1],10); }
+      if(!isMyReqRole(key)){ toast(t("notYourCheckpointErr")); return; }
       photosArrFor(key).splice(idx, 1);
       saveFormDraft();
       renderForm();
