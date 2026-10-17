@@ -6327,10 +6327,9 @@ function attBind(){
   var tt = document.getElementById("attToToday"); if(tt) tt.onclick = function(e){ e.preventDefault(); attSetDay(attTodayStr()); };
 }
 
-// ---- Supervisor job description (read-only; supervisors + managers) ----
+// ---- Supervisor job description (read-only; supervisors only) ----
 function canSeeJobDesc(){
-  var r = S.currentUser && S.currentUser.role;
-  return r === "supervisor" || r === "manager" || r === "admin";
+  return !!(S.currentUser && S.currentUser.role === "supervisor");
 }
 var JOB_DESC = {
   title: "الوصف الوظيفي",
