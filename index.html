@@ -6503,6 +6503,7 @@ var JOB_DESC = {
     ["بداية الوردية", [
       "استلام الوردية من المشرف السابق، وقراءة الهاند أوفر ومتابعة أي مشكلة معلّقة فيه.",
       "القيام بجولة على الفرع والبرادات، وتصوير الأوبننغ على فلور لينك.",
+      "قراءة حرارة كل البرادات والفريزرات وتسجيلها: الألبان والأجبان والشركتية والدجاج من 0 إلى 4 درجات، والفريزر 18- درجة أو أبرد.",
       "التأكد من حضور الموظفين في الوقت المحدد، وتسجيل أي تأخير أو غياب.",
       "توزيع المهام على الموظفين، وتسليم الفكّة (البتي كاش) للكاشيرية."]],
     ["خلال الوردية", [
@@ -6510,6 +6511,7 @@ var JOB_DESC = {
       "إعطاء الإذن بالاستراحات والخروج والتدخين، بحيث لا يبقى أي صندوق أو قسم دون تغطية.",
       "متابعة تعبئة الرفوف والنواقص، ومعرفة من لم يُنهِ رفوفه، ومتابعة النظافة والديسبلاي في جميع الأقسام والبرادات.",
       "متابعة الإكسبايري على فلور لينك، وفق المادة (51).",
+      "قراءة حرارة البرادات مرة ثانية منتصف الوردية وتسجيلها. وإذا خرجت أي قراءة عن الحد المسموح، ينقل البضاعة إلى براد آخر ويبلغ الإدارة فوراً.",
       "استلام بضاعة الصالة من الموردين (الخبز، اللبنة، الأجبان وغيرها)، والتحقق من الكمية والصلاحية قبل التوقيع.",
       "معالجة شكاوى الزبائن ومشاكلهم بنفسه، ورفع ما يتجاوز صلاحيته للإدارة فوراً.",
       "إجراء الإلغاءات والمرتجعات، وتعبئة نموذج المرتجع لكل بضاعة مرتجعة أو تالفة."]],
@@ -6524,6 +6526,7 @@ var JOB_DESC = {
   kpis: [
     ["الأوبننغ والهاند أوفر","مسلَّمان كاملين وفي وقتهما","كل يوم"],
     ["الإكسبايري","صفر بضاعة منتهية الصلاحية على الرفوف","جولة الإدارة + الزبائن"],
+    ["حرارة البرادات","السجل مكتمل مرتين في كل وردية، وكل خلل مُبلَّغ فوراً","سجل الحرارة"],
     ["الكاش","صفر فروقات غير مبرّرة في الصناديق","محاضر التسليم"],
     ["الرفوف والنواقص","لا رفوف فاضية عند الجولة","جولة مفاجئة من الإدارة"],
     ["النظافة والديسبلاي","البرادات والأقسام نظيفة ومرتبة","جولة مفاجئة من الإدارة"],
@@ -6545,6 +6548,7 @@ var JOB_DESC_EN = {
     ["Start of shift", [
       "Take over the shift from the previous supervisor, read the handover and follow up on any open issue in it.",
       "Walk through the branch and the fridges, and photograph the opening on Floor Link.",
+      "Read and log the temperature of every fridge and freezer: dairy, cheese, cold cuts and chicken 0 to 4 °C, freezers −18 °C or colder.",
       "Make sure staff arrive on time, and record any lateness or absence.",
       "Assign tasks to the staff, and hand the float (petty cash) to the cashiers."]],
     ["During the shift", [
@@ -6552,6 +6556,7 @@ var JOB_DESC_EN = {
       "Give permission for breaks, going out and smoking, so that no till or section is left uncovered.",
       "Follow up on shelf restocking and shortages, know who has not finished their shelves, and check cleanliness and displays in all sections and fridges.",
       "Follow up on expiry dates on Floor Link, per Article (51).",
+      "Read and log the fridge temperatures a second time mid-shift. If any reading is outside the limit, move the stock to another fridge and tell management immediately.",
       "Receive floor deliveries from suppliers (bread, labneh, cheese, etc.), checking quantity and expiry before signing.",
       "Handle customer complaints and problems personally, and escalate anything beyond their authority to management immediately.",
       "Process voids and returns, and fill in the returns form for every returned or damaged item."]],
@@ -6566,6 +6571,7 @@ var JOB_DESC_EN = {
   kpis: [
     ["Opening & handover","Both submitted complete and on time","Every day"],
     ["Expiry","Zero expired products on the shelves","Management walk + customers"],
+    ["Fridge temperatures","Log complete twice per shift, every fault reported immediately","Temperature log"],
     ["Cash","Zero unexplained till differences","Handover records"],
     ["Shelves & shortages","No empty shelves at inspection","Surprise management walk"],
     ["Cleanliness & display","Fridges and sections clean and tidy","Surprise management walk"],
