@@ -3,6 +3,9 @@ name: Deploy — customer feedback page
 # Puts websites/feedback/feedback.html on the public brand websites as
 # /feedback.html, keeping everything else on those sites exactly as it is.
 # Runs by itself whenever the page changes, or by hand from the Actions tab.
+# It also checks every hour: publishing the website from a computer (firebase
+# deploy) replaces the whole site, which drops feedback.html. The hourly check
+# notices and puts the page back, and does nothing when it's already there.
 #
 # Sites: shoppies-web (shoppiesmarket.com). Add the Al-Hajj Omar hosting site
 # id to SITES once its website has a domain.
@@ -14,6 +17,8 @@ on:
       - "websites/feedback/feedback.html"
       - "scripts/deploy-feedback-page.js"
       - ".github/workflows/deploy-feedback-page.yml"
+  schedule:
+    - cron: "17 * * * *"
   workflow_dispatch: {}
 
 env:

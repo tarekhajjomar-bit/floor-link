@@ -62,6 +62,18 @@ async function deploy(site) {
   if (!live) throw new Error(`No live release found for site "${site}".`);
   console.log("Live version:", live.name);
 
+  // Skip when the live site already has this exact page (the hourly check usually ends here).
+  const gzNow = zlib.gzipSync(fs.readFileSync(PAGE), { level: 9 });
+  const want = crypto.createHash("sha256").update(gzNow).digest("hex");
+  let pageToken = "", found = null;
+  do {
+    const r = await call("GET", `${API}/${live.name}/files?pageSize=1000${pageToken ? "&pageToken=" + pageToken : ""}`);
+    (r.files || []).forEach((f) => { if (f.path === "/feedback.html") found = f.hash; });
+    pageToken = r.nextPageToken || "";
+  } while (pageToken && !found);
+  if (found === want && !process.env.FORCE) { console.log("feedback.html is already live and up to date. Nothing to do."); return false; }
+  console.log(found ? "feedback.html is live but out of date, updating." : "feedback.html is missing from the live site, adding it back.");
+
   // 1. copy the live version (all its files and settings), not finalized yet
   const op = await call("POST", `${API}/sites/${site}/versions:clone`, { sourceVersion: live.name, finalize: false });
   const version = await waitFor(op);
@@ -83,14 +95,16 @@ async function deploy(site) {
   const rel = await call("POST", `${API}/sites/${site}/releases?versionName=${encodeURIComponent(version.name)}`,
     { message: "Customer feedback page (from GitHub)" });
   console.log("Released:", rel.name);
+  return true;
 }
 
 (async () => {
   const sites = process.argv.slice(2);
   if (!sites.length) { console.error("Give at least one hosting site id, e.g. shoppies-web"); process.exit(1); }
   console.log("Service account:", sa.client_email);
+  const released = [];
   for (const site of sites) {
-    try { await deploy(site); }
+    try { if (await deploy(site)) released.push(site); }
     catch (e) {
       console.error(e.message);
       // also as a GitHub annotation, so the reason shows on the run's summary page
@@ -102,6 +116,7 @@ async function deploy(site) {
       process.exit(1);
     }
   }
-  console.log("::notice::Feedback page released on: " + sites.join(", "));
+  if (released.length) console.log("::notice::Feedback page released on: " + released.join(", "));
+  else console.log("::notice::Feedback page already live on: " + sites.join(", "));
   console.log("\nDone.");
 })();
