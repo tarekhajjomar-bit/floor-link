@@ -1,0 +1,17 @@
+name: Check — QR card (manual only)
+on:
+  workflow_dispatch: {}
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm i --no-save puppeteer-core@22.15.0
+      - run: node test/qr-card.test.js
+      - uses: actions/upload-artifact@v4
+        with:
+          name: card
+          path: /tmp/card.png
