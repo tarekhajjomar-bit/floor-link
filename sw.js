@@ -56,7 +56,7 @@ self.addEventListener("notificationclick", (event) => {
   );
 });
 
-const CACHE_NAME = "floorlink-shell-v18";
+const CACHE_NAME = "floorlink-shell-v19";
 const SHELL_FILES = [
   "./",
   "./index.html",
