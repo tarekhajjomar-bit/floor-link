@@ -722,7 +722,7 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
              on every deploy, purely so a build mismatch (stale cache / an
              app that hasn't actually picked up the latest deploy) can be
              told apart from an actual code bug just by reading this. -->
-        <span id="appBuild" style="display:block; font-size:10px; opacity:0.5; margin-top:2px;">build v20</span>
+        <span id="appBuild" style="display:block; font-size:10px; opacity:0.5; margin-top:2px;">build v21</span>
       </div>
     </div>
     <div class="header-controls">
@@ -1096,7 +1096,7 @@ en:{
   expiryDateLabel:"Expiry date", expiryQtyLabel:"Quantity", expiryQtyPh:"Quantity",
   pullTitle:"Pull requests", pullRequestBtn:"Request pull from shelf",
   pullModalTitle:"Request pull", pullAssigneeLabel:"Who must pull it", pullNoteLabel:"Note for them", pullNotePh:"e.g. 2 days left — take it off the shelf and the display",
-  pullSendBtn:"Send request", pullNoAssignee:"No merchandiser is registered for this branch.",
+  pullSendBtn:"Send request", pullNoAssignee:"No merchandiser or supervisor is registered for this branch.",
   pullOpenBadge:"Open", pullDoneBadge:"Pulled", pullCancelBtn:"Cancel request & unlock", pullCancelConfirm:"Cancel this request and unlock the app for them?",
   pullLockedTitle:"Action required now", pullLockedSub:"The manager asked you to pull the item below. The rest of the app stays locked until you photograph the shelf/display after removing it and confirm.",
   pullProofTitle:"Photo after pulling it", pullProofHint:"Take a photo of the shelf / display with the item gone.", pullDoneBtn:"Done — item pulled",
@@ -1451,7 +1451,7 @@ ar:{
   expiryDateLabel:"تاريخ الصلاحية", expiryQtyLabel:"الكمية", expiryQtyPh:"الكمية",
   pullTitle:"طلبات السحب", pullRequestBtn:"طلب سحب من الرف",
   pullModalTitle:"طلب سحب", pullAssigneeLabel:"مين لازم يسحبه", pullNoteLabel:"ملاحظة إلو", pullNotePh:"مثلاً: باقي يومين — شيله عن الرف وعن الديسبلاي",
-  pullSendBtn:"إرسال الطلب", pullNoAssignee:"ما في مرشندايزر مسجّل لهذا الفرع.",
+  pullSendBtn:"إرسال الطلب", pullNoAssignee:"ما في مرشندايزر أو سوبرفايزر مسجّل لهذا الفرع.",
   pullOpenBadge:"مفتوح", pullDoneBadge:"تم السحب", pullCancelBtn:"إلغاء الطلب وفك القفل", pullCancelConfirm:"إلغاء هذا الطلب وفك القفل عنه؟",
   pullLockedTitle:"مطلوب منك إجراء الآن", pullLockedSub:"المدير طلب منك تسحب الصنف التحت. باقي التطبيق مقفول لحد ما تسحبه وتصوّر الرف/الديسبلاي بعد السحب وتأكّد.",
   pullProofTitle:"صورة بعد السحب", pullProofHint:"صوّر الرف / الديسبلاي وهو فاضي من الصنف.", pullDoneBtn:"تم — سحبت الصنف",
@@ -5559,8 +5559,11 @@ function completePull(id){
 }
 
 /* ---- the manager's side ---- */
+// Merchandisers first, then the branch's supervisors — either can be asked to pull an item.
 function pullCandidates(company){
-  return S.users.filter(function(u){ return u.role === "merchandiser" && !u.disabled && u.company === company; });
+  var ok = function(u){ return !u.disabled && u.company === company; };
+  return S.users.filter(function(u){ return u.role === "merchandiser" && ok(u); })
+    .concat(S.users.filter(function(u){ return u.role === "supervisor" && ok(u); }));
 }
 function openPullModal(itemId){
   var item = S.trackedItems.filter(function(x){ return x.id === itemId; })[0];
@@ -5579,7 +5582,7 @@ function renderPullModal(){
   var item = S.trackedItems.filter(function(x){ return x.id === m.itemId; })[0];
   if(!item){ closePullModal(); return; }
   var cands = pullCandidates(item.company);
-  var opts = cands.map(function(u){ return '<option value="'+u.id+'"'+(m.assigneeId===u.id?" selected":"")+'>'+esc(u.fullName)+'</option>'; }).join("");
+  var opts = cands.map(function(u){ return '<option value="'+u.id+'"'+(m.assigneeId===u.id?" selected":"")+'>'+esc(u.fullName)+' — '+esc(roleBadgeLabel(u.role))+'</option>'; }).join("");
   host.innerHTML = '<div class="modal-overlay" id="pullOverlay"><div class="modal-sheet">' +
     '<div class="modal-head"><h2>'+t("pullModalTitle")+'</h2><button type="button" class="modal-close" id="pullCloseBtn">'+ICONS.close+'</button></div>' +
     '<p class="hint" style="margin-bottom:12px;"><b>'+esc(item.productName)+'</b> · '+esc(companyName(item.company))+' · '+fmtDate(item.expiryDate)+'</p>' +
