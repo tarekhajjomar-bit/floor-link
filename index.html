@@ -722,7 +722,7 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
              on every deploy, purely so a build mismatch (stale cache / an
              app that hasn't actually picked up the latest deploy) can be
              told apart from an actual code bug just by reading this. -->
-        <span id="appBuild" style="display:block; font-size:10px; opacity:0.5; margin-top:2px;">build v21</span>
+        <span id="appBuild" style="display:block; font-size:10px; opacity:0.5; margin-top:2px;">build v22</span>
       </div>
     </div>
     <div class="header-controls">
@@ -1097,7 +1097,7 @@ en:{
   pullTitle:"Pull requests", pullRequestBtn:"Request pull from shelf",
   pullModalTitle:"Request pull", pullAssigneeLabel:"Who must pull it", pullNoteLabel:"Note for them", pullNotePh:"e.g. 2 days left — take it off the shelf and the display",
   pullSendBtn:"Send request", pullNoAssignee:"No merchandiser or supervisor is registered for this branch.",
-  pullOpenBadge:"Open", pullDoneBadge:"Pulled", pullCancelBtn:"Cancel request & unlock", pullCancelConfirm:"Cancel this request and unlock the app for them?",
+  pullOpenBadge:"Open", pullDoneBadge:"Pulled", pullDeleteBtn:"Delete", pullDeleteConfirm:"Delete this pulled record?", pullClearAll:"Clear all pulled records", pullClearConfirm:"Delete all pulled records from this list?", pullCancelBtn:"Cancel request & unlock", pullCancelConfirm:"Cancel this request and unlock the app for them?",
   pullLockedTitle:"Action required now", pullLockedSub:"The manager asked you to pull the item below. The rest of the app stays locked until you photograph the shelf/display after removing it and confirm.",
   pullProofTitle:"Photo after pulling it", pullProofHint:"Take a photo of the shelf / display with the item gone.", pullDoneBtn:"Done — item pulled",
   pullNeedPhoto:"Take a photo of the shelf / display first.", pullPhotoStillUploading:"Wait for the photo to finish uploading.",
@@ -1452,7 +1452,7 @@ ar:{
   pullTitle:"طلبات السحب", pullRequestBtn:"طلب سحب من الرف",
   pullModalTitle:"طلب سحب", pullAssigneeLabel:"مين لازم يسحبه", pullNoteLabel:"ملاحظة إلو", pullNotePh:"مثلاً: باقي يومين — شيله عن الرف وعن الديسبلاي",
   pullSendBtn:"إرسال الطلب", pullNoAssignee:"ما في مرشندايزر أو سوبرفايزر مسجّل لهذا الفرع.",
-  pullOpenBadge:"مفتوح", pullDoneBadge:"تم السحب", pullCancelBtn:"إلغاء الطلب وفك القفل", pullCancelConfirm:"إلغاء هذا الطلب وفك القفل عنه؟",
+  pullOpenBadge:"مفتوح", pullDoneBadge:"تم السحب", pullDeleteBtn:"حذف", pullDeleteConfirm:"حذف هذا السجل؟", pullClearAll:"مسح كل السجلات المسحوبة", pullClearConfirm:"حذف كل السجلات المسحوبة من هالقائمة؟", pullCancelBtn:"إلغاء الطلب وفك القفل", pullCancelConfirm:"إلغاء هذا الطلب وفك القفل عنه؟",
   pullLockedTitle:"مطلوب منك إجراء الآن", pullLockedSub:"المدير طلب منك تسحب الصنف التحت. باقي التطبيق مقفول لحد ما تسحبه وتصوّر الرف/الديسبلاي بعد السحب وتأكّد.",
   pullProofTitle:"صورة بعد السحب", pullProofHint:"صوّر الرف / الديسبلاي وهو فاضي من الصنف.", pullDoneBtn:"تم — سحبت الصنف",
   pullNeedPhoto:"صوّر الرف / الديسبلاي أول.", pullPhotoStillUploading:"استنى لحد ما تخلص رفع الصورة.",
@@ -5640,10 +5640,17 @@ function cancelPull(id){
     });
   }).then(function(){ toast(t("accountUpdated")); }).catch(function(err){ console.error("Cancel pull failed:", err); toast(t("pullErrToast")); });
 }
+function deletePulls(ids, msg){
+  if(!S.db || !ids.length || !confirm(msg)) return;
+  var b = S.db.batch();
+  ids.forEach(function(id){ b.delete(S.db.doc("expiry_pulls/"+id)); });
+  b.commit().then(function(){ toast(t("accountUpdated")); }).catch(function(err){ console.error("Delete pulls failed:", err); toast(t("pullErrToast")); });
+}
 function pullsCardHtml(){
   if(!S.pulls.length || !(isManagerUser() || (S.currentUser && S.currentUser.role === "supervisor"))) return "";
   var open = S.pulls.filter(function(p){ return p.status === "open"; });
-  var done = S.pulls.filter(function(p){ return p.status === "done"; }).slice(0, 6);
+  var allDone = S.pulls.filter(function(p){ return p.status === "done"; });
+  var done = allDone.slice(0, 6);
   var row = function(p){
     var isOpen = p.status === "open";
     var proofs = (p.proofs || []).map(function(x){ return '<img class="thumb-sm" src="'+esc(x.url || x.id)+'">'; }).join("");
@@ -5656,12 +5663,14 @@ function pullsCardHtml(){
         (isOpen ? '' : '<span class="hint" style="display:block;">'+t("pullPulledBy")+' '+esc((p.doneBy||{}).fullName||"—")+' · '+fmtDateTime(tsIso(p.doneAt))+'</span>') +
         (proofs ? '<div class="thumb-gallery">'+proofs+'</div>' : '') +
         ((isOpen && isManagerUser()) ? '<button type="button" class="link-btn" data-pull-cancel="'+p.id+'" style="margin-top:6px;">'+t("pullCancelBtn")+'</button>' : '') +
+        ((!isOpen && isManagerUser()) ? '<button type="button" class="link-btn" data-pull-del="'+p.id+'" style="margin-top:6px;">'+t("pullDeleteBtn")+'</button>' : '') +
       '</div>' +
       '<span class="badge '+(isOpen ? 'badge-pending' : 'badge-approved')+'">'+(isOpen ? t("pullOpenBadge") : t("pullDoneBadge"))+'</span>' +
     '</div>';
   };
   return '<div class="card"><div class="section-title">'+t("pullTitle")+'</div>' +
-    open.map(row).join("") + done.map(row).join("") + '</div>';
+    open.map(row).join("") + done.map(row).join("") +
+    ((allDone.length && isManagerUser()) ? '<button type="button" class="link-btn" data-pull-clear="1" style="margin-top:10px;">'+t("pullClearAll")+' ('+allDone.length+')</button>' : '') + '</div>';
 }
 
 function renderTrackForm(){
@@ -5982,6 +5991,14 @@ function wireTrackedDashboard(){
   });
   Array.prototype.forEach.call(document.querySelectorAll("[data-pull-new]"), function(btn){
     btn.onclick = function(){ openPullModal(this.getAttribute("data-pull-new")); };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-pull-del]"), function(btn){
+    btn.onclick = function(){ deletePulls([this.getAttribute("data-pull-del")], t("pullDeleteConfirm")); };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-pull-clear]"), function(btn){
+    btn.onclick = function(){
+      deletePulls(S.pulls.filter(function(p){ return p.status === "done"; }).map(function(p){ return p.id; }), t("pullClearConfirm"));
+    };
   });
   Array.prototype.forEach.call(document.querySelectorAll("[data-pull-cancel]"), function(btn){
     btn.onclick = function(){ cancelPull(this.getAttribute("data-pull-cancel")); };

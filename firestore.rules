@@ -239,7 +239,7 @@ service cloud.firestore {
     //  - expiry_pulls/{id}: the request. Only a manager creates or cancels it.
     //    The person it is assigned to can do ONE thing: move it from 'open'
     //    to 'done', with at least one proof photo, their own name and the
-    //    server's clock. Nobody deletes a request.
+    //    server's clock. Only a manager deletes a request, and only once it is no longer open.
     //  - pull_locks/{uid}: {n: open requests, lastClosedPull}. n > 0 locks
     //    that person's writes everywhere else (see isLocked()). The person can
     //    only lower n by exactly one, in the SAME batch that marks one of their
@@ -269,7 +269,9 @@ service cloud.firestore {
                         && request.resource.data.proofs[0].id is string
                         && request.resource.data.doneBy.userId == request.auth.uid
                         && request.resource.data.doneAt == request.time);
-      allow delete: if false;
+      // The manager can tidy up finished requests; an open one must be
+      // cancelled first so the assignee's lock count stays correct.
+      allow delete: if isManager() && resource.data.status != 'open';
     }
     match /pull_locks/{uid} {
       allow read: if isOwner(uid) || isManager();
