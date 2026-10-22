@@ -7,7 +7,7 @@
 // Messaging — all free, no billing account needed anywhere.
 //
 // Usage: node notify.js <mode>
-//   mode is one of: handover | feedback | supervisor-reminder | expiry-check | expiry-summary | merchandiser-reminder
+//   mode is one of: handover | pulls | feedback | supervisor-reminder | expiry-check | expiry-summary | merchandiser-reminder
 //
 // Required environment variable:
 //   FIREBASE_SERVICE_ACCOUNT — the full JSON key of a Firebase service
@@ -41,11 +41,12 @@ const messaging = admin.messaging();
 const MANAGER_ROLES = ["admin", "manager"];
 
 /** Returns the FCM tokens for accounts matching a role, or a list of roles (and optionally a specific userId). */
-async function getTokens({ role, userId } = {}) {
+async function getTokens({ role, userId, company } = {}) {
   let query = db.collection("fcm_tokens");
   if (Array.isArray(role)) query = query.where("role", "in", role);
   else if (role) query = query.where("role", "==", role);
   if (userId) query = query.where("userId", "==", userId);
+  if (company) query = query.where("company", "==", company);
   const snap = await query.get();
   // A phone can end up registered several times (iOS hands out new tokens), and every
   // registered token gets its own copy, so the same alert shows up 2–3 times.
@@ -313,6 +314,64 @@ async function merchandiserReminder() {
   );
 }
 
+/** Type 7 — expiry "pull requests" (manager asks a merchandiser to pull an item off the shelf).
+ *  - new request  → the assigned merchandiser AND the branch's supervisors get it at the same time
+ *                   (supervisors are only informed; nothing is locked for them).
+ *  - still open   → the merchandiser alone is reminded about once an hour until it's closed.
+ *  - just done    → managers and the branch's supervisors are told it was pulled, and by whom.
+ *  Runs inside the existing 10-minute "handover" job, so a new request can take up to
+ *  ~10-15 minutes to produce the push; the in-app lock itself is instant. */
+const PULL_REMIND_EVERY_MS = 55 * 60 * 1000;
+async function checkExpiryPulls() {
+  const now = Date.now();
+  const open = await db.collection("expiry_pulls").where("status", "==", "open").get();
+  for (const doc of open.docs) {
+    const d = doc.data();
+    const what = `${d.productName || "صنف"} — ${branchName(d.company)}`;
+    if (!d.notifiedCreate) {
+      const mine = await getTokens({ userId: d.assigneeId });
+      const sups = await getTokens({ role: "supervisor", company: d.company });
+      await sendToTokens(
+        mine, "🚨 مطلوب سحب صنف من الرف",
+        `${what}${d.note ? "\n" + d.note : ""}\nالتطبيق مقفول لحد ما تسحبه وتصوّر الرف.`,
+        { type: "expiry-pull", id: doc.id }
+      );
+      await sendToTokens(
+        sups.filter((t) => !mine.includes(t)), "📋 طلب سحب صنف (للعلم)",
+        `${what}\nالمسؤول: ${d.assigneeName || "—"}${d.note ? "\n" + d.note : ""}`,
+        { type: "expiry-pull", id: doc.id }
+      );
+      await doc.ref.update({ notifiedCreate: true, lastRemindAt: admin.firestore.Timestamp.now() });
+    } else {
+      const last = d.lastRemindAt && d.lastRemindAt.toMillis ? d.lastRemindAt.toMillis() : 0;
+      if (now - last >= PULL_REMIND_EVERY_MS) {
+        const mine = await getTokens({ userId: d.assigneeId });
+        await sendToTokens(
+          mine, "⏰ لسا ما سحبت الصنف",
+          `${what}\nالتطبيق مقفول لحد ما تسحبه وتصوّر الرف.`,
+          { type: "expiry-pull", id: doc.id }
+        );
+        await doc.ref.update({ lastRemindAt: admin.firestore.Timestamp.now() });
+      }
+    }
+  }
+  const done = await db.collection("expiry_pulls").where("status", "==", "done").where("notifiedDone", "==", false).get();
+  for (const doc of done.docs) {
+    const d = doc.data();
+    const who = (d.doneBy && d.doneBy.fullName) || d.assigneeName || "—";
+    const toks = [...new Set([
+      ...(await getTokens({ role: MANAGER_ROLES })),
+      ...(await getTokens({ role: "supervisor", company: d.company }))
+    ])];
+    await sendToTokens(
+      toks, "✅ تم سحب الصنف",
+      `${d.productName || "صنف"} — ${branchName(d.company)}\nسحبه: ${who}`,
+      { type: "expiry-pull-done", id: doc.id }
+    );
+    await doc.ref.update({ notifiedDone: true });
+  }
+}
+
 /** Test mode — sends one notification to every registered token, no
  * matter what's in the data. Use this to verify the whole pipeline
  * (service account auth → FCM send → device receives it) actually works,
@@ -341,7 +400,8 @@ const mode = process.argv[2];
 const modes = {
   // Runs every 10 minutes (notify-handover.yml): new handovers and customer feedback.
   // New expiry items are no longer announced one by one; see "expiry-summary" (once a day).
-  "handover": async () => { await checkNewHandovers(); await checkNewFeedback(); },
+  "handover": async () => { await checkNewHandovers(); await checkNewFeedback(); await checkExpiryPulls(); },
+  "pulls": checkExpiryPulls,
   "expiry-summary": sendDailyExpirySummary,
   "feedback": checkNewFeedback,
   "new-items": checkNewExpiryItems,

@@ -55,8 +55,24 @@ service cloud.firestore {
       return isSignedIn() && (!isViewer() || company in viewerCompanies());
     }
     // A viewer never writes anything.
-    function canWrite() {
+    function canWriteBase() {
       return isSignedIn() && !isViewer();
+    }
+
+    // ---- Expiry "pull requests" lock (Oct 2026) ----
+    // When the manager asks someone to pull an item off the shelf, that
+    // person's pull_locks/{uid}.n goes up by one. While n > 0 they can't write
+    // anything in the app (canWrite() below is false) until they close the
+    // request themselves with a proof photo — see expiry_pulls / pull_locks.
+    // Enforced here, on the server, so a second phone or a tampered page
+    // can't get around it.
+    function isLocked() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/pull_locks/$(request.auth.uid))
+        && get(/databases/$(database)/documents/pull_locks/$(request.auth.uid)).data.get('n', 0) > 0;
+    }
+    function canWrite() {
+      return canWriteBase() && !isLocked();
     }
 
     // ---------------- users ----------------
@@ -218,6 +234,57 @@ service cloud.firestore {
       allow delete: if isManager();
     }
 
+    // ---------------- expiry_pulls / pull_locks (Oct 2026) ----------------
+    // The manager asks a merchandiser to pull an item off the shelf/display.
+    //  - expiry_pulls/{id}: the request. Only a manager creates or cancels it.
+    //    The person it is assigned to can do ONE thing: move it from 'open'
+    //    to 'done', with at least one proof photo, their own name and the
+    //    server's clock. Nobody deletes a request.
+    //  - pull_locks/{uid}: {n: open requests, lastClosedPull}. n > 0 locks
+    //    that person's writes everywhere else (see isLocked()). The person can
+    //    only lower n by exactly one, in the SAME batch that marks one of their
+    //    own open requests 'done' (getAfter checks that).
+    function pullPath(id) {
+      return /databases/$(database)/documents/expiry_pulls/$(id);
+    }
+    match /expiry_pulls/{id} {
+      allow read: if canReadCompany(resource.data.company);
+      allow create: if isManager()
+                    && request.resource.data.status == 'open'
+                    && request.resource.data.createdBy.userId == request.auth.uid
+                    && request.resource.data.assigneeId is string
+                    // Only a merchandiser (or supervisor) can be asked to pull
+                    // something — never a manager, who would otherwise end up
+                    // locked out of the app by their own request.
+                    && get(/databases/$(database)/documents/users/$(request.resource.data.assigneeId)).data.get('role', '') in ['merchandiser', 'supervisor']
+                    && request.resource.data.createdAt == request.time;
+      allow update: if isManager()
+                    || (isOwner(resource.data.assigneeId)
+                        && resource.data.status == 'open'
+                        && request.resource.data.status == 'done'
+                        && request.resource.data.diff(resource.data).affectedKeys()
+                              .hasOnly(['status', 'proofs', 'doneAt', 'doneBy'])
+                        && request.resource.data.proofs is list
+                        && request.resource.data.proofs.size() >= 1
+                        && request.resource.data.proofs[0].id is string
+                        && request.resource.data.doneBy.userId == request.auth.uid
+                        && request.resource.data.doneAt == request.time);
+      allow delete: if false;
+    }
+    match /pull_locks/{uid} {
+      allow read: if isOwner(uid) || isManager();
+      allow create, update: if isManager();
+      allow update: if isOwner(uid)
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['n', 'lastClosedPull'])
+                    && request.resource.data.lastClosedPull is string
+                    && request.resource.data.n == resource.data.n - 1
+                    && request.resource.data.n >= 0
+                    && get(pullPath(request.resource.data.lastClosedPull)).data.status == 'open'
+                    && get(pullPath(request.resource.data.lastClosedPull)).data.assigneeId == uid
+                    && getAfter(pullPath(request.resource.data.lastClosedPull)).data.status == 'done';
+      allow delete: if false;
+    }
+
     // ---------------- delivery_shifts ----------------
     // Written by the branch delivery books. Read by managers, by the delivery
     // books themselves, and by a viewer for the delivery books ticked on its account.
@@ -370,10 +437,12 @@ service cloud.firestore {
     //  - account documents (users) are only written through their own rules (Oct 2026).
     match /{collection}/{document=**} {
       allow read: if isSignedIn()
-                  && !(collection in ['handovers', 'handover_sessions', 'handover_drafts', 'attendance_days', 'attendance_reports', 'merch_visits', 'quick_shortages', 'expiry_items', 'delivery_shifts', 'feedback', 'feedback_codes', 'feedback_rate'])
+                  && !(collection in ['handovers', 'handover_sessions', 'handover_drafts', 'attendance_days', 'attendance_reports', 'merch_visits', 'quick_shortages', 'expiry_items', 'expiry_pulls', 'pull_locks', 'delivery_shifts', 'feedback', 'feedback_codes', 'feedback_rate'])
                   && (!isViewer() || collection in ['catalog', 'settings']);
-      allow write: if canWrite()
-                   && !(collection in ['handovers', 'handover_sessions', 'handover_drafts', 'attendance_days', 'attendance_reports', 'merch_visits', 'quick_shortages', 'expiry_items', 'delivery_shifts', 'feedback', 'feedback_codes', 'feedback_rate', 'users']);
+      // fcm_tokens stays writable while someone is locked: a locked person
+      // still has to keep receiving the reminder notifications.
+      allow write: if (canWrite() || (collection == 'fcm_tokens' && canWriteBase()))
+                   && !(collection in ['handovers', 'handover_sessions', 'handover_drafts', 'attendance_days', 'attendance_reports', 'merch_visits', 'quick_shortages', 'expiry_items', 'expiry_pulls', 'pull_locks', 'delivery_shifts', 'feedback', 'feedback_codes', 'feedback_rate', 'users']);
     }
   }
 }

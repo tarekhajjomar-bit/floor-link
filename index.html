@@ -466,6 +466,14 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
 .lightbox-prev{left:10px;}
 .lightbox-next{right:10px;}
 .lightbox-by{text-align:center; padding:4px 16px calc(env(safe-area-inset-bottom,0px) + 14px); font-size:12.5px; opacity:.85;}
+/* Expiry pull request — full-screen lock shown to the person who must pull an item.
+   z-index 79: above the app, header and modals, below the photo viewers (80+) and the in-app camera. */
+.pull-lock{position:fixed; inset:0; z-index:79; background:var(--paper); color:var(--ink); overflow-y:auto; padding:calc(env(safe-area-inset-top,0px) + 16px) 16px calc(env(safe-area-inset-bottom,0px) + 28px);}
+.pull-lock-inner{max-width:560px; margin:0 auto;}
+.pull-lock-banner{display:flex; align-items:center; gap:10px; background:var(--red-tint); color:var(--red); border-radius:var(--radius-sm); padding:13px 15px; font-weight:800; font-size:15px;}
+.pull-lock-banner svg{width:20px; height:20px; flex:none;}
+.pull-img{width:84px; height:84px; border-radius:12px; object-fit:cover; background:var(--paper); border:1px solid var(--line); flex:none;}
+.pull-note{background:var(--amber-tint); color:var(--ink); border-radius:10px; padding:10px 12px; margin-top:12px; font-size:13.5px; line-height:1.55; white-space:pre-wrap;}
 .sig-strip{display:flex; gap:16px; margin-top:10px;}
 .sig-strip div{flex:1;}
 .sig-strip img{width:100%; max-height:60px; object-fit:contain; background:var(--paper); border-radius:9px; border:1px solid var(--line);}
@@ -714,7 +722,7 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
              on every deploy, purely so a build mismatch (stale cache / an
              app that hasn't actually picked up the latest deploy) can be
              told apart from an actual code bug just by reading this. -->
-        <span id="appBuild" style="display:block; font-size:10px; opacity:0.5; margin-top:2px;">build v19</span>
+        <span id="appBuild" style="display:block; font-size:10px; opacity:0.5; margin-top:2px;">build v20</span>
       </div>
     </div>
     <div class="header-controls">
@@ -1086,6 +1094,16 @@ en:{
   useManualEntry:"Enter manually instead",
   expiryProductName:"Product name", expiryProductPh:"Product name",
   expiryDateLabel:"Expiry date", expiryQtyLabel:"Quantity", expiryQtyPh:"Quantity",
+  pullTitle:"Pull requests", pullRequestBtn:"Request pull from shelf",
+  pullModalTitle:"Request pull", pullAssigneeLabel:"Who must pull it", pullNoteLabel:"Note for them", pullNotePh:"e.g. 2 days left — take it off the shelf and the display",
+  pullSendBtn:"Send request", pullNoAssignee:"No merchandiser is registered for this branch.",
+  pullOpenBadge:"Open", pullDoneBadge:"Pulled", pullCancelBtn:"Cancel request & unlock", pullCancelConfirm:"Cancel this request and unlock the app for them?",
+  pullLockedTitle:"Action required now", pullLockedSub:"The manager asked you to pull the item below. The rest of the app stays locked until you photograph the shelf/display after removing it and confirm.",
+  pullProofTitle:"Photo after pulling it", pullProofHint:"Take a photo of the shelf / display with the item gone.", pullDoneBtn:"Done — item pulled",
+  pullNeedPhoto:"Take a photo of the shelf / display first.", pullPhotoStillUploading:"Wait for the photo to finish uploading.",
+  pullSentToast:"Request sent.", pullDoneToast:"Done — thank you. The app is unlocked.", pullErrToast:"Couldn't save. Check your connection and try again.",
+  pullRequestedBy:"Requested by", pullPulledBy:"Pulled by", pullAssignedTo:"Assigned to", pullItemOpenNote:"A pull request is already open for this item.",
+  pullExpiresLabel:"Expires", pullQtyLabel:"Qty",
   expiryNotesPh:"Notes (optional)",
   saveExpiryBtn:"Save item", scanAnotherBtn:"Scan another",
   expirySaved:"Item logged.",
@@ -1431,6 +1449,16 @@ ar:{
   useManualEntry:"أدخل يدويًا بدل هيك",
   expiryProductName:"اسم المنتج", expiryProductPh:"اسم المنتج",
   expiryDateLabel:"تاريخ الصلاحية", expiryQtyLabel:"الكمية", expiryQtyPh:"الكمية",
+  pullTitle:"طلبات السحب", pullRequestBtn:"طلب سحب من الرف",
+  pullModalTitle:"طلب سحب", pullAssigneeLabel:"مين لازم يسحبه", pullNoteLabel:"ملاحظة إلو", pullNotePh:"مثلاً: باقي يومين — شيله عن الرف وعن الديسبلاي",
+  pullSendBtn:"إرسال الطلب", pullNoAssignee:"ما في مرشندايزر مسجّل لهذا الفرع.",
+  pullOpenBadge:"مفتوح", pullDoneBadge:"تم السحب", pullCancelBtn:"إلغاء الطلب وفك القفل", pullCancelConfirm:"إلغاء هذا الطلب وفك القفل عنه؟",
+  pullLockedTitle:"مطلوب منك إجراء الآن", pullLockedSub:"المدير طلب منك تسحب الصنف التحت. باقي التطبيق مقفول لحد ما تسحبه وتصوّر الرف/الديسبلاي بعد السحب وتأكّد.",
+  pullProofTitle:"صورة بعد السحب", pullProofHint:"صوّر الرف / الديسبلاي وهو فاضي من الصنف.", pullDoneBtn:"تم — سحبت الصنف",
+  pullNeedPhoto:"صوّر الرف / الديسبلاي أول.", pullPhotoStillUploading:"استنى لحد ما تخلص رفع الصورة.",
+  pullSentToast:"تم إرسال الطلب.", pullDoneToast:"تمام — شكراً. انفتح التطبيق.", pullErrToast:"ما انحفظ. تأكد من الاتصال وجرب مرة تانية.",
+  pullRequestedBy:"طلب من", pullPulledBy:"سحبه", pullAssignedTo:"المسؤول", pullItemOpenNote:"في طلب سحب مفتوح لهذا الصنف.",
+  pullExpiresLabel:"الصلاحية", pullQtyLabel:"الكمية",
   expiryNotesPh:"ملاحظات (اختياري)",
   saveExpiryBtn:"حفظ الصنف", scanAnotherBtn:"مسح صنف تاني",
   expirySaved:"تم تسجيل الصنف.",
@@ -1711,6 +1739,11 @@ var S = {
   trackForm: null,
   trackedItems: [],
   trackedItemsLoaded: false,
+  pulls: [],
+  pullsLoaded: false,
+  pullProof: {},
+  pullModal: null,
+  pullBusy: {},
   trackExpanded: {},
   trackFilters: {company:"", employee:"", category:""},
   trackContext: null,
@@ -3057,6 +3090,7 @@ function startPhotoUpload(item, rerender, onDone){
 var CAM = null, CAM_BYPASS = false;
 function camAdd(target, file){
   if(target === "merch") uploadMerchPhoto(file);
+  else if(target.indexOf("pull:") === 0) uploadPullPhoto(target.slice(5), file);
   else if(target.indexOf("orderItem:") === 0) uploadOrderItemPhoto(parseInt(target.slice(10),10), file);
   else uploadPhoto(target, file);
 }
@@ -3140,6 +3174,7 @@ document.addEventListener("click", function(e){
     title = target.indexOf("reqOut:") === 0 ? t(target.slice(7)) :
             target.indexOf("reqIn:") === 0 ? t(target.slice(6)) :
             target.indexOf("req:") === 0 ? t(target.slice(4)) :
+            target.indexOf("pull:") === 0 ? t("pullProofTitle") :
             target.indexOf("orderItem:") === 0 ? t("orderItemPhotoTitle") : t(target);
   }
   camOpen(target, title, input);
@@ -4540,6 +4575,7 @@ function watchAuthState(){
       if(snap.exists && !snap.data().disabled){
         S.currentUser = Object.assign({id:user.uid}, snap.data());
         S.db.doc("users/"+user.uid).update({lastLoginAt:new Date().toISOString()}).catch(function(){});
+        subscribePulls();   // re-attach now that we're signed in (a listener started before sign-in can have been refused)
         routeAfterAuth();
       } else if(snap.exists && snap.data().disabled){
         S.authError = t("authErrDisabled");
@@ -5384,6 +5420,247 @@ function subscribeThresholds(){
   }, function(){ S.thresholdsLoaded = true; });
 }
 
+/* ================= EXPIRY PULL REQUESTS =================
+   The manager asks a merchandiser to pull an item off the shelf/display
+   (e.g. 2 days left). The merchandiser's app is locked — full-screen, and
+   on the server too (see firestore.rules: pull_locks / isLocked()) — until
+   they photograph the shelf after pulling it and confirm. Supervisors of
+   the branch are only informed (push notification + the list below); they
+   are never locked. */
+function tsMs(v){
+  if(v && typeof v.toMillis === "function") return v.toMillis();
+  if(v && typeof v.seconds === "number") return v.seconds * 1000;
+  return Date.now();   // a just-written serverTimestamp() that hasn't come back yet
+}
+function tsIso(v){ return new Date(tsMs(v)).toISOString(); }
+
+function subscribePulls(){
+  if(!S.db) return;
+  if(S.pullsUnsub){ try{ S.pullsUnsub(); }catch(e){} S.pullsUnsub = null; }
+  S.pullsUnsub = S.db.collection("expiry_pulls").orderBy("createdAt","desc").limit(200).onSnapshot(function(snap){
+    S.pulls = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data() || {}); });
+    S.pullsLoaded = true;
+    syncPullLock();
+    if(S.currentUser && S.appMode === "expiry" && S.view === "dashboard" && !isPullLocked()) renderTrackedDashboard();
+  }, function(){ S.pullsLoaded = true; });
+}
+function myOpenPulls(){
+  if(!S.currentUser || isManagerUser()) return [];
+  return S.pulls.filter(function(p){ return p.status === "open" && p.assigneeId === S.currentUser.id; });
+}
+function isPullLocked(){ return myOpenPulls().length > 0; }
+function openPullFor(itemId){
+  return S.pulls.filter(function(p){ return p.itemId === itemId && p.status === "open"; })[0] || null;
+}
+
+/* ---- the merchandiser's locked screen ---- */
+function syncPullLock(){
+  var host = document.getElementById("pullLock");
+  var mine = myOpenPulls();
+  if(!mine.length){ if(host) host.parentNode.removeChild(host); return; }
+  if(!host){
+    host = document.createElement("div");
+    host.id = "pullLock"; host.className = "pull-lock";
+    document.body.appendChild(host);
+  }
+  var html = '<div class="pull-lock-inner">' +
+    '<div class="pull-lock-banner">'+ICONS.lock+'<span>'+t("pullLockedTitle")+'</span></div>' +
+    '<p class="section-sub" style="margin:10px 2px 14px;">'+t("pullLockedSub")+'</p>';
+  mine.forEach(function(p){
+    var proofs = S.pullProof[p.id] || [];
+    var busy = !!S.pullBusy[p.id];
+    var d = p.expiryDate ? computeDaysLeft(p.expiryDate) : null;
+    var tag = d === null ? null : daysLeftTag(d);
+    var photosHtml = proofs.map(function(x, i){
+      return '<div class="photo-thumb'+(x.pending?" up":"")+'"><img src="'+esc(x.url)+'" alt="">' +
+        (x.failed ? '<button class="retry" type="button" data-pull-retry="'+p.id+'|'+i+'" aria-label="retry">↻</button>' : '') +
+        (busy ? '' : '<button class="rm" type="button" data-pull-rm="'+p.id+'|'+i+'">'+ICONS.close+'</button>') +
+      '</div>';
+    }).join("");
+    var addHtml = (S.canWriteAssets && !busy) ?
+      '<label class="photo-add">'+ICONS.plus+'<input type="file" accept="image/*" capture="environment" multiple data-photo-add="pull:'+p.id+'"></label>' : '';
+    html += '<div class="card">' +
+      '<div style="display:flex; gap:12px; align-items:center;">' +
+        (p.image ? '<img class="pull-img" src="'+esc(p.image)+'" alt="">' : '<div class="pull-img"></div>') +
+        '<div style="flex:1; min-width:0;"><b style="font-size:15px; display:block;">'+esc(p.productName)+'</b>' +
+          '<span class="hint">'+esc(companyName(p.company))+(p.qty ? ' · '+t("pullQtyLabel")+' '+esc(p.qty) : '')+'</span>' +
+          (p.expiryDate ? '<div style="margin-top:6px;"><span class="hint">'+t("pullExpiresLabel")+': '+fmtDate(p.expiryDate)+'</span> '+(tag ? '<span class="badge '+tag.cls+'">'+tag.label+'</span>' : '')+'</div>' : '') +
+        '</div>' +
+      '</div>' +
+      (p.note ? '<div class="pull-note">'+esc(p.note)+'</div>' : '') +
+      '<p class="hint" style="margin-top:8px;">'+t("pullRequestedBy")+' '+esc((p.createdBy||{}).fullName||"—")+' · '+fmtDateTime(tsIso(p.createdAt))+'</p>' +
+      '<div class="section-title" style="margin-top:14px;">'+t("pullProofTitle")+'</div>' +
+      '<p class="hint" style="margin-bottom:8px;">'+t("pullProofHint")+'</p>' +
+      '<div class="photo-row">'+photosHtml+addHtml+'</div>' +
+      '<button type="button" class="btn btn-primary" data-pull-done="'+p.id+'" style="margin-top:14px;"'+(busy?' disabled':'')+'>'+t("pullDoneBtn")+'</button>' +
+    '</div>';
+  });
+  html += '</div>';
+  host.innerHTML = html;
+  wirePullLock(host);
+}
+function wirePullLock(host){
+  Array.prototype.forEach.call(host.querySelectorAll("input[data-photo-add]"), function(inp){
+    inp.onchange = function(){
+      var id = inp.getAttribute("data-photo-add").slice(5);
+      Array.prototype.forEach.call(inp.files || [], function(f){ uploadPullPhoto(id, f); });
+      inp.value = "";
+    };
+  });
+  Array.prototype.forEach.call(host.querySelectorAll("[data-pull-rm]"), function(btn){
+    btn.onclick = function(){
+      var raw = this.getAttribute("data-pull-rm"), sep = raw.lastIndexOf("|");
+      var arr = S.pullProof[raw.slice(0, sep)];
+      if(arr) arr.splice(parseInt(raw.slice(sep+1), 10), 1);
+      syncPullLock();
+    };
+  });
+  Array.prototype.forEach.call(host.querySelectorAll("[data-pull-retry]"), function(btn){
+    btn.onclick = function(){
+      var raw = this.getAttribute("data-pull-retry"), sep = raw.lastIndexOf("|");
+      var arr = S.pullProof[raw.slice(0, sep)] || [], item = arr[parseInt(raw.slice(sep+1), 10)];
+      if(item && item._file) startPhotoUpload(item, syncPullLock);
+    };
+  });
+  Array.prototype.forEach.call(host.querySelectorAll("[data-pull-done]"), function(btn){
+    btn.onclick = function(){ completePull(this.getAttribute("data-pull-done")); };
+  });
+}
+function uploadPullPhoto(id, file){
+  if(!S.assets) return;
+  var item = {url:URL.createObjectURL(file), id:null, pending:true, _file:file};
+  (S.pullProof[id] = S.pullProof[id] || []).push(item);
+  startPhotoUpload(item, syncPullLock);
+}
+function completePull(id){
+  if(S.pullBusy[id] || !S.db || !S.currentUser) return;
+  var arr = S.pullProof[id] || [];
+  if(arr.some(function(x){ return x.pending; })){ toast(t("pullPhotoStillUploading")); return; }
+  var proofs = arr.filter(function(x){ return x.id; }).map(function(x){ return {id:x.id, url:x.url}; });
+  if(!proofs.length){ toast(t("pullNeedPhoto")); return; }
+  var u = S.currentUser, F = firebase.firestore.FieldValue;
+  S.pullBusy[id] = true; syncPullLock();
+  // ONE batch: the request goes open → done AND the person's lock counter
+  // goes down by one. The server only accepts the counter change together
+  // with that exact status change (firestore.rules, pull_locks).
+  var batch = S.db.batch();
+  batch.update(S.db.doc("expiry_pulls/"+id), {status:"done", proofs:proofs, doneAt:F.serverTimestamp(), doneBy:{userId:u.id, fullName:u.fullName}});
+  batch.update(S.db.doc("pull_locks/"+u.id), {n:F.increment(-1), lastClosedPull:id});
+  batch.commit().then(function(){
+    delete S.pullBusy[id]; delete S.pullProof[id];
+    toast(t("pullDoneToast"));
+    syncPullLock();
+  }).catch(function(err){
+    console.error("Pull completion failed:", err);
+    delete S.pullBusy[id];
+    syncPullLock();
+    toast(t("pullErrToast"));
+  });
+}
+
+/* ---- the manager's side ---- */
+function pullCandidates(company){
+  return S.users.filter(function(u){ return u.role === "merchandiser" && !u.disabled && u.company === company; });
+}
+function openPullModal(itemId){
+  var item = S.trackedItems.filter(function(x){ return x.id === itemId; })[0];
+  if(!item || openPullFor(itemId)) return;
+  var cands = pullCandidates(item.company);
+  var scanner = (item.createdBy || {}).userId;
+  var def = cands.filter(function(u){ return u.id === scanner; })[0] || cands[0] || null;
+  S.pullModal = {itemId:itemId, assigneeId: def ? def.id : "", note:"", busy:false};
+  renderPullModal();
+}
+function closePullModal(){ S.pullModal = null; document.getElementById("modalHost").innerHTML = ""; }
+function renderPullModal(){
+  var host = document.getElementById("modalHost");
+  var m = S.pullModal;
+  if(!m){ host.innerHTML = ""; return; }
+  var item = S.trackedItems.filter(function(x){ return x.id === m.itemId; })[0];
+  if(!item){ closePullModal(); return; }
+  var cands = pullCandidates(item.company);
+  var opts = cands.map(function(u){ return '<option value="'+u.id+'"'+(m.assigneeId===u.id?" selected":"")+'>'+esc(u.fullName)+'</option>'; }).join("");
+  host.innerHTML = '<div class="modal-overlay" id="pullOverlay"><div class="modal-sheet">' +
+    '<div class="modal-head"><h2>'+t("pullModalTitle")+'</h2><button type="button" class="modal-close" id="pullCloseBtn">'+ICONS.close+'</button></div>' +
+    '<p class="hint" style="margin-bottom:12px;"><b>'+esc(item.productName)+'</b> · '+esc(companyName(item.company))+' · '+fmtDate(item.expiryDate)+'</p>' +
+    (cands.length ?
+      '<div class="field"><label>'+t("pullAssigneeLabel")+'</label><select id="pull_assignee">'+opts+'</select></div>' +
+      '<div class="field"><label>'+t("pullNoteLabel")+'</label><textarea id="pull_note" placeholder="'+esc(t("pullNotePh"))+'">'+esc(m.note)+'</textarea></div>' +
+      '<button type="button" class="btn btn-primary" id="pullSendBtn"'+(m.busy?' disabled':'')+'>'+t("pullSendBtn")+'</button>'
+      : '<p class="form-error">'+t("pullNoAssignee")+'</p>') +
+  '</div></div>';
+  document.getElementById("pullCloseBtn").onclick = closePullModal;
+  document.getElementById("pullOverlay").onclick = function(e){ if(e.target.id === "pullOverlay") closePullModal(); };
+  var sel = document.getElementById("pull_assignee"); if(sel) sel.onchange = function(){ m.assigneeId = this.value; };
+  var nt = document.getElementById("pull_note"); if(nt) nt.oninput = function(){ m.note = this.value; };
+  var send = document.getElementById("pullSendBtn"); if(send) send.onclick = submitPullRequest;
+}
+function submitPullRequest(){
+  var m = S.pullModal;
+  if(!m || m.busy || !S.db) return;
+  var item = S.trackedItems.filter(function(x){ return x.id === m.itemId; })[0];
+  var assignee = S.users.filter(function(u){ return u.id === m.assigneeId; })[0];
+  if(!item || !assignee || openPullFor(item.id)) return;
+  var u = S.currentUser, F = firebase.firestore.FieldValue;
+  m.busy = true; renderPullModal();
+  var ref = S.db.collection("expiry_pulls").doc();
+  var batch = S.db.batch();
+  batch.set(ref, {
+    itemId:item.id, productName:item.productName || "", image:item.image || "", company:item.company || "",
+    expiryDate:item.expiryDate || "", qty:String(item.qty == null ? "" : item.qty),
+    note:(m.note || "").trim(), assigneeId:assignee.id, assigneeName:assignee.fullName || "",
+    status:"open", createdBy:{userId:u.id, fullName:u.fullName}, createdAt:F.serverTimestamp(),
+    // Read and flipped only by the notification job (scripts/notify.js).
+    notifiedCreate:false, notifiedDone:false, lastRemindAt:null
+  });
+  batch.set(S.db.doc("pull_locks/"+assignee.id), {n:F.increment(1)}, {merge:true});
+  batch.commit().then(function(){
+    closePullModal(); toast(t("pullSentToast"));
+  }).catch(function(err){
+    console.error("Pull request failed:", err);
+    m.busy = false; renderPullModal(); toast(t("pullErrToast"));
+  });
+}
+function cancelPull(id){
+  if(!S.db || !confirm(t("pullCancelConfirm"))) return;
+  var u = S.currentUser, F = firebase.firestore.FieldValue;
+  var pr = S.db.doc("expiry_pulls/"+id);
+  S.db.runTransaction(function(tx){
+    return tx.get(pr).then(function(ps){
+      if(!ps.exists || ps.data().status !== "open") return;     // already done/cancelled — nothing to unlock
+      var lr = S.db.doc("pull_locks/"+ps.data().assigneeId);
+      return tx.get(lr).then(function(ls){
+        var n = (ls.exists && ls.data().n) || 0;
+        tx.update(pr, {status:"cancelled", cancelledAt:F.serverTimestamp(), cancelledBy:{userId:u.id, fullName:u.fullName}});
+        tx.set(lr, {n:Math.max(0, n-1)}, {merge:true});
+      });
+    });
+  }).then(function(){ toast(t("accountUpdated")); }).catch(function(err){ console.error("Cancel pull failed:", err); toast(t("pullErrToast")); });
+}
+function pullsCardHtml(){
+  if(!S.pulls.length || !(isManagerUser() || (S.currentUser && S.currentUser.role === "supervisor"))) return "";
+  var open = S.pulls.filter(function(p){ return p.status === "open"; });
+  var done = S.pulls.filter(function(p){ return p.status === "done"; }).slice(0, 6);
+  var row = function(p){
+    var isOpen = p.status === "open";
+    var proofs = (p.proofs || []).map(function(x){ return '<img class="thumb-sm" src="'+esc(x.url || x.id)+'">'; }).join("");
+    return '<div class="alert-row" style="align-items:flex-start;">' +
+      (p.image ? '<img class="item-thumb" src="'+esc(p.image)+'" data-img-zoom="'+esc(p.image)+'">' : '<div class="item-thumb"></div>') +
+      '<div style="flex:1; min-width:0;"><b style="font-size:13px; display:block;">'+esc(p.productName)+'</b>' +
+        '<span class="hint">'+esc(companyName(p.company))+' · '+t("pullAssignedTo")+': '+esc(p.assigneeName||"—")+'</span>' +
+        (p.note ? '<span class="hint" style="display:block;">'+esc(p.note)+'</span>' : '') +
+        '<span class="hint" style="display:block;">'+t("pullRequestedBy")+' '+esc((p.createdBy||{}).fullName||"—")+' · '+fmtDateTime(tsIso(p.createdAt))+'</span>' +
+        (isOpen ? '' : '<span class="hint" style="display:block;">'+t("pullPulledBy")+' '+esc((p.doneBy||{}).fullName||"—")+' · '+fmtDateTime(tsIso(p.doneAt))+'</span>') +
+        (proofs ? '<div class="thumb-gallery">'+proofs+'</div>' : '') +
+        ((isOpen && isManagerUser()) ? '<button type="button" class="link-btn" data-pull-cancel="'+p.id+'" style="margin-top:6px;">'+t("pullCancelBtn")+'</button>' : '') +
+      '</div>' +
+      '<span class="badge '+(isOpen ? 'badge-pending' : 'badge-approved')+'">'+(isOpen ? t("pullOpenBadge") : t("pullDoneBadge"))+'</span>' +
+    '</div>';
+  };
+  return '<div class="card"><div class="section-title">'+t("pullTitle")+'</div>' +
+    open.map(row).join("") + done.map(row).join("") + '</div>';
+}
+
 function renderTrackForm(){
   var locked = S.currentUser && (S.currentUser.role === "merchandiser" || S.currentUser.role === "supervisor") && S.currentUser.company;
   if(locked && S.trackContext.company !== S.currentUser.company){
@@ -5462,7 +5739,7 @@ function complianceReport(periodDays){
 }
 
 function renderTrackedDashboard(){
-  var html = "";
+  var html = pullsCardHtml();
 
   if(isManagerUser() || isViewerUser()){
     var eList = alertItems();
@@ -5639,6 +5916,9 @@ function trackedItemCard(l){
     }
 
     if(isManagerUser()){
+      body += openPullFor(l.id) ?
+        '<p class="hint" style="margin-top:10px;">'+t("pullItemOpenNote")+'</p>' :
+        '<button type="button" class="btn btn-secondary" data-pull-new="'+l.id+'" style="margin-top:10px;">'+t("pullRequestBtn")+'</button>';
       body += '<button type="button" class="btn btn-danger" data-delete-track="'+l.id+'" style="margin-top:10px;">'+ICONS.trash+' '+t("deleteProductBtn")+'</button>';
     }
     body += '</div>';
@@ -5696,6 +5976,12 @@ function wireTrackedDashboard(){
   });
   Array.prototype.forEach.call(document.querySelectorAll("[data-delete-track]"), function(btn){
     btn.onclick = function(){ requestDelete("expiry_items", this.getAttribute("data-delete-track"), true); };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-pull-new]"), function(btn){
+    btn.onclick = function(){ openPullModal(this.getAttribute("data-pull-new")); };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-pull-cancel]"), function(btn){
+    btn.onclick = function(){ cancelPull(this.getAttribute("data-pull-cancel")); };
   });
   Array.prototype.forEach.call(document.querySelectorAll("[data-update-category]"), function(btn){
     btn.onclick = function(){
@@ -6852,6 +7138,7 @@ function renderMerchJobDesc(){
 }
 
 function render(){
+  syncPullLock();
   updateAuthChrome();
   updateNotifBanner();
   updateVerifyEmailBanner();
@@ -7114,6 +7401,7 @@ function boot(){
     subscribeMerchLogs();
     subscribeUsers();
     subscribeTrackedItems();
+    subscribePulls();
     subscribeQuickShortages();
     subscribeOpenHandoverSessions();
     subscribeActivityLog();
