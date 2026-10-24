@@ -722,7 +722,7 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
              on every deploy, purely so a build mismatch (stale cache / an
              app that hasn't actually picked up the latest deploy) can be
              told apart from an actual code bug just by reading this. -->
-        <span id="appBuild" style="display:block; font-size:10px; opacity:0.5; margin-top:2px;">build v22</span>
+        <span id="appBuild" style="display:block; font-size:10px; opacity:0.5; margin-top:2px;">build v23</span>
       </div>
     </div>
     <div class="header-controls">
@@ -1745,6 +1745,7 @@ var S = {
   pullModal: null,
   pullBusy: {},
   trackExpanded: {},
+  alertExpanded: {},
   trackFilters: {company:"", employee:"", category:""},
   trackContext: null,
   quickShortages: [],
@@ -5760,16 +5761,9 @@ function renderTrackedDashboard(){
     if(!eList.length){
       html += '<p class="section-sub" style="margin-top:6px;">'+t("noAlertsNow")+'</p>';
     } else {
-      html += eList.map(function(l){
-        var d = computeDaysLeft(l.expiryDate);
-        var tag = daysLeftTag(d);
-        return '<div class="alert-row">' +
-          (l.image ? '<img class="item-thumb" src="'+esc(l.image)+'" data-img-zoom="'+esc(l.image)+'">' : '<div class="item-thumb"></div>') +
-          '<div style="flex:1; min-width:0;"><b style="font-size:13px; display:block;">'+esc(l.productName)+'</b>' +
-          '<span class="hint">'+esc(companyName(l.company))+' · '+esc(l.qty)+'</span></div>' +
-          '<span class="badge '+tag.cls+'">'+tag.label+'</span>' +
-        '</div>';
-      }).join("");
+      // Same card as the full list below, so an item that is about to expire can be
+      // opened, updated, pulled or deleted right here without scrolling.
+      html += eList.map(function(l){ return trackedItemCard(l, true); }).join("");
     }
     html += '</div>';
   }
@@ -5887,11 +5881,11 @@ function renderTrackedDashboard(){
   wireTrackedDashboard();
 }
 
-function trackedItemCard(l){
-  var open = !!S.trackExpanded[l.id];
+function trackedItemCard(l, inAlerts){
+  var open = !!(inAlerts ? S.alertExpanded : S.trackExpanded)[l.id];
   var d = computeDaysLeft(l.expiryDate);
   var tag = daysLeftTag(d);
-  var head = '<div class="log-head" data-ttoggle="'+l.id+'">' +
+  var head = '<div class="log-head" '+(inAlerts ? 'data-atoggle' : 'data-ttoggle')+'="'+l.id+'">' +
     (l.image ? '<img class="item-thumb" src="'+esc(l.image)+'" data-img-zoom="'+esc(l.image)+'">' : '<div class="item-thumb"></div>') +
     '<div class="info" style="flex:1; min-width:0;">' +
       '<b>'+esc(l.productName)+'</b>' +
@@ -5917,13 +5911,13 @@ function trackedItemCard(l){
     body += '</div>';
 
     if(!isViewerUser()){
-    body += '<div class="field" style="margin-top:10px;"><input type="text" placeholder="'+t("newQtyPh")+'" id="qty_'+l.id+'"></div>';
+    body += '<div class="field" style="margin-top:10px;"><input type="text" placeholder="'+t("newQtyPh")+'" data-qty-input="1"></div>';
     body += '<button type="button" class="btn btn-secondary" data-update-qty="'+l.id+'">'+t("updateQtyBtn")+'</button>';
 
     var catOpts = '<option value="">'+t("uncategorizedLabel")+'</option>' + MERCH_DEPARTMENTS.map(function(d){
       return '<option value="'+d.id+'"'+(l.category===d.id?" selected":"")+'>'+esc(S.lang==="ar"?d.ar:d.en)+'</option>';
     }).join("");
-    body += '<div class="field" style="margin-top:10px;"><label>'+t("categoryLabel")+'</label><select id="cat_'+l.id+'">'+catOpts+'</select></div>';
+    body += '<div class="field" style="margin-top:10px;"><label>'+t("categoryLabel")+'</label><select data-cat-input="1">'+catOpts+'</select></div>';
     body += '<button type="button" class="btn btn-secondary" data-update-category="'+l.id+'">'+t("changeCategoryBtn")+'</button>';
     }
 
@@ -5971,10 +5965,17 @@ function wireTrackedDashboard(){
       renderTrackedDashboard();
     };
   });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-atoggle]"), function(el){
+    el.onclick = function(){
+      var id = this.getAttribute("data-atoggle");
+      S.alertExpanded[id] = !S.alertExpanded[id];
+      renderTrackedDashboard();
+    };
+  });
   Array.prototype.forEach.call(document.querySelectorAll("[data-update-qty]"), function(btn){
     btn.onclick = function(){
       var id = this.getAttribute("data-update-qty");
-      var inp = document.getElementById("qty_"+id);
+      var inp = this.closest(".log-card").querySelector("[data-qty-input]");
       var newQty = inp.value.trim();
       if(!newQty) return;
       var user = S.currentUser;
@@ -6006,7 +6007,7 @@ function wireTrackedDashboard(){
   Array.prototype.forEach.call(document.querySelectorAll("[data-update-category]"), function(btn){
     btn.onclick = function(){
       var id = this.getAttribute("data-update-category");
-      var sel = document.getElementById("cat_"+id);
+      var sel = this.closest(".log-card").querySelector("[data-cat-input]");
       var newCat = sel.value;
       var user = S.currentUser;
       var who = {userId: user ? user.id : null, username: (user ? user.username : "") || "", fullName: user ? user.fullName : ""};
