@@ -722,7 +722,7 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
              on every deploy, purely so a build mismatch (stale cache / an
              app that hasn't actually picked up the latest deploy) can be
              told apart from an actual code bug just by reading this. -->
-        <span id="appBuild" style="display:block; font-size:10px; opacity:0.5; margin-top:2px;">build v25</span>
+        <span id="appBuild" style="display:block; font-size:10px; opacity:0.5; margin-top:2px;">build v26</span>
       </div>
     </div>
     <div class="header-controls">
@@ -829,11 +829,12 @@ en:{
   closingChecklistTitle:"Closing checklist", closingChecklistSub:"Required confirmation before closing.",
   closingCheckLabel:"Confirmed and checked all \"مرتديل\" and \"كعوب\" molds/tags — all carry valid dates.",
   closingCheckMissing:"Please confirm the closing checklist before submitting.",
-  counterTitle:"Deli counter employee — appearance", counterSub:"The employee at the dairy, cheese & cold-cuts fridge. Required.",
+  counterTitle:"Deli counter employee — appearance", counterSub:"The employees at the dairy, cheese & cold-cuts fridge. Employee 1 is required; add more if there are more.",
   counterName:"Employee name", counterShaved:"Beard shaved", counterHair:"Hair / braid clean and tied", counterUniform:"Uniform (apron) clean",
   counterNoteLabel:"What is wrong, and what was done about it?", counterInOnly:"The incoming supervisor fills this in.",
-  counterMissing:"Please complete the deli counter employee check (name and all three answers).",
+  counterMissing:"Please complete the deli counter check: employee 1 (name and all three answers), and any other employee you started.",
   counterNoteMissing:"Deli counter employee: please explain what is wrong.",
+  counterEmployee:"Employee", counterOptional:"Optional", counterAdd:"Add another employee", counterRemove:"Remove",
   delReqBtn:"Request deletion", delReqTitle:"Request to delete this item", delReqSub:"Pick the reason. The manager will approve it and the item will then be removed.",
   delReqSold:"Sold out / finished", delReqGone:"No longer available / not sold anymore", delReqMistake:"Scanned by mistake / duplicate",
   delReqSend:"Send request", delReqSent:"Request sent to the manager.", delReqPick:"Please pick a reason.",
@@ -1195,11 +1196,12 @@ ar:{
   closingChecklistTitle:"قائمة فحص الإغلاق", closingChecklistSub:"تأكيد إلزامي قبل الإغلاق.",
   closingCheckLabel:"تم التأكيد والفحص على كل قوالب المرتديل والكعوب — كلها عليها تواريخ صحيحة.",
   closingCheckMissing:"يرجى تأكيد قائمة فحص الإغلاق قبل الإرسال.",
-  counterTitle:"مظهر موظف براد الألبان والأجبان والشركاتية", counterSub:"الموظف الموجود على براد الألبان والأجبان والشركاتية. إلزامي.",
+  counterTitle:"مظهر موظف براد الألبان والأجبان والشركاتية", counterSub:"الموظفين على براد الألبان والأجبان والشركاتية. الموظف الأول إلزامي، وأضف غيره إذا في أكتر.",
   counterName:"اسم الموظف", counterShaved:"حالق ذقنه", counterHair:"الشعر / الضفيرة نظيفة ومرتّبة", counterUniform:"الزي (المريول) نظيف",
   counterNoteLabel:"شو المشكلة وشو عملت فيها؟", counterInOnly:"سوبرفايزر الاستلام (الجاي) هو يلي بيعبّي هالقسم.",
-  counterMissing:"يرجى تعبئة فحص موظف البراد (الاسم والأجوبة الثلاثة).",
+  counterMissing:"يرجى تعبئة فحص موظفي البراد: الموظف الأول (الاسم والأجوبة الثلاثة) وأي موظف تاني بدأت فيه.",
   counterNoteMissing:"موظف البراد: يرجى كتابة شو المشكلة.",
+  counterEmployee:"الموظف", counterOptional:"اختياري", counterAdd:"إضافة موظف آخر", counterRemove:"حذف",
   delReqBtn:"طلب حذف", delReqTitle:"طلب حذف هالصنف", delReqSub:"اختار السبب. المدير بيوافق وبعدها بينحذف الصنف.",
   delReqSold:"انباع / خلص", delReqGone:"ما عاد موجود / ما عاد نبيعه", delReqMistake:"انعمل له سكان بالغلط / مكرر",
   delReqSend:"إرسال الطلب", delReqSent:"انبعت الطلب للمدير.", delReqPick:"يرجى اختيار السبب.",
@@ -1719,12 +1721,27 @@ var COUNTER_ITEMS = [
   {key:"hair", labelKey:"counterHair"},
   {key:"uniform", labelKey:"counterUniform"}
 ];
-// Opening and afternoon handover only (not closing). Missing = null.
+// Opening and afternoon handover only (not closing). Missing answer = null.
+// Several people work the counter each shift: staff[] holds one entry per person
+// (the first is required; further ones are optional but must be complete if started).
+function counterBlank(){ return {name:"", shaved:null, hair:null, uniform:null, note:""}; }
 function counterNeeded(f){ return f.entryType === "opening" || f.entryType === "handover"; }
-function counterAnyNo(f){ var c = f.counterCheck; return !!c && COUNTER_ITEMS.some(function(i){ return c[i.key] === false; }); }
-function counterComplete(f){
+function counterStaff(f){
   var c = f.counterCheck;
-  return !!c && (c.name||"").trim() && COUNTER_ITEMS.every(function(i){ return c[i.key] === true || c[i.key] === false; });
+  if(!c || !Array.isArray(c.staff)){
+    // older single-person shape (or nothing yet) -> convert in place
+    f.counterCheck = {staff: [c && c.name !== undefined ? c : counterBlank(), counterBlank()]};
+  }
+  while(f.counterCheck.staff.length < 2) f.counterCheck.staff.push(counterBlank());
+  return f.counterCheck.staff;
+}
+function counterRowStarted(r){ return !!((r.name||"").trim() || COUNTER_ITEMS.some(function(i){ return r[i.key] === true || r[i.key] === false; })); }
+function counterRowComplete(r){ return !!(r.name||"").trim() && COUNTER_ITEMS.every(function(i){ return r[i.key] === true || r[i.key] === false; }); }
+function counterRowHasNo(r){ return COUNTER_ITEMS.some(function(i){ return r[i.key] === false; }); }
+function counterAnyNo(f){ return counterStaff(f).some(counterRowHasNo); }
+function counterComplete(f){
+  var st = counterStaff(f);
+  return counterRowComplete(st[0]) && st.slice(1).every(function(r){ return !counterRowStarted(r) || counterRowComplete(r); });
 }
 var REQUIRED_CHECKLIST_ITEMS = [
   {key:"arranged", labelKey:"reqCheckArranged"},
@@ -1829,7 +1846,7 @@ function freshForm(){
     pending:{notes:"", urgent:false},
     staffNotes:"",
     closingCheck:false,
-    counterCheck:{name:"", shaved:null, hair:null, uniform:null, note:""},
+    counterCheck:{staff:[{name:"", shaved:null, hair:null, uniform:null, note:""},{name:"", shaved:null, hair:null, uniform:null, note:""}]},
     // Solo (opening/closing) entries use the single shared set below.
     // Handover entries instead use the split Out/In sets further down —
     // each supervisor fills in their own, independently, from their own
@@ -2805,25 +2822,33 @@ function renderForm(){
   if(counterNeeded(f)){
     // Solo opening: the supervisor fills it. Handover: only the INCOMING supervisor
     // does (it syncs to the other phone like the rest of their fields).
-    var cc = f.counterCheck, canCounter = f.entryType === "opening" || myReqRole() === "in";
-    var ynBtn = function(k, val){
-      var v = cc[k];
-      return '<div class="chip-row" style="gap:6px;">' +
-        '<button type="button" class="chip chip-yn chip-ok'+(v===true?" sel":"")+'"'+(canCounter?' data-counter="'+k+'|yes"':' disabled')+'>'+t("yesLabel")+'</button>' +
-        '<button type="button" class="chip chip-yn chip-issue'+(v===false?" sel":"")+'"'+(canCounter?' data-counter="'+k+'|no"':' disabled')+'>'+t("noLabel")+'</button>' +
-      '</div>';
-    };
+    var staff = counterStaff(f), canCounter = f.entryType === "opening" || myReqRole() === "in";
     html += '<div class="card">' +
       '<div class="section-title">'+t("counterTitle")+' <span class="req-tag">'+t("requiredTag")+'</span></div>' +
-      '<div class="section-sub">'+t("counterSub")+(canCounter ? "" : " "+t("counterInOnly"))+'</div>' +
-      '<div class="field"><label>'+t("counterName")+'</label><input type="text" id="f_counterName" value="'+esc(cc.name)+'"'+(canCounter?'':' disabled')+'></div>' +
-      '<div class="check-list">' +
-      COUNTER_ITEMS.map(function(i){
-        return '<div class="check-row"><span class="check-row-label">'+t(i.labelKey)+'</span>'+ynBtn(i.key)+'</div>';
-      }).join("") +
-      '</div>' +
-      (counterAnyNo(f) ? '<div class="field" style="margin-top:10px;"><label>'+t("counterNoteLabel")+'</label><textarea id="f_counterNote"'+(canCounter?'':' disabled')+'>'+esc(cc.note)+'</textarea></div>' : '') +
-    '</div>';
+      '<div class="section-sub">'+t("counterSub")+(canCounter ? "" : " "+t("counterInOnly"))+'</div>';
+    staff.forEach(function(r, i){
+      var yn = function(k){
+        return '<div class="chip-row" style="gap:6px;">' +
+          '<button type="button" class="chip chip-yn chip-ok'+(r[k]===true?" sel":"")+'"'+(canCounter?' data-counter="'+i+'|'+k+'|yes"':' disabled')+'>'+t("yesLabel")+'</button>' +
+          '<button type="button" class="chip chip-yn chip-issue'+(r[k]===false?" sel":"")+'"'+(canCounter?' data-counter="'+i+'|'+k+'|no"':' disabled')+'>'+t("noLabel")+'</button>' +
+        '</div>';
+      };
+      html += '<div class="req-block"><div class="req-block-head"><h3>'+t("counterEmployee")+' '+(i+1)+'</h3>' +
+          '<span class="req-tag">'+(i === 0 ? t("requiredTag") : t("counterOptional"))+'</span>' +
+          ((canCounter && i >= 2) ? '<button type="button" class="link-btn" data-counter-rm="'+i+'">'+t("counterRemove")+'</button>' : '') + '</div>' +
+        '<div class="field"><label>'+t("counterName")+'</label><input type="text" data-counter-name="'+i+'" value="'+esc(r.name)+'"'+(canCounter?'':' disabled')+'></div>' +
+        '<div class="check-list">' +
+        COUNTER_ITEMS.map(function(it){
+          return '<div class="check-row"><span class="check-row-label">'+t(it.labelKey)+'</span>'+yn(it.key)+'</div>';
+        }).join("") +
+        '</div>' +
+        (counterRowHasNo(r) ? '<div class="field" style="margin-top:10px;"><label>'+t("counterNoteLabel")+'</label><textarea data-counter-note="'+i+'"'+(canCounter?'':' disabled')+'>'+esc(r.note)+'</textarea></div>' : '') +
+      '</div>';
+    });
+    if(canCounter && staff.length < 6){
+      html += '<button type="button" class="btn btn-secondary" data-counter-add="1">'+ICONS.plus+' '+t("counterAdd")+'</button>';
+    }
+    html += '</div>';
   }
 
   if(f.entryType === "closing"){
@@ -2956,14 +2981,22 @@ function wireForm(){
   Array.prototype.forEach.call(document.querySelectorAll("[data-counter]"), function(btn){
     btn.onclick = function(){
       var p = this.getAttribute("data-counter").split("|");
-      f.counterCheck[p[0]] = (p[1] === "yes");
+      counterStaff(f)[parseInt(p[0],10)][p[1]] = (p[2] === "yes");
       saveFormDraft(); renderForm();
     };
   });
-  var cnEl = document.getElementById("f_counterName");
-  if(cnEl) cnEl.oninput = function(){ f.counterCheck.name = this.value; saveFormDraft(); };
-  var cnoteEl = document.getElementById("f_counterNote");
-  if(cnoteEl) cnoteEl.oninput = function(){ f.counterCheck.note = this.value; saveFormDraft(); };
+  Array.prototype.forEach.call(document.querySelectorAll("[data-counter-name]"), function(inp){
+    inp.oninput = function(){ counterStaff(f)[parseInt(this.getAttribute("data-counter-name"),10)].name = this.value; saveFormDraft(); };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-counter-note]"), function(ta){
+    ta.oninput = function(){ counterStaff(f)[parseInt(this.getAttribute("data-counter-note"),10)].note = this.value; saveFormDraft(); };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-counter-add]"), function(btn){
+    btn.onclick = function(){ counterStaff(f).push(counterBlank()); saveFormDraft(); renderForm(); };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-counter-rm]"), function(btn){
+    btn.onclick = function(){ counterStaff(f).splice(parseInt(this.getAttribute("data-counter-rm"),10), 1); saveFormDraft(); renderForm(); };
+  });
   Array.prototype.forEach.call(document.querySelectorAll("[data-reqcheck]"), function(btn){
     btn.onclick = function(){
       var parts = this.getAttribute("data-reqcheck").split("|");
@@ -3399,7 +3432,7 @@ function submitHandover(){
   }
   if(counterNeeded(f)){
     if(!counterComplete(f)){ toast(t("counterMissing")); return; }
-    if(counterAnyNo(f) && !(f.counterCheck.note||"").trim()){ toast(t("counterNoteMissing")); return; }
+    if(counterStaff(f).some(function(r){ return counterRowHasNo(r) && !(r.note||"").trim(); })){ toast(t("counterNoteMissing")); return; }
   }
   if(f.entryType === "closing" && !f.closingCheck){
     toast(t("closingCheckMissing"));
@@ -3541,7 +3574,7 @@ function submitHandoverAfterSigs(f, isHandover){
       pending: {notes: f.pending.notes.trim(), urgent: !!f.pending.urgent},
       staffNotes: f.staffNotes.trim(),
       closingCheck: f.entryType === "closing" ? !!f.closingCheck : false,
-      counterCheck: counterNeeded(f) ? {name: f.counterCheck.name.trim(), shaved: f.counterCheck.shaved, hair: f.counterCheck.hair, uniform: f.counterCheck.uniform, note: (f.counterCheck.note||"").trim()} : null,
+      counterCheck: counterNeeded(f) ? {staff: counterStaff(f).filter(counterRowStarted).map(function(r){ return {name: r.name.trim(), shaved: r.shaved, hair: r.hair, uniform: r.uniform, note: (r.note||"").trim()}; })} : null,
       requiredPhotos: isHandover ? null : packReqPhotoIds(f.requiredPhotos),
       requiredNotes: isHandover ? null : packNoteSet(f.requiredNotes, REQUIRED_NOTE_KEYS),
       requiredPhotosOut: isHandover ? packPhotoSet(f.requiredPhotosOut, HANDOVER_OUT_PHOTO_KEYS) : null,
@@ -3800,11 +3833,14 @@ function logCard(l){
         '<p class="log-note">'+esc(l.staffNotes)+'</p></div>';
     }
     if(l.counterCheck){
-      var lc = l.counterCheck, lcBad = COUNTER_ITEMS.some(function(i){ return lc[i.key] === false; });
+      var lcStaff = Array.isArray(l.counterCheck.staff) ? l.counterCheck.staff : [l.counterCheck];
+      var lcBad = lcStaff.some(function(r){ return COUNTER_ITEMS.some(function(i){ return r[i.key] === false; }); });
       body += '<div class="log-cat"><div class="log-cat-head"><b>'+t("counterTitle")+'</b>' + (lcBad ? statusBadge("issues") : statusBadge("approved")) + '</div>' +
-        '<p class="log-note">'+t("counterName")+': '+esc(lc.name||"—")+'</p>' +
-        COUNTER_ITEMS.map(function(i){ return '<p class="log-note">'+(lc[i.key] === true ? "✓" : "✗")+' '+t(i.labelKey)+'</p>'; }).join("") +
-        (lc.note ? '<p class="log-note">'+esc(lc.note)+'</p>' : '') + '</div>';
+        lcStaff.map(function(r, i){
+          return '<p class="log-note"><b>'+t("counterEmployee")+' '+(i+1)+': '+esc(r.name||"—")+'</b></p>' +
+            COUNTER_ITEMS.map(function(it){ return '<p class="log-note">'+(r[it.key] === true ? "✓" : "✗")+' '+t(it.labelKey)+'</p>'; }).join("") +
+            (r.note ? '<p class="log-note">'+esc(r.note)+'</p>' : '');
+        }).join("") + '</div>';
     }
     if((l.entryType || l.shiftType) === "closing"){
       body += '<div class="log-cat"><div class="log-cat-head"><b>'+t("closingChecklistTitle")+'</b>' +
