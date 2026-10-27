@@ -229,7 +229,18 @@ service cloud.firestore {
       allow update: if isManager()
                     || (canWrite()
                         && !request.resource.data.diff(resource.data)
-                              .affectedKeys().hasAny(['status', 'deletedInfo']));
+                              .affectedKeys().hasAny(['status', 'deletedInfo', 'deleteRequest', 'deleteRequestPending']))
+                    // A supervisor can ASK for an item to be deleted (reason + their
+                    // own name), once; only a manager approves (deletes) or rejects it.
+                    || (canWrite() && myRole() == 'supervisor'
+                        && canReadCompany(resource.data.company)
+                        && !('deleteRequest' in resource.data)
+                        && request.resource.data.diff(resource.data).affectedKeys()
+                              .hasOnly(['deleteRequest', 'deleteRequestPending', 'history'])
+                        && request.resource.data.deleteRequest.by.userId == request.auth.uid
+                        && request.resource.data.deleteRequest.reason in ['sold', 'gone', 'mistake']
+                        && request.resource.data.deleteRequest.at is string
+                        && request.resource.data.deleteRequestPending == true);
 
       allow delete: if isManager();
     }
