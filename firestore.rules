@@ -205,7 +205,7 @@ service cloud.firestore {
                          ||
                          (request.auth.uid == resource.data.incomingUserId &&
                           request.resource.data.draft.diff(resource.data.get('draft', {})).affectedKeys()
-                            .hasOnly(['requiredPhotosIn','requiredNotesIn','incomingSig','ackIn','cash','inventory','cleanliness','pending','staffNotes','closingCheck','date','time']))
+                            .hasOnly(['requiredPhotosIn','requiredNotesIn','incomingSig','ackIn','counterCheck','cash','inventory','cleanliness','pending','staffNotes','closingCheck','date','time']))
                        );
 
       // Either participant can delete — cleanup once the handover is
