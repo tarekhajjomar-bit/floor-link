@@ -722,7 +722,7 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
              on every deploy, purely so a build mismatch (stale cache / an
              app that hasn't actually picked up the latest deploy) can be
              told apart from an actual code bug just by reading this. -->
-        <span id="appBuild" style="display:block; font-size:10px; opacity:0.5; margin-top:2px;">build v24</span>
+        <span id="appBuild" style="display:block; font-size:10px; opacity:0.5; margin-top:2px;">build v25</span>
       </div>
     </div>
     <div class="header-controls">
@@ -834,6 +834,12 @@ en:{
   counterNoteLabel:"What is wrong, and what was done about it?", counterInOnly:"The incoming supervisor fills this in.",
   counterMissing:"Please complete the deli counter employee check (name and all three answers).",
   counterNoteMissing:"Deli counter employee: please explain what is wrong.",
+  delReqBtn:"Request deletion", delReqTitle:"Request to delete this item", delReqSub:"Pick the reason. The manager will approve it and the item will then be removed.",
+  delReqSold:"Sold out / finished", delReqGone:"No longer available / not sold anymore", delReqMistake:"Scanned by mistake / duplicate",
+  delReqSend:"Send request", delReqSent:"Request sent to the manager.", delReqPick:"Please pick a reason.",
+  delReqPending:"Deletion requested", delReqBy:"by", delReqWaiting:"waiting for the manager's approval",
+  delReqCardTitle:"Deletion requests", delReqApprove:"Approve & delete", delReqReject:"Reject", delReqRejectConfirm:"Reject this request? The item stays.",
+  historyDelReq:"Deletion requested", historyDelRejected:"Deletion request rejected",
   statusOk:"All clear", statusIssue:"Issue found",
   notesPh:"Add notes for the next shift…",
   urgentPh:"Describe any urgent or unresolved issue…",
@@ -1194,6 +1200,12 @@ ar:{
   counterNoteLabel:"شو المشكلة وشو عملت فيها؟", counterInOnly:"سوبرفايزر الاستلام (الجاي) هو يلي بيعبّي هالقسم.",
   counterMissing:"يرجى تعبئة فحص موظف البراد (الاسم والأجوبة الثلاثة).",
   counterNoteMissing:"موظف البراد: يرجى كتابة شو المشكلة.",
+  delReqBtn:"طلب حذف", delReqTitle:"طلب حذف هالصنف", delReqSub:"اختار السبب. المدير بيوافق وبعدها بينحذف الصنف.",
+  delReqSold:"انباع / خلص", delReqGone:"ما عاد موجود / ما عاد نبيعه", delReqMistake:"انعمل له سكان بالغلط / مكرر",
+  delReqSend:"إرسال الطلب", delReqSent:"انبعت الطلب للمدير.", delReqPick:"يرجى اختيار السبب.",
+  delReqPending:"مطلوب حذفه", delReqBy:"من", delReqWaiting:"بانتظار موافقة المدير",
+  delReqCardTitle:"طلبات الحذف", delReqApprove:"موافقة وحذف", delReqReject:"رفض", delReqRejectConfirm:"رفض هالطلب؟ الصنف بيضل.",
+  historyDelReq:"طلب حذف", historyDelRejected:"انرفض طلب الحذف",
   statusOk:"لا توجد ملاحظات", statusIssue:"توجد مشكلة",
   notesPh:"أضف ملاحظات للوردية القادمة…",
   urgentPh:"صف أي مشكلة عاجلة أو غير محلولة…",
@@ -5823,7 +5835,7 @@ function complianceReport(periodDays){
 }
 
 function renderTrackedDashboard(){
-  var html = pullsCardHtml();
+  var html = delReqCardHtml() + pullsCardHtml();
 
   if(isManagerUser() || isViewerUser()){
     var eList = alertItems();
@@ -5952,6 +5964,86 @@ function renderTrackedDashboard(){
   wireTrackedDashboard();
 }
 
+/* ---- Deletion requests: a supervisor asks, the manager approves ---- */
+var DEL_REASONS = [
+  {id:"sold", labelKey:"delReqSold"},
+  {id:"gone", labelKey:"delReqGone"},
+  {id:"mistake", labelKey:"delReqMistake"}
+];
+function isSupervisorUser(){ return !!(S.currentUser && S.currentUser.role === "supervisor"); }
+function delReasonLabel(id){ var r = DEL_REASONS.filter(function(x){ return x.id === id; })[0]; return r ? t(r.labelKey) : (id || "—"); }
+function openDelReqModal(id){
+  S.delReq = {id:id, reason:""};
+  renderDelReqModal();
+}
+function closeDelReqModal(){ S.delReq = null; document.getElementById("modalHost").innerHTML = ""; }
+function renderDelReqModal(){
+  var host = document.getElementById("modalHost");
+  if(!S.delReq){ host.innerHTML = ""; return; }
+  var item = S.trackedItems.filter(function(x){ return x.id === S.delReq.id; })[0];
+  host.innerHTML = '<div class="modal-overlay" id="drOverlay"><div class="modal-sheet">' +
+    '<div class="modal-head"><h2>'+t("delReqTitle")+'</h2><button type="button" class="modal-close" id="drClose">'+ICONS.close+'</button></div>' +
+    '<p class="modal-sub"><b>'+esc(item ? item.productName : "")+'</b><br>'+t("delReqSub")+'</p>' +
+    '<div class="check-list">' + DEL_REASONS.map(function(r){
+      return '<button type="button" class="chip'+(S.delReq.reason===r.id?" sel":"")+'" data-dr-reason="'+r.id+'" style="display:block; width:100%; text-align:start; margin-bottom:8px;">'+t(r.labelKey)+'</button>';
+    }).join("") + '</div>' +
+    '<button type="button" class="btn btn-primary" id="drSend" style="margin-top:6px;">'+t("delReqSend")+'</button>' +
+  '</div></div>';
+  document.getElementById("drClose").onclick = closeDelReqModal;
+  document.getElementById("drOverlay").onclick = function(e){ if(e.target.id === "drOverlay") closeDelReqModal(); };
+  Array.prototype.forEach.call(host.querySelectorAll("[data-dr-reason]"), function(b){
+    b.onclick = function(){ S.delReq.reason = this.getAttribute("data-dr-reason"); renderDelReqModal(); };
+  });
+  document.getElementById("drSend").onclick = function(){
+    if(!S.delReq.reason){ toast(t("delReqPick")); return; }
+    var u = S.currentUser, id = S.delReq.id, reason = S.delReq.reason, nowIso = new Date().toISOString();
+    S.db.doc("expiry_items/"+id).update({
+      deleteRequest: {reason:reason, by:{userId:u.id, fullName:u.fullName}, at:nowIso},
+      deleteRequestPending: true,
+      history: firebase.firestore.FieldValue.arrayUnion({action:"delete_requested", reason:reason, userId:u.id, username:u.username||"", fullName:u.fullName, at:nowIso})
+    }).then(function(){ closeDelReqModal(); toast(t("delReqSent")); }).catch(function(err){ console.error("Delete request failed:", err); toast(t("connError")); });
+  };
+}
+function approveDelReq(id){
+  var l = S.trackedItems.filter(function(x){ return x.id === id; })[0];
+  if(!l || !S.db || !confirm(t("deleteProductConfirmTitle"))) return;
+  var u = S.currentUser, F = firebase.firestore.FieldValue, nowIso = new Date().toISOString();
+  S.db.doc("expiry_items/"+id).update({
+    status: "deleted",
+    deletedInfo: {at:nowIso, userId:u.id, username:u.username||"", fullName:u.fullName, reason:(l.deleteRequest||{}).reason||"", requestedBy:((l.deleteRequest||{}).by||{}).fullName||""},
+    deleteRequestPending: F.delete(),
+    history: F.arrayUnion({action:"deleted", userId:u.id, username:u.username||"", fullName:u.fullName, at:nowIso})
+  }).then(function(){ toast(t("deleted")); logActivity("delete"); }).catch(function(){ toast(t("connError")); });
+}
+function rejectDelReq(id){
+  if(!S.db || !confirm(t("delReqRejectConfirm"))) return;
+  var u = S.currentUser, F = firebase.firestore.FieldValue, nowIso = new Date().toISOString();
+  S.db.doc("expiry_items/"+id).update({
+    deleteRequest: F.delete(), deleteRequestPending: F.delete(),
+    history: F.arrayUnion({action:"delete_rejected", userId:u.id, username:u.username||"", fullName:u.fullName, at:nowIso})
+  }).then(function(){ toast(t("accountUpdated")); }).catch(function(){ toast(t("connError")); });
+}
+function delReqCardHtml(){
+  if(!isManagerUser()) return "";
+  var list = filteredTrackedItems().filter(function(l){ return l.deleteRequest; });
+  if(!list.length) return "";
+  return '<div class="card"><div class="section-title">'+t("delReqCardTitle")+' ('+list.length+')</div>' +
+    list.map(function(l){
+      var r = l.deleteRequest;
+      return '<div class="alert-row" style="align-items:flex-start;">' +
+        (l.image ? '<img class="item-thumb" src="'+esc(l.image)+'" data-img-zoom="'+esc(l.image)+'">' : '<div class="item-thumb"></div>') +
+        '<div style="flex:1; min-width:0;"><b style="font-size:13px; display:block;">'+esc(l.productName)+'</b>' +
+          '<span class="hint">'+esc(companyName(l.company))+' · '+esc(l.qty)+'</span>' +
+          '<span class="hint" style="display:block;">'+esc(delReasonLabel(r.reason))+'</span>' +
+          '<span class="hint" style="display:block;">'+t("delReqBy")+' '+esc((r.by||{}).fullName||"—")+' · '+fmtDateTime(r.at)+'</span>' +
+          '<div style="display:flex; gap:8px; margin-top:8px;">' +
+            '<button type="button" class="btn btn-danger" data-dr-approve="'+l.id+'" style="flex:1;">'+t("delReqApprove")+'</button>' +
+            '<button type="button" class="btn btn-secondary" data-dr-reject="'+l.id+'" style="flex:1;">'+t("delReqReject")+'</button>' +
+          '</div>' +
+        '</div></div>';
+    }).join("") + '</div>';
+}
+
 function trackedItemCard(l, inAlerts){
   var open = !!(inAlerts ? S.alertExpanded : S.trackExpanded)[l.id];
   var d = computeDaysLeft(l.expiryDate);
@@ -5961,6 +6053,7 @@ function trackedItemCard(l, inAlerts){
     '<div class="info" style="flex:1; min-width:0;">' +
       '<b>'+esc(l.productName)+'</b>' +
       '<span>'+esc(companyName(l.company))+' · '+esc(l.qty)+'</span>' +
+      (l.deleteRequest ? '<span style="color:var(--red);">'+t("delReqPending")+'</span>' : '') +
     '</div>' +
     '<div class="log-head-right"><span class="badge '+tag.cls+'">'+tag.label+'</span><span class="log-chevron">'+ICONS.chevron+'</span></div>' +
   '</div>';
@@ -5975,6 +6068,7 @@ function trackedItemCard(l, inAlerts){
     body += '<div class="log-cat"><div class="log-cat-head"><b>'+t("historyTitle")+'</b></div>';
     (l.history||[]).forEach(function(h){
       var actionLabel = h.action === "created" ? t("historyCreated") : h.action === "deleted" ? t("historyDeleted") :
+        h.action === "delete_requested" ? (t("historyDelReq")+" — "+delReasonLabel(h.reason)) : h.action === "delete_rejected" ? t("historyDelRejected") :
         h.action === "category_changed" ? (t("historyCategoryChanged")+" "+deptLabel(h.category)) :
         (t("historyQtyUpdate")+" "+h.qty);
       body += '<p class="log-note">'+actionLabel+' — '+esc(h.fullName||h.username||"—")+' · '+fmtDateTime(h.at)+'</p>';
@@ -5992,6 +6086,11 @@ function trackedItemCard(l, inAlerts){
     body += '<button type="button" class="btn btn-secondary" data-update-category="'+l.id+'">'+t("changeCategoryBtn")+'</button>';
     }
 
+    if(l.deleteRequest){
+      body += '<p class="hint" style="margin-top:10px; color:var(--red);">'+t("delReqPending")+' — '+esc(delReasonLabel(l.deleteRequest.reason))+' ('+t("delReqBy")+' '+esc((l.deleteRequest.by||{}).fullName||"—")+') · '+t("delReqWaiting")+'</p>';
+    } else if(isSupervisorUser()){
+      body += '<button type="button" class="btn btn-secondary" data-delreq-new="'+l.id+'" style="margin-top:10px;">'+t("delReqBtn")+'</button>';
+    }
     if(isManagerUser()){
       body += openPullFor(l.id) ?
         '<p class="hint" style="margin-top:10px;">'+t("pullItemOpenNote")+'</p>' :
@@ -6060,6 +6159,15 @@ function wireTrackedDashboard(){
   });
   Array.prototype.forEach.call(document.querySelectorAll("[data-delete-track]"), function(btn){
     btn.onclick = function(){ requestDelete("expiry_items", this.getAttribute("data-delete-track"), true); };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-delreq-new]"), function(btn){
+    btn.onclick = function(){ openDelReqModal(this.getAttribute("data-delreq-new")); };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-dr-approve]"), function(btn){
+    btn.onclick = function(){ approveDelReq(this.getAttribute("data-dr-approve")); };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-dr-reject]"), function(btn){
+    btn.onclick = function(){ rejectDelReq(this.getAttribute("data-dr-reject")); };
   });
   Array.prototype.forEach.call(document.querySelectorAll("[data-pull-new]"), function(btn){
     btn.onclick = function(){ openPullModal(this.getAttribute("data-pull-new")); };

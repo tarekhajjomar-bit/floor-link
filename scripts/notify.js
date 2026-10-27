@@ -372,6 +372,24 @@ async function checkExpiryPulls() {
   }
 }
 
+/** A supervisor asked to delete an expiry item — tell the managers once. */
+async function checkDeleteRequests() {
+  const snap = await db.collection("expiry_items").where("deleteRequestPending", "==", true).get();
+  for (const doc of snap.docs) {
+    const d = doc.data();
+    const r = d.deleteRequest;
+    if (!r || r.notified) continue;
+    const reasons = { sold: "انباع / خلص", gone: "ما عاد موجود", mistake: "سكان بالغلط / مكرر" };
+    const toks = await getTokens({ role: MANAGER_ROLES });
+    await sendToTokens(
+      toks, "🗑️ طلب حذف صنف",
+      `${d.productName || "صنف"} — ${branchName(d.company)}\nالسبب: ${reasons[r.reason] || r.reason || "—"}\nالطالب: ${(r.by && r.by.fullName) || "—"}`,
+      { type: "expiry-delete-request", id: doc.id }
+    );
+    await doc.ref.update({ "deleteRequest.notified": true });
+  }
+}
+
 /** Test mode — sends one notification to every registered token, no
  * matter what's in the data. Use this to verify the whole pipeline
  * (service account auth → FCM send → device receives it) actually works,
@@ -400,7 +418,7 @@ const mode = process.argv[2];
 const modes = {
   // Runs every 10 minutes (notify-handover.yml): new handovers and customer feedback.
   // New expiry items are no longer announced one by one; see "expiry-summary" (once a day).
-  "handover": async () => { await checkNewHandovers(); await checkNewFeedback(); await checkExpiryPulls(); },
+  "handover": async () => { await checkNewHandovers(); await checkNewFeedback(); await checkExpiryPulls(); await checkDeleteRequests(); },
   "pulls": checkExpiryPulls,
   "expiry-summary": sendDailyExpirySummary,
   "feedback": checkNewFeedback,
