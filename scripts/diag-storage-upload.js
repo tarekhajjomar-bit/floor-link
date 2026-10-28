@@ -6,6 +6,11 @@ const admin = require("firebase-admin");
   const out = [];
   try {
     admin.initializeApp({ credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)) });
+    try {
+      const rs = await admin.securityRules().getStorageRuleset("floor-link.firebasestorage.app");
+      out.push("live storage ruleset " + rs.name + " created " + rs.createTime);
+      out.push("live source: " + ((rs.source[0] && rs.source[0].content) || "").replace(/\s+/g, " ").slice(0, 400));
+    } catch (e) { out.push("getStorageRuleset error: " + e.message); }
     const users = await admin.firestore().collection("users").where("role", "==", "supervisor").limit(1).get();
     const uid = users.docs[0].id;
     out.push("using supervisor uid " + uid.slice(0, 6) + "…");
