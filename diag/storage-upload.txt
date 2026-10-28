@@ -1,0 +1,7 @@
+2026-10-28T13:24:20.571Z
+live storage ruleset 19348c35-dad2-43cf-9eab-42a6ca55bde9 created Wed, 28 Oct 2026 13:19:41 GMT
+live source: rules_version = '2'; service firebase.storage { match /b/{bucket}/o { // Photos and signatures taken in the app: any signed-in employee can add one // (images only, max 8 MB). Nobody can overwrite, list or delete from the app — // old ones are removed automatically by the bucket's 30-day lifecycle rule. // Reading is by each file's own long random download link, stored with the entry. match /photo
+using supervisor uid XwQIwu…
+signed in
+photos/diag/test.jpg OK; download 200 image/jpeg
+catalog/diag/test.jpg OK; download 200 image/jpeg
