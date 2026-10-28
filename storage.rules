@@ -1,0 +1,25 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Photos and signatures taken in the app: any signed-in employee can add one
+    // (images only, max 8 MB). Nobody can overwrite, list or delete from the app —
+    // old ones are removed automatically by the bucket's 30-day lifecycle rule.
+    // Reading is by each file's own long random download link, stored with the entry.
+    match /photos/{allPaths=**} {
+      allow create: if request.auth != null
+                    && request.resource.size < 8 * 1024 * 1024
+                    && request.resource.contentType.matches('image/.*');
+      allow read, update, delete: if false;
+    }
+    // Catalog/reference photos meant to stay (no automatic removal).
+    match /catalog/{allPaths=**} {
+      allow create: if request.auth != null
+                    && request.resource.size < 8 * 1024 * 1024
+                    && request.resource.contentType.matches('image/.*');
+      allow read, update, delete: if false;
+    }
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
