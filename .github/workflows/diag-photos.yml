@@ -1,0 +1,30 @@
+name: Diag — photo check (manual)
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  rules:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install dependencies
+        working-directory: scripts
+        run: npm install firebase-admin
+      - name: Check photos
+        working-directory: scripts
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node diag-photos.js
+      - name: Save result
+        if: always()
+        run: |
+          git config user.name "rules-bot"; git config user.email "rules@users.noreply.github.com"
+          git checkout -B photos-result
+          git add -f diag/photos.txt && git commit -qm "Photo check result" && git push -f origin photos-result
