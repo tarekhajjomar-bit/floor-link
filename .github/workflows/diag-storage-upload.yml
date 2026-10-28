@@ -1,0 +1,30 @@
+name: Diag — storage upload (manual)
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  rules:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install dependencies
+        working-directory: scripts
+        run: npm install firebase-admin firebase
+      - name: Test upload
+        working-directory: scripts
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node diag-storage-upload.js
+      - name: Save result
+        if: always()
+        run: |
+          git config user.name "rules-bot"; git config user.email "rules@users.noreply.github.com"
+          git checkout -B upload-result
+          git add -f diag/storage-upload.txt && git commit -qm "Upload test result" && git push -f origin upload-result
