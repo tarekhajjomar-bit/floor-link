@@ -25,6 +25,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-storage-compat.js"></script>
 <script>
   var YOUR_FIREBASE_CONFIG = {
     apiKey: "AIzaSyD_lwucPFiMylSs3G0lTYbbn_wcNwwhKg8",
@@ -722,7 +723,7 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
              on every deploy, purely so a build mismatch (stale cache / an
              app that hasn't actually picked up the latest deploy) can be
              told apart from an actual code bug just by reading this. -->
-        <span id="appBuild" style="display:block; font-size:10px; opacity:0.5; margin-top:2px;">build v26</span>
+        <span id="appBuild" style="display:block; font-size:10px; opacity:0.5; margin-top:2px;">build v27</span>
       </div>
     </div>
     <div class="header-controls">
@@ -7625,6 +7626,59 @@ function boot(){
     };
   } else {
     console.warn("ImgBB not configured — YOUR_IMGBB_CONFIG.apiKeys is empty or still the placeholder in index.html. Photo/signature upload is disabled.");
+  }
+
+  // Photos and signatures go to Firebase Storage first (the project's own bucket,
+  // permanent download links, 30-day auto-delete on photos/). ImgBB — which started
+  // rate-limiting every upload and replacing stored photos with "service unavailable" —
+  // is only the fallback if Storage itself can't take the file right now.
+  var storageApi = null, storageDownUntil = 0;
+  try{
+    if(db && firebase.storage) storageApi = firebase.app().storage();
+  }catch(e){ console.error("Firebase Storage init failed", e); }
+  var imgbbUpload = assetsApi ? assetsApi.upload : null;
+  var uploadToStorage = function(blob, opts){
+    var keep = !(opts && opts.expiresInSeconds);          // no expiry asked = catalog/reference photo
+    var uid = (S.auth && S.auth.currentUser && S.auth.currentUser.uid) || "anon";
+    var d = new Date();
+    var path = (keep ? "catalog/" : "photos/") + d.getUTCFullYear() + ("0"+(d.getUTCMonth()+1)).slice(-2) + "/" +
+               uid + "_" + Date.now() + "_" + Math.random().toString(36).slice(2,8) + ".jpg";
+    var ref = storageApi.ref(path);
+    return new Promise(function(resolve, reject){
+      var settled = false;
+      var task = ref.put(blob, {contentType: (blob && blob.type && blob.type.indexOf("image/") === 0) ? blob.type : "image/jpeg"});
+      var timer = setTimeout(function(){
+        if(settled) return; settled = true;
+        try{ task.cancel(); }catch(e){}
+        reject(new Error("Upload timed out"));
+      }, UPLOAD_TIMEOUT_MS);
+      task.then(function(snap){
+        return snap.ref.getDownloadURL();
+      }).then(function(url){
+        if(settled) return; settled = true; clearTimeout(timer);
+        resolve({id:url, url:url});
+      }).catch(function(err){
+        if(settled) return; settled = true; clearTimeout(timer);
+        reject(err);
+      });
+    });
+  };
+  if(storageApi || imgbbUpload){
+    assetsApi = {
+      upload: function(blob, opts){
+        var viaImgbb = function(){
+          if(!imgbbUpload) return Promise.reject(new Error("No photo storage available"));
+          return imgbbUpload(blob, opts);
+        };
+        if(!storageApi || Date.now() < storageDownUntil) return viaImgbb();
+        return uploadToStorage(blob, opts).catch(function(err){
+          console.error("Storage upload failed, falling back to ImgBB:", err);
+          // If Storage itself is unavailable, don't make every photo wait for it again for a while.
+          storageDownUntil = Date.now() + 5*60*1000;
+          return viaImgbb();
+        });
+      }
+    };
   }
 
   S.db = db;
