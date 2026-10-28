@@ -9,14 +9,18 @@ service firebase.storage {
       allow create: if request.auth != null
                     && request.resource.size < 8 * 1024 * 1024
                     && request.resource.contentType.matches('image/.*');
-      allow read, update, delete: if false;
+      // 'get' is needed so the app can ask for the file's download link right after uploading.
+      allow get: if request.auth != null;
+      allow list, update, delete: if false;
     }
     // Catalog/reference photos meant to stay (no automatic removal).
     match /catalog/{allPaths=**} {
       allow create: if request.auth != null
                     && request.resource.size < 8 * 1024 * 1024
                     && request.resource.contentType.matches('image/.*');
-      allow read, update, delete: if false;
+      // 'get' is needed so the app can ask for the file's download link right after uploading.
+      allow get: if request.auth != null;
+      allow list, update, delete: if false;
     }
     match /{allPaths=**} {
       allow read, write: if false;

@@ -22,7 +22,9 @@ const admin = require("firebase-admin");
         out.push("storage rules released");
       } catch (e) { out.push("rules error: " + e.message); }
       try {
-        await bucket.addLifecycleRule({ action: { type: "Delete" }, condition: { age: 30, matchesPrefix: ["photos/"] } });
+        const [md0] = await bucket.getMetadata();
+        const has = ((md0.lifecycle && md0.lifecycle.rule) || []).some((x) => x.condition && x.condition.age === 30 && (x.condition.matchesPrefix || []).includes("photos/"));
+        if (!has) await bucket.addLifecycleRule({ action: { type: "Delete" }, condition: { age: 30, matchesPrefix: ["photos/"] } });
         out.push("lifecycle rule added");
       } catch (e) { out.push("lifecycle error: " + e.message); }
       try { const [md] = await bucket.getMetadata(); out.push("lifecycle now: " + JSON.stringify(md.lifecycle || null)); } catch (e) { out.push("metadata error: " + e.message); }
