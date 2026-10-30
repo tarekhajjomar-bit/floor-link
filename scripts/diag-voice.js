@@ -11,6 +11,11 @@ const fs = require("fs"), cp = require("child_process"), admin = require("fireba
     for (const d of snap.docs) {
       const m = d.data();
       out.push(`--- ${d.id} to=${m.audienceLabel} at=${m.createdAt} dur=${m.durationSec}s mime=${m.mime} recips=${(m.recipientIds || []).length}`);
+      out.push(`notified=${m.notified} listened=${JSON.stringify(m.listened || {})}`);
+      for (const rid of (m.recipientIds || []).slice(0, 10)) {
+        const tk = await admin.firestore().collection("fcm_tokens").where("userId", "==", rid).get();
+        out.push(`  recipient ${rid}: ${tk.size} token(s) ` + tk.docs.map((x) => (x.data().platform || "?") + "@" + (x.data().updatedAt || "?")).join(", "));
+      }
       const path = decodeURIComponent((m.url.split("/o/")[1] || "").split("?")[0]);
       const [md] = await bucket.file(path).getMetadata().catch((e) => [{ err: e.message }]);
       out.push(`file ${path} size=${md.size} type=${md.contentType} ${md.err || ""}`);
