@@ -736,7 +736,7 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
              on every deploy, purely so a build mismatch (stale cache / an
              app that hasn't actually picked up the latest deploy) can be
              told apart from an actual code bug just by reading this. -->
-        <span id="appBuild" style="display:block; font-size:10px; opacity:0.5; margin-top:2px;">build v35</span>
+        <span id="appBuild" style="display:block; font-size:10px; opacity:0.5; margin-top:2px;">build v36</span>
       </div>
     </div>
     <div class="header-controls">
@@ -5897,9 +5897,22 @@ function subscribeVoice(){
     renderVoiceUi();
   }, function(){ subRetry("voice"); });
 }
+// A voice message disappears 24 h after it was heard: for a recipient, 24 h after THEY heard it;
+// for the sender (manager), once every recipient heard it and 24 h passed since the last one.
+function voiceVisible(m){
+  var DAY = 86400000, now = Date.now(), L = m.listened || {};
+  if(isManagerUser()){
+    var ids = m.recipientIds || [];
+    if(!ids.length || !ids.every(function(i){ return L[i]; })) return true;
+    var last = Math.max.apply(null, ids.map(function(i){ return new Date(L[i]).getTime() || 0; }));
+    return now - last < DAY;
+  }
+  var mine = S.currentUser && L[S.currentUser.id];
+  return !mine || now - new Date(mine).getTime() < DAY;
+}
 function voiceUnheard(){
   var me = S.currentUser && S.currentUser.id, cutoff = new Date(Date.now() - 30*86400000).toISOString();
-  return S.voice.list.filter(function(m){ return me && String(m.createdAt||"") > cutoff && !(m.listened && m.listened[me]); });
+  return S.voice.list.filter(voiceVisible).filter(function(m){ return me && String(m.createdAt||"") > cutoff && !(m.listened && m.listened[me]); });
 }
 function voiceRecipients(aud, person){
   var me = S.currentUser.id;
@@ -5937,7 +5950,7 @@ function renderVoiceUi(){
   var host = document.getElementById("voiceHost");
   if(!S.voice.open){ if(host) host.remove(); return; }
   if(!host){ host = document.createElement("div"); host.id = "voiceHost"; document.body.appendChild(host); }
-  var V = S.voice, html = '<div class="modal-overlay voice-ov" id="voiceOv"><div class="modal-sheet">' +
+  var V = S.voice, vlist = V.list.filter(voiceVisible), html = '<div class="modal-overlay voice-ov" id="voiceOv"><div class="modal-sheet">' +
     '<div class="modal-head"><h2>'+(mgr ? t("voiceTitle") : t("voiceInbox"))+'</h2><button type="button" class="modal-close" id="voiceClose">'+ICONS.close+'</button></div>';
   if(mgr){
     var staff = S.users.filter(function(u){ return !u.disabled && u.role !== "viewer" && u.role !== "manager" && u.role !== "admin" && u.id !== S.currentUser.id; });
@@ -5959,8 +5972,8 @@ function renderVoiceUi(){
         '<div class="hint" id="voiceTimer">'+(V.rec ? V.sec+"s" : t("voiceRecord"))+'</div></div>';
     }
     if(V.err) html += '<p class="form-error">'+esc(V.err)+'</p>';
-    if(V.list.length){
-      html += '<div class="divider-note"><b style="font-size:13px;">'+t("voiceSentList")+'</b></div>' + V.list.map(function(m){
+    if(vlist.length){
+      html += '<div class="divider-note"><b style="font-size:13px;">'+t("voiceSentList")+'</b></div>' + vlist.map(function(m){
         var ids = m.recipientIds || [], heard = ids.filter(function(i){ return m.listened && m.listened[i]; }).length;
         return '<div class="voice-item"><div style="display:flex; justify-content:space-between; gap:8px;"><span><b>'+esc(m.audienceLabel||"")+'</b><br><span class="hint">'+fmtDateTime(m.createdAt)+' · '+heard+'/'+ids.length+' '+t("voiceHeard")+'</span></span>' +
           '<button type="button" class="link-btn" data-voice-del="'+m.id+'">'+t("voiceDelete")+'</button></div>' +
@@ -5968,7 +5981,7 @@ function renderVoiceUi(){
       }).join("");
     }
   } else {
-    html += (V.list.length ? V.list.map(function(m){
+    html += (vlist.length ? vlist.map(function(m){
       var heard = m.listened && m.listened[S.currentUser.id];
       return '<div class="voice-item"><b>'+(heard ? "" : "🔴 ")+t("voiceFrom")+' '+esc((m.from||{}).fullName||"—")+'</b> <span class="hint">'+fmtDateTime(m.createdAt)+'</span>' +
         '<audio controls preload="none" data-voice-play="'+m.id+'" src="'+esc(m.url)+'"></audio></div>';

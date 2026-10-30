@@ -68,3 +68,24 @@ exports.voiceReminders = onSchedule("every 5 minutes", async () => {
     await doc.ref.update({ pushCount: (d.pushCount || 0) + 1, lastPushAt: Date.now() });
   }
 });
+
+// Voice messages disappear 24 h after being heard: once every recipient has listened and the last
+// listen is more than 24 h old, the message and its audio file are deleted for good. Anything
+// older than 30 days goes too (the audio file is removed by the bucket after 30 days anyway).
+exports.voiceCleanup = onSchedule("every 60 minutes", async () => {
+  const bucket = admin.storage().bucket();
+  const snap = await db.collection("voice_messages").get();
+  const now = Date.now();
+  for (const doc of snap.docs) {
+    const d = doc.data(), ids = d.recipientIds || [], L = d.listened || {};
+    const allHeard = ids.every((u) => L[u]);
+    const last = allHeard ? Math.max(new Date(d.createdAt || 0).getTime(), ...ids.map((u) => new Date(L[u]).getTime() || 0)) : 0;
+    const expired = (allHeard && now - last > WINDOW_MS) || now - new Date(d.createdAt || 0).getTime() > 30 * WINDOW_MS;
+    if (!expired) continue;
+    try {
+      const path = decodeURIComponent(((d.url || "").split("/o/")[1] || "").split("?")[0]);
+      if (path) await bucket.file(path).delete({ ignoreNotFound: true });
+    } catch (e) { console.log("audio delete failed", doc.id, e.message); }
+    await doc.ref.delete();
+  }
+});
