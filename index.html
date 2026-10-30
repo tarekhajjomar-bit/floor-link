@@ -733,7 +733,7 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
              on every deploy, purely so a build mismatch (stale cache / an
              app that hasn't actually picked up the latest deploy) can be
              told apart from an actual code bug just by reading this. -->
-        <span id="appBuild" style="display:block; font-size:10px; opacity:0.5; margin-top:2px;">build v30</span>
+        <span id="appBuild" style="display:block; font-size:10px; opacity:0.5; margin-top:2px;">build v31</span>
       </div>
     </div>
     <div class="header-controls">
@@ -850,7 +850,7 @@ en:{
   voiceSending:"Sending...", voiceSent:"Voice message sent.", voiceNoMic:"The microphone is not available. Allow it for this app in the phone settings.",
   voiceNoRec:"This phone can't record audio here.", voicePickPerson:"Pick who to send it to.", voiceNobody:"No one matches that selection.",
   voiceSentList:"Sent", voiceHeard:"heard", voiceDelete:"Delete", voiceDeleteConfirm:"Delete this voice message?", voiceInbox:"Voice messages",
-  voiceNew:"new voice message", voiceFrom:"From", voiceNone:"No voice messages.", voiceFail:"Couldn't send the message. Try again.",
+  voiceNew:"new voice message", voiceFrom:"From", voiceNone:"No voice messages.", voiceFail:"Couldn't send the message. Try again.", voiceEmpty:"The recording came out empty. Try again.",
   counterEmployee:"Employee", counterOptional:"Optional", counterAdd:"Add another employee", counterRemove:"Remove",
   delReqBtn:"Request deletion", delReqTitle:"Request to delete this item", delReqSub:"Pick the reason. The manager will approve it and the item will then be removed.",
   delReqSold:"Sold out / finished", delReqGone:"No longer available / not sold anymore", delReqMistake:"Scanned by mistake / duplicate",
@@ -1223,7 +1223,7 @@ ar:{
   voiceSending:"عم يرسل...", voiceSent:"انبعتت الرسالة الصوتية.", voiceNoMic:"الميكروفون مو متاح. اسمح له من إعدادات الجوال لهالتطبيق.",
   voiceNoRec:"هالجوال ما بيقدر يسجّل صوت هون.", voicePickPerson:"اختار لمين بدك تبعتها.", voiceNobody:"ما في حدا بيطابق هالاختيار.",
   voiceSentList:"المرسَلة", voiceHeard:"سمعوا", voiceDelete:"حذف", voiceDeleteConfirm:"حذف هالرسالة الصوتية؟", voiceInbox:"الرسائل الصوتية",
-  voiceNew:"رسالة صوتية جديدة", voiceFrom:"من", voiceNone:"ما في رسائل صوتية.", voiceFail:"ما قدرت أبعت الرسالة. جرّب مرة تانية.",
+  voiceNew:"رسالة صوتية جديدة", voiceFrom:"من", voiceNone:"ما في رسائل صوتية.", voiceFail:"ما قدرت أبعت الرسالة. جرّب مرة تانية.", voiceEmpty:"التسجيل طلع فاضي. جرّب مرة تانية.",
   counterEmployee:"الموظف", counterOptional:"اختياري", counterAdd:"إضافة موظف آخر", counterRemove:"حذف",
   delReqBtn:"طلب حذف", delReqTitle:"طلب حذف هالصنف", delReqSub:"اختار السبب. المدير بيوافق وبعدها بينحذف الصنف.",
   delReqSold:"انباع / خلص", delReqGone:"ما عاد موجود / ما عاد نبيعه", delReqMistake:"انعمل له سكان بالغلط / مكرر",
@@ -5962,6 +5962,7 @@ function renderVoiceUi(){
 }
 function voiceClose(){
   if(S.voice.rec){ try{ S.voice.rec.rec.stop(); }catch(e){} S.voice.rec = null; }
+  voiceReleaseMic();
   S.voice.open = false; S.voice.blob = null; S.voice.url = ""; S.voice.err = "";
   renderVoiceUi();
 }
@@ -5991,20 +5992,36 @@ function wireVoiceUi(){
     };
   });
 }
+function voiceReleaseMic(){
+  var st = S.voice.stream;
+  if(st){ try{ st.getTracks().forEach(function(tr){ tr.stop(); }); }catch(e){} }
+  S.voice.stream = null;
+}
+// iPhone: closing the microphone after a recording makes the NEXT recording come out silent,
+// so the stream is kept open while the voice window is open and reused (released on close).
+function voiceGetStream(){
+  var st = S.voice.stream;
+  if(st && st.getAudioTracks().length && st.getAudioTracks().every(function(tr){ return tr.readyState === "live" && !tr.muted; })) return Promise.resolve(st);
+  voiceReleaseMic();
+  return navigator.mediaDevices.getUserMedia({audio:true}).then(function(ns){ S.voice.stream = ns; return ns; });
+}
 function voiceStart(){
   var V = S.voice, mime = voiceMime();
   if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder){ V.err = t("voiceNoRec"); renderVoiceUi(); return; }
-  navigator.mediaDevices.getUserMedia({audio:true}).then(function(stream){
+  voiceGetStream().then(function(stream){
     var rec = mime ? new MediaRecorder(stream, {mimeType:mime}) : new MediaRecorder(stream), chunks = [];
     V.rec = {rec:rec, stream:stream, t0:Date.now(), timer:null}; V.sec = 0; V.err = "";
     rec.ondataavailable = function(e){ if(e.data && e.data.size) chunks.push(e.data); };
     rec.onstop = function(){
       clearInterval(V.rec && V.rec.timer);
-      try{ stream.getTracks().forEach(function(tr){ tr.stop(); }); }catch(e){}
       var sec = Math.max(1, Math.round((Date.now() - (V.rec ? V.rec.t0 : Date.now())) / 1000));
       V.rec = null;
       var type = rec.mimeType || mime || "audio/webm";
-      V.blob = new Blob(chunks, {type:type}); V.mime = type; V.sec = sec;
+      var blob = new Blob(chunks, {type:type});
+      if(sec >= 2 && blob.size < sec * 4000){   // far too small for real speech: the microphone was silent
+        voiceReleaseMic(); V.blob = null; V.url = ""; V.err = t("voiceEmpty"); renderVoiceUi(); return;
+      }
+      V.blob = blob; V.mime = type; V.sec = sec;
       V.url = URL.createObjectURL(V.blob);
       renderVoiceUi();
     };
