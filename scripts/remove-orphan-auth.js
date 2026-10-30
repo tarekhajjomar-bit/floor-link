@@ -12,6 +12,7 @@ const admin = require("firebase-admin");
     do {
       const r = await admin.auth().listUsers(1000, token);
       for (const u of r.users) {
+        if (!u.email) continue; // anonymous visitors (customer feedback page): leave alone
         if ((await db.doc("users/" + u.uid).get()).exists) continue;
         const age = Date.now() - new Date(u.metadata.creationTime).getTime();
         const line = `orphan ${u.email || "(no email)"} uid=${u.uid} created=${u.metadata.creationTime} lastSignIn=${u.metadata.lastSignInTime || "never"}`;
