@@ -10,5 +10,9 @@
       "enabled": true,
       "port": 4000
     }
+  },
+  "functions": {
+    "source": "functions",
+    "runtime": "nodejs20"
   }
 }

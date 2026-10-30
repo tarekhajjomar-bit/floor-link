@@ -431,7 +431,7 @@ const mode = process.argv[2];
 const modes = {
   // Runs every 10 minutes (notify-handover.yml): new handovers and customer feedback.
   // New expiry items are no longer announced one by one; see "expiry-summary" (once a day).
-  "handover": async () => { await checkNewHandovers(); await checkNewFeedback(); await checkExpiryPulls(); await checkDeleteRequests(); await checkVoiceMessages(); },
+  "handover": async () => { await checkNewHandovers(); await checkNewFeedback(); await checkExpiryPulls(); await checkDeleteRequests(); },
   "pulls": checkExpiryPulls,
   "expiry-summary": sendDailyExpirySummary,
   "feedback": checkNewFeedback,
