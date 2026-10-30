@@ -733,7 +733,7 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
              on every deploy, purely so a build mismatch (stale cache / an
              app that hasn't actually picked up the latest deploy) can be
              told apart from an actual code bug just by reading this. -->
-        <span id="appBuild" style="display:block; font-size:10px; opacity:0.5; margin-top:2px;">build v31</span>
+        <span id="appBuild" style="display:block; font-size:10px; opacity:0.5; margin-top:2px;">build v32</span>
       </div>
     </div>
     <div class="header-controls">
@@ -5963,6 +5963,7 @@ function renderVoiceUi(){
 function voiceClose(){
   if(S.voice.rec){ try{ S.voice.rec.rec.stop(); }catch(e){} S.voice.rec = null; }
   voiceReleaseMic();
+  if(S.voice.ctx){ try{ S.voice.ctx.close(); }catch(e){} S.voice.ctx = null; }
   S.voice.open = false; S.voice.blob = null; S.voice.url = ""; S.voice.err = "";
   renderVoiceUi();
 }
@@ -6005,8 +6006,63 @@ function voiceGetStream(){
   voiceReleaseMic();
   return navigator.mediaDevices.getUserMedia({audio:true}).then(function(ns){ S.voice.stream = ns; return ns; });
 }
+// Recording straight from the microphone with Web Audio into a WAV file. MediaRecorder on iPhone
+// kept giving silent/empty files, this path doesn't depend on it. 16 kHz mono = ~32 KB per second.
+function voiceWav(chunks, inRate){
+  var total = 0; chunks.forEach(function(c){ total += c.length; });
+  var outRate = 16000, ratio = inRate / outRate, n = Math.floor(total / ratio);
+  var all = new Float32Array(total), o = 0; chunks.forEach(function(c){ all.set(c, o); o += c.length; });
+  var buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+  function str(p, x){ for(var i=0;i<x.length;i++) v.setUint8(p+i, x.charCodeAt(i)); }
+  str(0,"RIFF"); v.setUint32(4, 36 + n*2, true); str(8,"WAVE"); str(12,"fmt "); v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,1,true);
+  v.setUint32(24,outRate,true); v.setUint32(28,outRate*2,true); v.setUint16(32,2,true); v.setUint16(34,16,true); str(36,"data"); v.setUint32(40,n*2,true);
+  for(var i=0;i<n;i++){
+    var a = Math.floor(i*ratio), b = Math.max(a+1, Math.floor((i+1)*ratio)), sum = 0, k;
+    for(k=a;k<b && k<total;k++) sum += all[k];
+    var x = Math.max(-1, Math.min(1, sum / Math.max(1,(Math.min(b,total)-a))));
+    v.setInt16(44+i*2, x < 0 ? x*0x8000 : x*0x7FFF, true);
+  }
+  return new Blob([buf], {type:"audio/wav"});
+}
+function voiceStartPcm(AC){
+  var V = S.voice;
+  if(!V.ctx || V.ctx.state === "closed") V.ctx = new AC();
+  var ctx = V.ctx;
+  try{ ctx.resume(); }catch(e){}   // must happen inside the tap, before any waiting
+  voiceGetStream().then(function(stream){
+    return Promise.resolve(ctx.resume ? ctx.resume() : 0).then(function(){ return stream; });
+  }).then(function(stream){
+    var src = ctx.createMediaStreamSource(stream), proc = ctx.createScriptProcessor(4096, 1, 1), chunks = [], peak = 0;
+    proc.onaudioprocess = function(e){
+      var d = e.inputBuffer.getChannelData(0), c = new Float32Array(d.length), i;
+      for(i=0;i<d.length;i++){ c[i] = d[i]; var a = d[i] < 0 ? -d[i] : d[i]; if(a > peak) peak = a; }
+      chunks.push(c);
+    };
+    src.connect(proc); proc.connect(ctx.destination);
+    V.sec = 0; V.err = "";
+    var h = {t0:Date.now(), timer:null};
+    h.rec = {stop:function(){
+      clearInterval(h.timer);
+      try{ src.disconnect(); proc.disconnect(); proc.onaudioprocess = null; }catch(e){}
+      var sec = Math.max(1, Math.round((Date.now() - h.t0) / 1000));
+      V.rec = null;
+      if(peak < 0.004 || !chunks.length){ voiceReleaseMic(); V.blob = null; V.url = ""; V.err = t("voiceEmpty"); renderVoiceUi(); return; }
+      V.blob = voiceWav(chunks, ctx.sampleRate); V.mime = "audio/wav"; V.sec = sec; V.url = URL.createObjectURL(V.blob);
+      renderVoiceUi();
+    }};
+    V.rec = h;
+    h.timer = setInterval(function(){
+      V.sec = Math.round((Date.now() - h.t0) / 1000);
+      var el = document.getElementById("voiceTimer"); if(el) el.textContent = V.sec + "s";
+      if(V.sec >= VOICE_MAX_SEC) voiceStop();
+    }, 500);
+    renderVoiceUi();
+  }).catch(function(){ voiceReleaseMic(); V.err = t("voiceNoMic"); renderVoiceUi(); });
+}
 function voiceStart(){
   var V = S.voice, mime = voiceMime();
+  var AC = window.AudioContext || window.webkitAudioContext;
+  if(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && AC && AC.prototype.createScriptProcessor){ voiceStartPcm(AC); return; }
   if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder){ V.err = t("voiceNoRec"); renderVoiceUi(); return; }
   voiceGetStream().then(function(stream){
     var rec = mime ? new MediaRecorder(stream, {mimeType:mime}) : new MediaRecorder(stream), chunks = [];
@@ -6043,7 +6099,7 @@ function voiceSend(){
   if(!ids.length){ V.err = t("voiceNobody"); renderVoiceUi(); return; }
   if(!S.storage){ V.err = t("voiceFail"); renderVoiceUi(); return; }
   V.busy = true; V.err = ""; renderVoiceUi();
-  var ext = /mp4/.test(V.mime) ? "m4a" : /ogg/.test(V.mime) ? "ogg" : "webm";
+  var ext = /wav/.test(V.mime) ? "wav" : /mp4/.test(V.mime) ? "m4a" : /ogg/.test(V.mime) ? "ogg" : "webm";
   var d = new Date(), path = "voice/" + d.getUTCFullYear() + ("0"+(d.getUTCMonth()+1)).slice(-2) + "/" + u.id + "_" + Date.now() + "." + ext;
   var ref = S.storage.ref(path);
   ref.put(V.blob, {contentType: V.mime.split(";")[0]}).then(function(snap){ return snap.ref.getDownloadURL(); }).then(function(url){
