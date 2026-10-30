@@ -25,7 +25,23 @@ init();
 const db = admin.firestore();
 const auth = admin.auth();
 
+// Accounts the manager deleted in the app: remove the Firebase Auth account too, so the
+// email can be used again. The app writes account_deletions/{uid}; we delete and clear it.
+async function removeDeletedAccounts() {
+  const del = await db.collection("account_deletions").get();
+  for (const d of del.docs) {
+    try {
+      await auth.deleteUser(d.id);
+      console.log(`  deleted Auth account ${d.id}`);
+    } catch (e) {
+      if (e.code !== "auth/user-not-found") { console.error(`  FAILED to delete ${d.id}:`, e.message); continue; }
+    }
+    await d.ref.delete();
+  }
+}
+
 async function main() {
+  await removeDeletedAccounts();
   const snap = await db.collection("users").get();
   console.log(`Checking ${snap.size} account(s)...`);
 

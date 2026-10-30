@@ -301,6 +301,14 @@ service cloud.firestore {
     // ---------------- delivery_shifts ----------------
     // Written by the branch delivery books. Read by managers, by the delivery
     // books themselves, and by a viewer for the delivery books ticked on its account.
+    // ---------------- account_deletions (Oct 2026) ----------------
+    // The manager deleting an account in the app leaves a note here; the scheduled
+    // sync-roles job then deletes the Firebase Auth account too (frees the email).
+    match /account_deletions/{uid} {
+      allow create: if isManager();
+      allow read, update, delete: if isManager();
+    }
+
     // ---------------- voice_messages (Oct 2026) ----------------
     // One-way voice broadcasts from the manager. recipientIds is worked out when it is
     // sent; each recipient may only mark their OWN entry in `listened` (heard receipt).
@@ -467,12 +475,12 @@ service cloud.firestore {
     //  - account documents (users) are only written through their own rules (Oct 2026).
     match /{collection}/{document=**} {
       allow read: if isSignedIn()
-                  && !(collection in ['handovers', 'handover_sessions', 'handover_drafts', 'attendance_days', 'attendance_reports', 'merch_visits', 'quick_shortages', 'expiry_items', 'expiry_pulls', 'pull_locks', 'delivery_shifts', 'feedback', 'feedback_codes', 'feedback_rate', 'voice_messages'])
+                  && !(collection in ['handovers', 'handover_sessions', 'handover_drafts', 'attendance_days', 'attendance_reports', 'merch_visits', 'quick_shortages', 'expiry_items', 'expiry_pulls', 'pull_locks', 'delivery_shifts', 'feedback', 'feedback_codes', 'feedback_rate', 'voice_messages', 'account_deletions'])
                   && (!isViewer() || collection in ['catalog', 'settings']);
       // fcm_tokens stays writable while someone is locked: a locked person
       // still has to keep receiving the reminder notifications.
       allow write: if (canWrite() || (collection == 'fcm_tokens' && canWriteBase()))
-                   && !(collection in ['handovers', 'handover_sessions', 'handover_drafts', 'attendance_days', 'attendance_reports', 'merch_visits', 'quick_shortages', 'expiry_items', 'expiry_pulls', 'pull_locks', 'delivery_shifts', 'feedback', 'feedback_codes', 'feedback_rate', 'voice_messages', 'users']);
+                   && !(collection in ['handovers', 'handover_sessions', 'handover_drafts', 'attendance_days', 'attendance_reports', 'merch_visits', 'quick_shortages', 'expiry_items', 'expiry_pulls', 'pull_locks', 'delivery_shifts', 'feedback', 'feedback_codes', 'feedback_rate', 'voice_messages', 'account_deletions', 'users']);
     }
   }
 }

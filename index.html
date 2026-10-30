@@ -733,7 +733,7 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
              on every deploy, purely so a build mismatch (stale cache / an
              app that hasn't actually picked up the latest deploy) can be
              told apart from an actual code bug just by reading this. -->
-        <span id="appBuild" style="display:block; font-size:10px; opacity:0.5; margin-top:2px;">build v33</span>
+        <span id="appBuild" style="display:block; font-size:10px; opacity:0.5; margin-top:2px;">build v34</span>
       </div>
     </div>
     <div class="header-controls">
@@ -5489,7 +5489,12 @@ function renderDeleteConfirm(){
         if(target.collection === "expiry_items") logActivity("delete");
       }).catch(function(){ toast(t("connError")); });
     } else {
-      S.db.doc(target.collection+"/"+target.id).delete().then(function(){
+      // Deleting an account: also leave a note so the Firebase sign-in account (and its email)
+      // is removed by the scheduled job; otherwise "email already in use" keeps coming back.
+      var note = target.collection === "users"
+        ? S.db.doc("account_deletions/"+target.id).set({at:new Date().toISOString(), by:S.currentUser.id})
+        : Promise.resolve();
+      note.then(function(){ return S.db.doc(target.collection+"/"+target.id).delete(); }).then(function(){
         closeDeleteConfirm();
         toast(t("deleted"));
       }).catch(function(){ toast(t("connError")); });
