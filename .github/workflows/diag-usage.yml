@@ -1,0 +1,30 @@
+name: Diag — usage numbers (manual)
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  rules:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install dependencies
+        working-directory: scripts
+        run: npm install firebase-admin
+      - name: Read usage
+        working-directory: scripts
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node diag-usage.js
+      - name: Save result
+        if: always()
+        run: |
+          git config user.name "rules-bot"; git config user.email "rules@users.noreply.github.com"
+          git checkout -B usage-result
+          git add -f diag/usage.txt && git commit -qm "Usage result" && git push -f origin usage-result
