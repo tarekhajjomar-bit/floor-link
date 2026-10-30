@@ -559,12 +559,15 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
 .auth-switch{text-align:center; font-size:13px; color:var(--ink-soft); margin-top:14px;}
 .auth-switch button{background:none; border:none; color:var(--teal); font-weight:700; cursor:pointer; font-size:13px; padding:0 3px;}
 .btn-danger{background:var(--red-tint); color:var(--red); border:1.5px solid var(--red);}
-.acct-row{display:flex; align-items:center; gap:10px; padding:12px 0; border-top:1px solid var(--line-soft);}
+.acct-row{display:flex; flex-direction:column; align-items:stretch; gap:8px; padding:14px 0; border-top:1px solid var(--line-soft);}
 .acct-row:first-child{border-top:none;}
 .acct-info{flex:1; min-width:0;}
 .acct-info b{font-size:13.5px; display:block;}
 .acct-info span{font-size:11.5px; color:var(--ink-soft); display:block; margin-top:1px;}
-.acct-actions{display:flex; align-items:center; gap:6px; flex:none;}
+.acct-actions{display:flex; align-items:center; flex-wrap:wrap; gap:6px 10px;}
+.acct-actions .link-btn svg{width:14px; height:14px; vertical-align:-2px;}
+.acct-info .ack-row{display:flex; align-items:center; gap:8px; margin-top:4px;}
+.acct-info .ack-row span{display:inline; margin:0; font-size:12.5px;}
 .acct-role-select{border:1px solid var(--line); border-radius:8px; background:var(--paper); padding:5px 7px; font-size:11.5px;}
 .scanner-overlay{position:fixed; inset:0; background:#000; z-index:70; display:flex; flex-direction:column;}
 .scanner-video-wrap{flex:1; position:relative; overflow:hidden; background:#000;}
@@ -733,7 +736,7 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
              on every deploy, purely so a build mismatch (stale cache / an
              app that hasn't actually picked up the latest deploy) can be
              told apart from an actual code bug just by reading this. -->
-        <span id="appBuild" style="display:block; font-size:10px; opacity:0.5; margin-top:2px;">build v34</span>
+        <span id="appBuild" style="display:block; font-size:10px; opacity:0.5; margin-top:2px;">build v35</span>
       </div>
     </div>
     <div class="header-controls">
