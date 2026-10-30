@@ -13,6 +13,16 @@ const fs = require("fs"), admin = require("firebase-admin");
       if (i === 11) out.push("FAIL: not notified after 60s");
     }
     await ref.delete();
+    try {
+      const { GoogleAuth } = require("google-auth-library");
+      const sa = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+      const c = await new GoogleAuth({ credentials: sa, scopes: ["https://www.googleapis.com/auth/cloud-platform"] }).getClient();
+      const r = await c.request({ method: "POST", url: "https://logging.googleapis.com/v2/entries:list", data: {
+        resourceNames: ["projects/" + sa.project_id], orderBy: "timestamp desc", pageSize: 15,
+        filter: 'resource.type="cloud_run_revision" AND resource.labels.service_name=("voicenow" OR "voicereminders") AND timestamp>="' + new Date(Date.now() - 15 * 60000).toISOString() + '"' } });
+      (r.data.entries || []).forEach((e) => out.push("LOG " + e.timestamp + " " + e.resource.labels.service_name + " " + (e.textPayload || JSON.stringify(e.jsonPayload || e.httpRequest || {})).slice(0, 300)));
+      if (!(r.data.entries || []).length) out.push("LOG: no entries");
+    } catch (e) { out.push("log read error: " + e.message.slice(0, 200)); }
   } catch (e) { out.push("ERROR: " + (e && e.message)); }
   fs.mkdirSync("../diag", { recursive: true });
   fs.writeFileSync("../diag/voice-e2e.txt", out.join("\n") + "\n");

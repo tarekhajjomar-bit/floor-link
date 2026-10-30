@@ -16,7 +16,7 @@ jobs:
           node-version: "20"
       - name: Install dependencies
         working-directory: scripts
-        run: npm install firebase-admin
+        run: npm install firebase-admin google-auth-library
       - name: Inspect
         working-directory: scripts
         env:
