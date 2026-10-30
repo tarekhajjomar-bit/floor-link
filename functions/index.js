@@ -11,7 +11,7 @@ const { onSchedule } = require("firebase-functions/v2/scheduler");
 
 admin.initializeApp();
 const db = admin.firestore();
-const REGION = process.env.FN_REGION || "us-central1";
+const REGION = "europe-west1"; // next to the Firestore database (eur3)
 setGlobalOptions({ region: REGION, maxInstances: 5 });
 
 const MAX_REMINDERS = 5, REMIND_EVERY_MS = 10 * 60 * 1000, WINDOW_MS = 24 * 3600 * 1000;
