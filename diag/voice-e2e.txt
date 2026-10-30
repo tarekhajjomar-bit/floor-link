@@ -1,0 +1,2 @@
+OK: voiceNow ran after ~5s: {"notified":true,"pushCount":0,"lastPushAt":1793381088923}
+log read error: Permission denied for all log views
