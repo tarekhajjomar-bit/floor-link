@@ -723,7 +723,7 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
              on every deploy, purely so a build mismatch (stale cache / an
              app that hasn't actually picked up the latest deploy) can be
              told apart from an actual code bug just by reading this. -->
-        <span id="appBuild" style="display:block; font-size:10px; opacity:0.5; margin-top:2px;">build v28</span>
+        <span id="appBuild" style="display:block; font-size:10px; opacity:0.5; margin-top:2px;">build v29</span>
       </div>
     </div>
     <div class="header-controls">
@@ -1043,7 +1043,7 @@ en:{
   historyTitle:"History", historyCreated:"Created", historyQtyUpdate:"Quantity updated to", historyDeleted:"Deleted",
   updateQtyBtn:"Update quantity", newQtyPh:"New quantity",
   deleteProductBtn:"Delete product", deleteProductConfirmTitle:"Delete this tracked product?",
-  deleteProductConfirmSub:"It will be removed from the list, but the full history stays on record permanently for the manager.",
+  deleteProductConfirmSub:"It will be deleted for good. This cannot be undone.",
   deletedByLabel:"Deleted by",
   thresholdsTitle:"Alert thresholds (days before expiry)",
   thresholdsSub:"Comma-separated day counts, e.g. 7,3,1 — items crossing any of these get flagged below.",
@@ -1410,7 +1410,7 @@ ar:{
   historyTitle:"السجل", historyCreated:"تم التسجيل", historyQtyUpdate:"تم تحديث الكمية إلى", historyDeleted:"تم الحذف",
   updateQtyBtn:"تحديث الكمية", newQtyPh:"الكمية الجديدة",
   deleteProductBtn:"حذف المنتج", deleteProductConfirmTitle:"حذف هذا المنتج المتتبَّع؟",
-  deleteProductConfirmSub:"رح ينشال من الليستة، بس كامل السجل بضل محفوظ بشكل دائم للمدير.",
+  deleteProductConfirmSub:"رح ينحذف نهائياً. ما بتقدر ترجّعه.",
   deletedByLabel:"حذفه",
   thresholdsTitle:"حدود التنبيه (أيام قبل الانتهاء)",
   thresholdsSub:"أعداد أيام مفصولة بفاصلة، مثلاً 7,3,1 — أي منتج بيوصل لأحد هالحدود بيتعلّم تحت.",
@@ -1941,6 +1941,34 @@ function handoverSessionDeadline(session){
   return ms + HANDOVER_SESSION_WINDOW_MS;
 }
 
+/* ---- Lazy listeners (Oct 2026) ----
+   Every phone used to open ~10 live listeners at start-up, reading ~1,400 documents
+   per app open whatever screen it was on (and again on every reload). Now a listener
+   starts the first time the screen that needs it is shown, and a role that never sees
+   a screen never pays for it. subRetry() lets a failed one be tried again after a minute. */
+S.subs = {};
+function startSub(name, fn){
+  if(S.subs[name] || !S.db) return;
+  S.subs[name] = 1;
+  fn();
+}
+function subRetry(name){ setTimeout(function(){ S.subs[name] = 0; }, 60000); }
+function ensureSubs(){
+  if(!S.db || !S.currentUser || isViewerUser()) return;   // viewers use subscribeViewerData()
+  var mgr = isManagerUser(), mode = S.appMode, dash = S.view === "dashboard";
+  if(mode === "handover"){
+    startSub("sessions", subscribeOpenHandoverSessions);
+    if(dash){ startSub("logs", subscribeLogs); if(mgr) startSub("shortages", subscribeQuickShortages); }
+  } else if(mode === "merch" && dash){
+    startSub("merch", subscribeMerchLogs);
+    if(mgr) startSub("shortages", subscribeQuickShortages);
+  } else if(mode === "expiry" && dash){
+    startSub("items", subscribeTrackedItems);
+    startSub("thr", subscribeThresholds);
+    if(mgr) startSub("activity", subscribeActivityLog);
+  }
+}
+
 function subscribeOpenHandoverSessions(){
   if(!S.db) return;
   S.db.collection("handover_sessions")
@@ -1956,7 +1984,7 @@ function subscribeOpenHandoverSessions(){
           return dl === null || dl > Date.now();
         });
       if(S.appMode === "handover" && S.view === "form" && !S.handoverSession) render();
-    }, function(){});
+    }, function(){ subRetry("sessions"); });
 }
 
 function stopWatchingHandoverSession(){
@@ -2700,6 +2728,7 @@ function sigBlock(which, label, personName, ackKey){
 }
 
 function renderForm(){
+  ensureSubs();
   var f = S.form;
 
   // Dual-presence gate: a "handover" entry cannot be filled in until BOTH
@@ -3715,6 +3744,7 @@ function wireOpenShortagesBoard(){
 }
 
 function renderDashboard(){
+  ensureSubs();
   var html = "";
 
   html += renderOpenShortagesBoard();
@@ -4317,7 +4347,7 @@ function subscribeMerchLogs(){
     S.merchLogsLoaded = true;
     if(S.appMode === "merch" && S.view === "dashboard") renderMerchDashboard();
   }, function(){
-    S.merchLogsLoaded = true;
+    S.merchLogsLoaded = true; subRetry("merch");
     if(S.appMode === "merch" && S.view === "dashboard") renderMerchDashboard();
   });
 }
@@ -4344,6 +4374,7 @@ function filteredMerchLogs(){
 }
 
 function renderMerchDashboard(){
+  ensureSubs();
   var companyOpts = '<option value="">'+t("filterAll")+'</option>' + visibleCompanies().map(function(c){
     return '<option value="'+c.id+'"'+(S.merchFilters.company===c.id?" selected":"")+'>'+esc(S.lang==="ar"?c.ar:c.en)+'</option>';
   }).join("");
@@ -5337,7 +5368,7 @@ function subscribeQuickShortages(){
     S.quickShortages = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data() || {}); });
     S.quickShortagesLoaded = true;
     if(S.appMode === "handover" && S.view === "dashboard") renderDashboard();
-  }, function(){ S.quickShortagesLoaded = true; });
+  }, function(){ S.quickShortagesLoaded = true; subRetry("shortages"); });
 }
 
 function openQuickShortageModal(){
@@ -5418,14 +5449,9 @@ function renderDeleteConfirm(){
     var target = S.deleteTarget;
     if(!target || !S.db) return;
     if(target.soft){
-      var user = S.currentUser;
-      var who = {userId: user ? user.id : null, username: (user ? user.username : "") || "", fullName: user ? user.fullName : ""};
-      var nowIso = new Date().toISOString();
-      S.db.doc(target.collection+"/"+target.id).update({
-        status: "deleted",
-        deletedInfo: Object.assign({at: nowIso}, who),
-        history: firebase.firestore.FieldValue.arrayUnion({action:"deleted", userId:who.userId, username:who.username || "", fullName:who.fullName, at: nowIso})
-      }).then(function(){
+      // Deleting an expiry item removes it for real (it used to be hidden and kept forever,
+      // which kept every old item being re-read by every phone).
+      S.db.doc(target.collection+"/"+target.id).delete().then(function(){
         closeDeleteConfirm();
         toast(t("deleted"));
         if(target.collection === "expiry_items") logActivity("delete");
@@ -5469,11 +5495,14 @@ function logActivity(action){
 
 function subscribeActivityLog(){
   if(!S.db) return;
-  S.db.collection("activity_log").orderBy("at","desc").limit(3000).onSnapshot(function(snap){
+  // Only the manager's expiry dashboard shows this, and only 7 / 30 day views:
+  // read just the last 30 days (a range + order on the same field needs no extra index).
+  var since = new Date(Date.now() - 31*86400000).toISOString();
+  S.db.collection("activity_log").where("at", ">=", since).orderBy("at","desc").limit(3000).onSnapshot(function(snap){
     S.activityLog = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data() || {}); });
     S.activityLogLoaded = true;
     if(S.appMode === "expiry" && S.view === "dashboard") renderTrackedDashboard();
-  }, function(){ S.activityLogLoaded = true; });
+  }, function(){ S.activityLogLoaded = true; subRetry("activity"); });
 }
 
 function activityReport(periodDays){
@@ -5526,7 +5555,7 @@ function subscribeTrackedItems(){
     S.trackedItems = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data() || {}); });
     S.trackedItemsLoaded = true;
     if(S.appMode === "expiry" && S.view === "dashboard") renderTrackedDashboard();
-  }, function(){ S.trackedItemsLoaded = true; });
+  }, function(){ S.trackedItemsLoaded = true; subRetry("items"); });
 }
 
 function subscribeThresholds(){
@@ -5538,7 +5567,7 @@ function subscribeThresholds(){
       S.thresholdsInput = S.thresholds.join(",");
     }
     if(S.appMode === "expiry" && S.view === "dashboard") renderTrackedDashboard();
-  }, function(){ S.thresholdsLoaded = true; });
+  }, function(){ S.thresholdsLoaded = true; subRetry("thr"); });
 }
 
 /* ================= EXPIRY PULL REQUESTS =================
@@ -5763,22 +5792,16 @@ function cancelPull(id){
 }
 function deletePulls(ids, msg){
   if(!S.db || !ids.length || !confirm(msg)) return;
-  // Once the manager OKs a pulled item, it is dealt with: the pull record goes AND the
-  // item itself is removed from the expiry list (same soft-delete as "Delete product").
-  var u = S.currentUser, F = firebase.firestore.FieldValue, nowIso = new Date().toISOString();
+  // Once the manager OKs a pulled item it is dealt with: the pull record AND the item itself
+  // are removed for real.
   var b = S.db.batch(), doneItems = {};
   ids.forEach(function(id){
     b.delete(S.db.doc("expiry_pulls/"+id));
     var p = S.pulls.filter(function(x){ return x.id === id; })[0];
     var it = p && S.trackedItems.filter(function(x){ return x.id === p.itemId; })[0];
-    if(it && it.status !== "deleted" && !doneItems[it.id]){
+    if(it && !doneItems[it.id]){
       doneItems[it.id] = true;
-      b.update(S.db.doc("expiry_items/"+it.id), {
-        status: "deleted",
-        deletedInfo: {at:nowIso, userId:u.id, username:u.username||"", fullName:u.fullName, reason:"pulled"},
-        deleteRequestPending: F.delete(),
-        history: F.arrayUnion({action:"deleted", userId:u.id, username:u.username||"", fullName:u.fullName, at:nowIso})
-      });
+      b.delete(S.db.doc("expiry_items/"+it.id));
     }
   });
   b.commit().then(function(){ toast(t("deleted")); }).catch(function(err){ console.error("Delete pulls failed:", err); toast(t("pullErrToast")); });
@@ -5888,6 +5911,7 @@ function complianceReport(periodDays){
 }
 
 function renderTrackedDashboard(){
+  ensureSubs();
   var html = delReqCardHtml() + pullsCardHtml();
 
   if(isManagerUser() || isViewerUser()){
@@ -6060,13 +6084,7 @@ function renderDelReqModal(){
 function approveDelReq(id){
   var l = S.trackedItems.filter(function(x){ return x.id === id; })[0];
   if(!l || !S.db || !confirm(t("deleteProductConfirmTitle"))) return;
-  var u = S.currentUser, F = firebase.firestore.FieldValue, nowIso = new Date().toISOString();
-  S.db.doc("expiry_items/"+id).update({
-    status: "deleted",
-    deletedInfo: {at:nowIso, userId:u.id, username:u.username||"", fullName:u.fullName, reason:(l.deleteRequest||{}).reason||"", requestedBy:((l.deleteRequest||{}).by||{}).fullName||""},
-    deleteRequestPending: F.delete(),
-    history: F.arrayUnion({action:"deleted", userId:u.id, username:u.username||"", fullName:u.fullName, at:nowIso})
-  }).then(function(){ toast(t("deleted")); logActivity("delete"); }).catch(function(){ toast(t("connError")); });
+  S.db.doc("expiry_items/"+id).delete().then(function(){ toast(t("deleted")); logActivity("delete"); }).catch(function(){ toast(t("connError")); });
 }
 function rejectDelReq(id){
   if(!S.db || !confirm(t("delReqRejectConfirm"))) return;
@@ -7392,6 +7410,7 @@ function renderMerchJobDesc(){
 
 function render(){
   syncPullLock();
+  ensureSubs();
   updateAuthChrome();
   updateNotifBanner();
   updateVerifyEmailBanner();
@@ -7521,7 +7540,7 @@ function subscribeLogs(){
     S.logsLoaded = true;
     if(S.view === "dashboard") renderDashboard();
   }, function(err){
-    S.logsLoaded = true;
+    S.logsLoaded = true; subRetry("logs");
     if(S.view === "dashboard") renderDashboard();
   });
 }
@@ -7703,15 +7722,10 @@ function boot(){
   S.canWriteAssets = !!assetsApi;
 
   if(db){
-    subscribeLogs();
-    subscribeMerchLogs();
+    // Only what every screen needs starts here (a dozen users, the pull requests);
+    // the rest start lazily — see ensureSubs().
     subscribeUsers();
-    subscribeTrackedItems();
     subscribePulls();
-    subscribeQuickShortages();
-    subscribeOpenHandoverSessions();
-    subscribeActivityLog();
-    subscribeThresholds();
     watchAuthState();
     trySyncQueue();
   } else {
