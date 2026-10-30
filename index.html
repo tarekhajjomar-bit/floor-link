@@ -733,7 +733,7 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
              on every deploy, purely so a build mismatch (stale cache / an
              app that hasn't actually picked up the latest deploy) can be
              told apart from an actual code bug just by reading this. -->
-        <span id="appBuild" style="display:block; font-size:10px; opacity:0.5; margin-top:2px;">build v32</span>
+        <span id="appBuild" style="display:block; font-size:10px; opacity:0.5; margin-top:2px;">build v33</span>
       </div>
     </div>
     <div class="header-controls">
@@ -887,7 +887,7 @@ en:{
   oldUsernamePh:"The username you used to log in with",
   migratingNote:"We'll copy your name, role, branch and department from your old account automatically — you just need a new login.",
   forgotPasswordLink:"Forgot password?",
-  resetEmailSentToast:"Password reset email sent — check your inbox.",
+  resetEmailSentToast:"Password reset email sent — check your inbox.", acctResetBtn:"Send password reset link", acctResetConfirm:"Send a password reset link to this email?", acctResetSent:"Reset link sent.", acctNoEmail:"No email saved yet",
   accountModalTitle:"Your account",
   changePasswordTitle:"Change password",
   currentPasswordLabel:"Current password",
@@ -1247,7 +1247,7 @@ ar:{
   merchDeptLabel:"القسم", merchDeptPh:"اختر القسم",
   authErrDeptRequired:"يرجى اختيار قسم لهذا المارشندايزر.",
   authErrCompanyRequired:"يرجى اختيار الفرع يلي بيشتغل فيه هذا الحساب.",
-  emailLabel:"الإيميل", emailPh:"you@example.com",
+  emailLabel:"الإيميل", emailPh:"you@example.com", acctResetBtn:"إرسال رابط تغيير الباسورد", acctResetConfirm:"إرسال رابط تغيير الباسورد لهالإيميل؟", acctResetSent:"انبعت الرابط.", acctNoEmail:"الإيميل غير محفوظ بعد",
   authErrEmailTaken:"في حساب مسجّل بهذا الإيميل أصلاً — جرّب تسجّل دخول بدل حساب جديد.",
   authErrInvalidEmail:"هذا مش إيميل صحيح.",
   authErrTooManyAttempts:"كتير محاولات — استنى شوي وجرب مرة تانية.",
@@ -4678,7 +4678,7 @@ function createAuthAccountAndProfile(email, password, profile, oldDocRef){
   S.auth.createUserWithEmailAndPassword(email, password).then(function(cred){
     var uid = cred.user.uid;
     var doc = Object.assign({}, profile, {
-      disabled:false, createdAt: new Date().toISOString(), lastLoginAt: new Date().toISOString()
+      email: String(email).trim().toLowerCase(), disabled:false, createdAt: new Date().toISOString(), lastLoginAt: new Date().toISOString()
     });
     var tasks = [S.db.doc("users/"+uid).set(doc)];
     if(oldDocRef){ tasks.push(oldDocRef.update({migratedToUid: uid})); }
@@ -5157,6 +5157,7 @@ function acctRow(u){
     '<div class="acct-info">' +
       '<b>'+esc(u.fullName)+'</b>' +
       (u.username ? '<span>@'+esc(u.username)+'</span>' : '') +
+      '<span dir="ltr" style="user-select:text;">'+(u.email ? esc(u.email) : '<i>'+t("acctNoEmail")+'</i>')+'</span>' +
       (u.role === "merchandiser" && u.department ? '<span>'+t("colDepartment")+': '+esc(deptLabel(u.department))+'</span>' : '') +
       ((u.role === "merchandiser" || u.role === "supervisor") && u.company ? '<span>'+t("company")+': '+esc(companyName(u.company))+'</span>' : '') +
       '<span>'+t("colLastLogin")+': '+lastLogin+'</span>' +
@@ -5168,6 +5169,7 @@ function acctRow(u){
         '<span class="badge badge-issues">'+t("statusDisabled")+'</span><button type="button" class="link-btn" data-toggle-disable="'+u.id+'" data-next="false">'+t("enableBtn")+'</button>' :
         '<span class="badge badge-approved">'+t("statusActive")+'</span>'+(isSelf?'':'<button type="button" class="link-btn" data-toggle-disable="'+u.id+'" data-next="true">'+t("disableBtn")+'</button>')
       ) +
+      (u.email ? '<button type="button" class="link-btn" data-reset-acct="'+u.id+'">'+t("acctResetBtn")+'</button>' : '') +
       (isSelf?'':'<button type="button" class="link-btn" style="color:var(--red);" data-delete-acct="'+u.id+'">'+ICONS.trash+' '+t("deleteAccountBtn")+'</button>') +
     '</div>' +
   '</div>';
@@ -5253,6 +5255,13 @@ function wireAccounts(){
       S.db.doc("users/"+id).update({disabled: next}).then(function(){ toast(t("accountUpdated")); }).catch(function(){ toast(t("connError")); });
     };
   });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-reset-acct]"), function(btn){
+    btn.onclick = function(){
+      var u = S.users.filter(function(x){ return x.id === btn.getAttribute("data-reset-acct"); })[0];
+      if(!u || !u.email || !confirm(t("acctResetConfirm") + "\n" + u.email)) return;
+      S.auth.sendPasswordResetEmail(u.email).then(function(){ toast(t("acctResetSent")); }).catch(function(err){ toast(describeAuthError(err)); });
+    };
+  });
   Array.prototype.forEach.call(document.querySelectorAll("[data-delete-acct]"), function(btn){
     btn.onclick = function(){ requestDelete("users", this.getAttribute("data-delete-acct"), false); };
   });
@@ -5275,7 +5284,7 @@ function createAccount(){
   S.secondaryAuth.createUserWithEmailAndPassword(email, nf.password).then(function(cred){
     var uid = cred.user.uid;
     S.db.doc("users/"+uid).set({
-      fullName: nf.fullName.trim(), role: nf.role,
+      fullName: nf.fullName.trim(), email: String(email).trim().toLowerCase(), role: nf.role,
       department: nf.role === "merchandiser" ? nf.department : "",
       company: (nf.role === "merchandiser" || nf.role === "supervisor") ? nf.company : "",
       companies: nf.role === "viewer" ? nf.companies : [],
