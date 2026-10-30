@@ -26,6 +26,7 @@ jobs:
           mkdir -p diag
           echo "$FIREBASE_SERVICE_ACCOUNT" > /tmp/sa.json
           export GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa.json
+          echo "service-account: $(node -e "console.log(require('/tmp/sa.json').client_email)")" | tee diag/functions.txt
           PROJECT=$(node -e "console.log(require('/tmp/sa.json').project_id)")
           # Cloud Functions must live next to the Firestore database
           REGION=$(cd scripts && node -e "
@@ -33,7 +34,7 @@ jobs:
             (async()=>{const a=new GoogleAuth({credentials:require('/tmp/sa.json'),scopes:['https://www.googleapis.com/auth/cloud-platform']});
             const c=await a.getClient();const r=await c.request({url:'https://firestore.googleapis.com/v1/projects/$PROJECT/databases/(default)'});
             console.log(r.data.locationId);})().catch(e=>{console.log('us-central1');});")
-          echo "project=$PROJECT firestore-location=$REGION" | tee diag/functions.txt
+          echo "project=$PROJECT firestore-location=$REGION" | tee -a diag/functions.txt
           case "$REGION" in nam5) REGION=us-central1;; eur3) REGION=europe-west1;; esac
           export FN_REGION=$REGION
           echo "functions region=$REGION" | tee -a diag/functions.txt
