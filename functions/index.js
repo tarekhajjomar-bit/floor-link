@@ -30,12 +30,12 @@ async function tokensFor(userIds) {
   return Object.values(newest).map((x) => x.token);
 }
 
-async function push(userIds, title, body, id, type) {
+async function push(userIds, title, body, id) {
   const tokens = await tokensFor(userIds);
   if (!tokens.length) return 0;
   const res = await admin.messaging().sendEachForMulticast({
     notification: { title, body },
-    data: { type: type || "voice", id },
+    data: { type: "voice", id },
     tokens,
   });
   await Promise.all(res.responses.map((r, i) => {
@@ -46,32 +46,6 @@ async function push(userIds, title, body, id, type) {
   }));
   return res.successCount;
 }
-
-const BRANCH_NAMES = { shoppies: "شوبيز", omar_mina: "الحاج عمر — الميناء", omar_abrin: "الحاج عمر — عبرين" };
-const branchName = (id) => BRANCH_NAMES[id] || id || "";
-
-async function managerUserIds() {
-  const snap = await db.collection("fcm_tokens").where("role", "in", ["admin", "manager"]).get();
-  return [...new Set(snap.docs.map((d) => d.data().userId).filter(Boolean))];
-}
-
-// Opening / handover / closing: tell the managers the moment it is submitted
-// (same text the GitHub cron used to send hours late; it skips docs marked notifiedAdmin).
-exports.handoverNow = onDocumentCreated("handovers/{id}", async (event) => {
-  const d = event.data.data();
-  if (d.notifiedAdmin === true) return;
-  const type = d.entryType || d.shiftType || "handover";
-  const title = type === "opening" ? "🔓 فتح وردية" : type === "closing" ? "🔒 إقفال" : "🔁 تسليم وردية";
-  let body = `${d.outgoingName || "مشرف"}`;
-  if (type === "handover" && d.incomingName) body += ` ← ${d.incomingName}`;
-  body += ` · ${branchName(d.company)}`;
-  if (d.time) body += ` · ${d.time}`;
-  if (d.pending && d.pending.urgent) body += "\n🚨 في شي مستعجل";
-  else if (d.status === "issues") body += "\n⚠️ في مشاكل بالتسليم";
-  const sent = await push(await managerUserIds(), title, body, event.params.id, "handover");
-  await event.data.ref.update({ notifiedAdmin: true });
-  console.log("handover push sent to", sent, "device(s)");
-});
 
 exports.voiceNow = onDocumentCreated("voice_messages/{id}", async (event) => {
   const d = event.data.data();
