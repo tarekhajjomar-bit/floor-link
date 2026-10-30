@@ -487,6 +487,16 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
   animation:toast-in .22s var(--ease);
 }
 @keyframes toast-in{ from{opacity:0; transform:translateX(-50%) translateY(8px);} to{opacity:1; transform:translateX(-50%) translateY(0);} }
+.voice-fab{position:fixed; z-index:55; inset-inline-end:16px; bottom:calc(env(safe-area-inset-bottom,0px) + 18px); border:none; cursor:pointer;
+  min-width:52px; height:52px; padding:0 18px; border-radius:26px; background:var(--green,#16221F); color:#fff; font:inherit; font-weight:700; font-size:14px;
+  box-shadow:0 10px 26px -6px rgba(0,0,0,.4); display:flex; align-items:center; gap:8px;}
+.voice-fab.new{background:var(--red,#b4281e); animation:section-fade-in .3s var(--ease);}
+.voice-ov{z-index:65;}
+.voice-rec{width:84px; height:84px; border-radius:50%; border:none; margin:10px auto; display:flex; align-items:center; justify-content:center; background:var(--paper); color:var(--ink); font-size:30px; cursor:pointer; border:2px solid var(--line-soft);}
+.voice-rec.on{background:var(--red,#b4281e); color:#fff; border-color:transparent; animation:voice-pulse 1.1s infinite;}
+@keyframes voice-pulse{0%{box-shadow:0 0 0 0 rgba(180,40,30,.45);}100%{box-shadow:0 0 0 18px rgba(180,40,30,0);}}
+.voice-item{border-top:1px solid var(--line-soft); padding:10px 0;}
+.voice-item audio{width:100%; margin-top:6px;}
 .modal-overlay{
   position:fixed; inset:0; background:rgba(10,14,12,.5); z-index:60;
   display:flex; align-items:flex-end; justify-content:center;
@@ -723,7 +733,7 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
              on every deploy, purely so a build mismatch (stale cache / an
              app that hasn't actually picked up the latest deploy) can be
              told apart from an actual code bug just by reading this. -->
-        <span id="appBuild" style="display:block; font-size:10px; opacity:0.5; margin-top:2px;">build v29</span>
+        <span id="appBuild" style="display:block; font-size:10px; opacity:0.5; margin-top:2px;">build v30</span>
       </div>
     </div>
     <div class="header-controls">
@@ -835,6 +845,12 @@ en:{
   counterNoteLabel:"What is wrong, and what was done about it?", counterInOnly:"The incoming supervisor fills this in.",
   counterMissing:"Please complete the deli counter check: employee 1 (name and all three answers), and any other employee you started.",
   counterNoteMissing:"Deli counter employee: please explain what is wrong.",
+  voiceBtn:"Voice message", voiceTitle:"Voice message", voiceTo:"Send to", voiceAll:"Everyone", voiceMerch:"All merchandisers", voiceSup:"All supervisors",
+  voiceBranch:"Branch", voicePerson:"A person", voiceRecord:"Tap to record", voiceStop:"Tap to stop", voiceRerecord:"Record again", voiceSend:"Send",
+  voiceSending:"Sending...", voiceSent:"Voice message sent.", voiceNoMic:"The microphone is not available. Allow it for this app in the phone settings.",
+  voiceNoRec:"This phone can't record audio here.", voicePickPerson:"Pick who to send it to.", voiceNobody:"No one matches that selection.",
+  voiceSentList:"Sent", voiceHeard:"heard", voiceDelete:"Delete", voiceDeleteConfirm:"Delete this voice message?", voiceInbox:"Voice messages",
+  voiceNew:"new voice message", voiceFrom:"From", voiceNone:"No voice messages.", voiceFail:"Couldn't send the message. Try again.",
   counterEmployee:"Employee", counterOptional:"Optional", counterAdd:"Add another employee", counterRemove:"Remove",
   delReqBtn:"Request deletion", delReqTitle:"Request to delete this item", delReqSub:"Pick the reason. The manager will approve it and the item will then be removed.",
   delReqSold:"Sold out / finished", delReqGone:"No longer available / not sold anymore", delReqMistake:"Scanned by mistake / duplicate",
@@ -1202,6 +1218,12 @@ ar:{
   counterNoteLabel:"شو المشكلة وشو عملت فيها؟", counterInOnly:"سوبرفايزر الاستلام (الجاي) هو يلي بيعبّي هالقسم.",
   counterMissing:"يرجى تعبئة فحص موظفي البراد: الموظف الأول (الاسم والأجوبة الثلاثة) وأي موظف تاني بدأت فيه.",
   counterNoteMissing:"موظف البراد: يرجى كتابة شو المشكلة.",
+  voiceBtn:"رسالة صوتية", voiceTitle:"رسالة صوتية", voiceTo:"لمين", voiceAll:"الكل", voiceMerch:"كل المرشندايزرز", voiceSup:"كل السوبرفايزرز",
+  voiceBranch:"فرع", voicePerson:"شخص محدد", voiceRecord:"اضغط للتسجيل", voiceStop:"اضغط للإيقاف", voiceRerecord:"سجّل من جديد", voiceSend:"إرسال",
+  voiceSending:"عم يرسل...", voiceSent:"انبعتت الرسالة الصوتية.", voiceNoMic:"الميكروفون مو متاح. اسمح له من إعدادات الجوال لهالتطبيق.",
+  voiceNoRec:"هالجوال ما بيقدر يسجّل صوت هون.", voicePickPerson:"اختار لمين بدك تبعتها.", voiceNobody:"ما في حدا بيطابق هالاختيار.",
+  voiceSentList:"المرسَلة", voiceHeard:"سمعوا", voiceDelete:"حذف", voiceDeleteConfirm:"حذف هالرسالة الصوتية؟", voiceInbox:"الرسائل الصوتية",
+  voiceNew:"رسالة صوتية جديدة", voiceFrom:"من", voiceNone:"ما في رسائل صوتية.", voiceFail:"ما قدرت أبعت الرسالة. جرّب مرة تانية.",
   counterEmployee:"الموظف", counterOptional:"اختياري", counterAdd:"إضافة موظف آخر", counterRemove:"حذف",
   delReqBtn:"طلب حذف", delReqTitle:"طلب حذف هالصنف", delReqSub:"اختار السبب. المدير بيوافق وبعدها بينحذف الصنف.",
   delReqSold:"انباع / خلص", delReqGone:"ما عاد موجود / ما عاد نبيعه", delReqMistake:"انعمل له سكان بالغلط / مكرر",
@@ -1956,6 +1978,7 @@ function subRetry(name){ setTimeout(function(){ S.subs[name] = 0; }, 60000); }
 function ensureSubs(){
   if(!S.db || !S.currentUser || isViewerUser()) return;   // viewers use subscribeViewerData()
   var mgr = isManagerUser(), mode = S.appMode, dash = S.view === "dashboard";
+  startSub("voice", subscribeVoice);
   if(mode === "handover"){
     startSub("sessions", subscribeOpenHandoverSessions);
     if(dash){ startSub("logs", subscribeLogs); if(mgr) startSub("shortages", subscribeQuickShortages); }
@@ -5833,6 +5856,192 @@ function pullsCardHtml(){
     ((allDone.length && isManagerUser()) ? '<button type="button" class="link-btn" data-pull-clear="1" style="margin-top:10px;">'+t("pullClearAll")+' ('+allDone.length+')</button>' : '') + '</div>';
 }
 
+/* ================= VOICE MESSAGES (Oct 2026) =================
+   The manager records a short message and sends it to everyone, a role, a branch or
+   one person; they hear it in the app (and get a push). One-way: no replies. The audio
+   sits in Firebase Storage (voice/, auto-deleted after 30 days); voice_messages/{id}
+   holds who it is for (recipientIds, worked out when it is sent) and who heard it. */
+var VOICE_MAX_SEC = 120;
+S.voice = {list:[], open:false, rec:null, audience:"all", person:"", blob:null, url:"", mime:"", sec:0, busy:false, err:""};
+function voiceMime(){
+  if(!window.MediaRecorder || !MediaRecorder.isTypeSupported) return "";
+  var c = ["audio/mp4","audio/webm;codecs=opus","audio/webm","audio/ogg;codecs=opus"];
+  for(var i=0;i<c.length;i++){ if(MediaRecorder.isTypeSupported(c[i])) return c[i]; }
+  return "";
+}
+function subscribeVoice(){
+  var u = S.currentUser;
+  if(!S.db || !u || isViewerUser()) return;
+  var q = isManagerUser() ? S.db.collection("voice_messages").orderBy("createdAt","desc").limit(30)
+                          : S.db.collection("voice_messages").where("recipientIds","array-contains",u.id);
+  q.onSnapshot(function(snap){
+    S.voice.list = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data() || {}); })
+      .sort(function(a,b){ return String(b.createdAt||"").localeCompare(String(a.createdAt||"")); }).slice(0,30);
+    renderVoiceUi();
+  }, function(){ subRetry("voice"); });
+}
+function voiceUnheard(){
+  var me = S.currentUser && S.currentUser.id, cutoff = new Date(Date.now() - 30*86400000).toISOString();
+  return S.voice.list.filter(function(m){ return me && String(m.createdAt||"") > cutoff && !(m.listened && m.listened[me]); });
+}
+function voiceRecipients(aud, person){
+  var me = S.currentUser.id;
+  return S.users.filter(function(u){
+    if(u.disabled || u.id === me || u.role === "viewer" || u.role === "manager" || u.role === "admin") return false;
+    if(aud === "all") return true;
+    if(aud === "merchandiser" || aud === "supervisor") return u.role === aud;
+    if(aud === "person") return u.id === person;
+    return u.company === aud;   // a branch id
+  }).map(function(u){ return u.id; });
+}
+function voiceAudLabel(aud, person){
+  if(aud === "all") return t("voiceAll");
+  if(aud === "merchandiser") return t("voiceMerch");
+  if(aud === "supervisor") return t("voiceSup");
+  if(aud === "person"){ var p = S.users.filter(function(u){ return u.id === person; })[0]; return p ? p.fullName : t("voicePerson"); }
+  var c = COMPANIES.filter(function(x){ return x.id === aud; })[0];
+  return c ? (S.lang === "ar" ? c.ar : c.en) : aud;
+}
+function renderVoiceUi(){
+  var fab = document.getElementById("voiceFab");
+  var show = !!(S.currentUser && S.db && !isViewerUser());
+  var mgr = isManagerUser(), n = mgr ? 0 : voiceUnheard().length;
+  if(!show || (!mgr && !n && !S.voice.open)){ if(fab) fab.remove(); }
+  else {
+    if(!fab){
+      fab = document.createElement("button"); fab.type = "button"; fab.id = "voiceFab"; fab.className = "voice-fab";
+      fab.onclick = function(){ S.voice.open = true; S.voice.err = ""; renderVoiceUi(); };
+      document.body.appendChild(fab);
+    }
+    fab.className = "voice-fab" + (n ? " new" : "");
+    fab.textContent = (mgr ? "🎙 " + t("voiceBtn") : "🔔 " + n + " " + t("voiceNew"));
+    fab.style.display = S.voice.open ? "none" : "flex";
+  }
+  var host = document.getElementById("voiceHost");
+  if(!S.voice.open){ if(host) host.remove(); return; }
+  if(!host){ host = document.createElement("div"); host.id = "voiceHost"; document.body.appendChild(host); }
+  var V = S.voice, html = '<div class="modal-overlay voice-ov" id="voiceOv"><div class="modal-sheet">' +
+    '<div class="modal-head"><h2>'+(mgr ? t("voiceTitle") : t("voiceInbox"))+'</h2><button type="button" class="modal-close" id="voiceClose">'+ICONS.close+'</button></div>';
+  if(mgr){
+    var staff = S.users.filter(function(u){ return !u.disabled && u.role !== "viewer" && u.role !== "manager" && u.role !== "admin" && u.id !== S.currentUser.id; });
+    var opts = [["all",t("voiceAll")],["merchandiser",t("voiceMerch")],["supervisor",t("voiceSup")]]
+      .concat(COMPANIES.map(function(c){ return [c.id, t("voiceBranch")+": "+(S.lang==="ar"?c.ar:c.en)]; }))
+      .concat([["person",t("voicePerson")]]);
+    html += '<div class="field"><label>'+t("voiceTo")+'</label><select id="voiceAud">' + opts.map(function(o){
+      return '<option value="'+esc(o[0])+'"'+(V.audience===o[0]?" selected":"")+'>'+esc(o[1])+'</option>'; }).join("") + '</select></div>';
+    if(V.audience === "person"){
+      html += '<div class="field"><select id="voicePerson"><option value="">—</option>' + staff.map(function(u){
+        return '<option value="'+esc(u.id)+'"'+(V.person===u.id?" selected":"")+'>'+esc(u.fullName)+' — '+esc(roleBadgeLabel(u.role))+'</option>'; }).join("") + '</select></div>';
+    }
+    if(V.blob){
+      html += '<audio controls src="'+esc(V.url)+'" style="width:100%;"></audio>' +
+        '<div style="display:flex; gap:8px; margin-top:10px;"><button type="button" class="btn btn-secondary" id="voiceAgain" style="flex:1;">'+t("voiceRerecord")+'</button>' +
+        '<button type="button" class="btn btn-primary" id="voiceSend" style="flex:1;"'+(V.busy?" disabled":"")+'>'+(V.busy ? t("voiceSending") : t("voiceSend"))+'</button></div>';
+    } else {
+      html += '<div style="text-align:center;"><button type="button" class="voice-rec'+(V.rec?" on":"")+'" id="voiceRecBtn">'+(V.rec ? "■" : "🎙")+'</button>' +
+        '<div class="hint" id="voiceTimer">'+(V.rec ? V.sec+"s" : t("voiceRecord"))+'</div></div>';
+    }
+    if(V.err) html += '<p class="form-error">'+esc(V.err)+'</p>';
+    if(V.list.length){
+      html += '<div class="divider-note"><b style="font-size:13px;">'+t("voiceSentList")+'</b></div>' + V.list.map(function(m){
+        var ids = m.recipientIds || [], heard = ids.filter(function(i){ return m.listened && m.listened[i]; }).length;
+        return '<div class="voice-item"><div style="display:flex; justify-content:space-between; gap:8px;"><span><b>'+esc(m.audienceLabel||"")+'</b><br><span class="hint">'+fmtDateTime(m.createdAt)+' · '+heard+'/'+ids.length+' '+t("voiceHeard")+'</span></span>' +
+          '<button type="button" class="link-btn" data-voice-del="'+m.id+'">'+t("voiceDelete")+'</button></div>' +
+          '<audio controls preload="none" src="'+esc(m.url)+'"></audio></div>';
+      }).join("");
+    }
+  } else {
+    html += (V.list.length ? V.list.map(function(m){
+      var heard = m.listened && m.listened[S.currentUser.id];
+      return '<div class="voice-item"><b>'+(heard ? "" : "🔴 ")+t("voiceFrom")+' '+esc((m.from||{}).fullName||"—")+'</b> <span class="hint">'+fmtDateTime(m.createdAt)+'</span>' +
+        '<audio controls preload="none" data-voice-play="'+m.id+'" src="'+esc(m.url)+'"></audio></div>';
+    }).join("") : '<p class="hint">'+t("voiceNone")+'</p>');
+  }
+  host.innerHTML = html + '</div></div>';
+  wireVoiceUi();
+}
+function voiceClose(){
+  if(S.voice.rec){ try{ S.voice.rec.rec.stop(); }catch(e){} S.voice.rec = null; }
+  S.voice.open = false; S.voice.blob = null; S.voice.url = ""; S.voice.err = "";
+  renderVoiceUi();
+}
+function wireVoiceUi(){
+  var V = S.voice, $ = function(id){ return document.getElementById(id); };
+  if($("voiceClose")) $("voiceClose").onclick = voiceClose;
+  if($("voiceOv")) $("voiceOv").onclick = function(e){ if(e.target.id === "voiceOv" && !V.rec) voiceClose(); };
+  if($("voiceAud")) $("voiceAud").onchange = function(){ V.audience = this.value; renderVoiceUi(); };
+  if($("voicePerson")) $("voicePerson").onchange = function(){ V.person = this.value; };
+  if($("voiceAgain")) $("voiceAgain").onclick = function(){ V.blob = null; V.url = ""; V.err = ""; renderVoiceUi(); };
+  if($("voiceRecBtn")) $("voiceRecBtn").onclick = function(){ V.rec ? voiceStop() : voiceStart(); };
+  if($("voiceSend")) $("voiceSend").onclick = voiceSend;
+  Array.prototype.forEach.call(document.querySelectorAll("[data-voice-del]"), function(b){
+    b.onclick = function(){
+      if(!confirm(t("voiceDeleteConfirm"))) return;
+      S.db.doc("voice_messages/"+this.getAttribute("data-voice-del")).delete().catch(function(){ toast(t("connError")); });
+    };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-voice-play]"), function(a){
+    a.onplay = function(){
+      var id = this.getAttribute("data-voice-play"), me = S.currentUser.id;
+      var m = V.list.filter(function(x){ return x.id === id; })[0];
+      if(m && !(m.listened && m.listened[me])){
+        var upd = {}; upd["listened."+me] = new Date().toISOString();
+        S.db.doc("voice_messages/"+id).update(upd).catch(function(){});
+      }
+    };
+  });
+}
+function voiceStart(){
+  var V = S.voice, mime = voiceMime();
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder){ V.err = t("voiceNoRec"); renderVoiceUi(); return; }
+  navigator.mediaDevices.getUserMedia({audio:true}).then(function(stream){
+    var rec = mime ? new MediaRecorder(stream, {mimeType:mime}) : new MediaRecorder(stream), chunks = [];
+    V.rec = {rec:rec, stream:stream, t0:Date.now(), timer:null}; V.sec = 0; V.err = "";
+    rec.ondataavailable = function(e){ if(e.data && e.data.size) chunks.push(e.data); };
+    rec.onstop = function(){
+      clearInterval(V.rec && V.rec.timer);
+      try{ stream.getTracks().forEach(function(tr){ tr.stop(); }); }catch(e){}
+      var sec = Math.max(1, Math.round((Date.now() - (V.rec ? V.rec.t0 : Date.now())) / 1000));
+      V.rec = null;
+      var type = rec.mimeType || mime || "audio/webm";
+      V.blob = new Blob(chunks, {type:type}); V.mime = type; V.sec = sec;
+      V.url = URL.createObjectURL(V.blob);
+      renderVoiceUi();
+    };
+    rec.start();
+    V.rec.timer = setInterval(function(){
+      V.sec = Math.round((Date.now() - V.rec.t0) / 1000);
+      var el = document.getElementById("voiceTimer"); if(el) el.textContent = V.sec + "s";
+      if(V.sec >= VOICE_MAX_SEC) voiceStop();
+    }, 500);
+    renderVoiceUi();
+  }).catch(function(){ V.err = t("voiceNoMic"); renderVoiceUi(); });
+}
+function voiceStop(){ if(S.voice.rec){ try{ S.voice.rec.rec.stop(); }catch(e){} } }
+function voiceSend(){
+  var V = S.voice, u = S.currentUser;
+  if(V.busy || !V.blob) return;
+  if(V.audience === "person" && !V.person){ V.err = t("voicePickPerson"); renderVoiceUi(); return; }
+  var ids = voiceRecipients(V.audience, V.person);
+  if(!ids.length){ V.err = t("voiceNobody"); renderVoiceUi(); return; }
+  if(!S.storage){ V.err = t("voiceFail"); renderVoiceUi(); return; }
+  V.busy = true; V.err = ""; renderVoiceUi();
+  var ext = /mp4/.test(V.mime) ? "m4a" : /ogg/.test(V.mime) ? "ogg" : "webm";
+  var d = new Date(), path = "voice/" + d.getUTCFullYear() + ("0"+(d.getUTCMonth()+1)).slice(-2) + "/" + u.id + "_" + Date.now() + "." + ext;
+  var ref = S.storage.ref(path);
+  ref.put(V.blob, {contentType: V.mime.split(";")[0]}).then(function(snap){ return snap.ref.getDownloadURL(); }).then(function(url){
+    return S.db.collection("voice_messages").add({
+      from:{userId:u.id, fullName:u.fullName}, audience:V.audience, audienceLabel:voiceAudLabel(V.audience, V.person),
+      recipientIds:ids, url:url, durationSec:V.sec, mime:V.mime, listened:{}, notified:false, createdAt:new Date().toISOString()
+    });
+  }).then(function(){
+    V.busy = false; V.blob = null; V.url = ""; toast(t("voiceSent")); renderVoiceUi();
+  }).catch(function(err){
+    console.error("Voice send failed:", err);
+    V.busy = false; V.err = t("voiceFail") + (err && err.code ? " (" + err.code + ")" : ""); renderVoiceUi();
+  });
+}
+
 function renderTrackForm(){
   var locked = S.currentUser && (S.currentUser.role === "merchandiser" || S.currentUser.role === "supervisor") && S.currentUser.company;
   if(locked && S.trackContext.company !== S.currentUser.company){
@@ -7411,6 +7620,7 @@ function renderMerchJobDesc(){
 function render(){
   syncPullLock();
   ensureSubs();
+  renderVoiceUi();
   updateAuthChrome();
   updateNotifBanner();
   updateVerifyEmailBanner();
@@ -7719,6 +7929,7 @@ function boot(){
   S.db = db;
   S.auth = auth;
   S.assets = assetsApi;
+  S.storage = storageApi;
   S.canWriteAssets = !!assetsApi;
 
   if(db){

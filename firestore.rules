@@ -301,6 +301,23 @@ service cloud.firestore {
     // ---------------- delivery_shifts ----------------
     // Written by the branch delivery books. Read by managers, by the delivery
     // books themselves, and by a viewer for the delivery books ticked on its account.
+    // ---------------- voice_messages (Oct 2026) ----------------
+    // One-way voice broadcasts from the manager. recipientIds is worked out when it is
+    // sent; each recipient may only mark their OWN entry in `listened` (heard receipt).
+    match /voice_messages/{id} {
+      allow read: if isManager()
+                  || (isSignedIn() && request.auth.uid in resource.data.recipientIds);
+      allow create: if isManager()
+                    && request.resource.data.from.userId == request.auth.uid
+                    && request.resource.data.recipientIds is list
+                    && request.resource.data.recipientIds.size() <= 200;
+      allow update: if isSignedIn()
+                    && request.auth.uid in resource.data.recipientIds
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['listened'])
+                    && request.resource.data.listened.diff(resource.data.listened).affectedKeys().hasOnly([request.auth.uid]);
+      allow delete: if isManager();
+    }
+
     match /delivery_shifts/{docId} {
       allow read: if isManager()
                   || (isSignedIn() && myRole() == 'delivery')
@@ -450,12 +467,12 @@ service cloud.firestore {
     //  - account documents (users) are only written through their own rules (Oct 2026).
     match /{collection}/{document=**} {
       allow read: if isSignedIn()
-                  && !(collection in ['handovers', 'handover_sessions', 'handover_drafts', 'attendance_days', 'attendance_reports', 'merch_visits', 'quick_shortages', 'expiry_items', 'expiry_pulls', 'pull_locks', 'delivery_shifts', 'feedback', 'feedback_codes', 'feedback_rate'])
+                  && !(collection in ['handovers', 'handover_sessions', 'handover_drafts', 'attendance_days', 'attendance_reports', 'merch_visits', 'quick_shortages', 'expiry_items', 'expiry_pulls', 'pull_locks', 'delivery_shifts', 'feedback', 'feedback_codes', 'feedback_rate', 'voice_messages'])
                   && (!isViewer() || collection in ['catalog', 'settings']);
       // fcm_tokens stays writable while someone is locked: a locked person
       // still has to keep receiving the reminder notifications.
       allow write: if (canWrite() || (collection == 'fcm_tokens' && canWriteBase()))
-                   && !(collection in ['handovers', 'handover_sessions', 'handover_drafts', 'attendance_days', 'attendance_reports', 'merch_visits', 'quick_shortages', 'expiry_items', 'expiry_pulls', 'pull_locks', 'delivery_shifts', 'feedback', 'feedback_codes', 'feedback_rate', 'users']);
+                   && !(collection in ['handovers', 'handover_sessions', 'handover_drafts', 'attendance_days', 'attendance_reports', 'merch_visits', 'quick_shortages', 'expiry_items', 'expiry_pulls', 'pull_locks', 'delivery_shifts', 'feedback', 'feedback_codes', 'feedback_rate', 'voice_messages', 'users']);
     }
   }
 }

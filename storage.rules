@@ -22,6 +22,14 @@ service firebase.storage {
       allow get: if request.auth != null;
       allow list, update, delete: if false;
     }
+    // Voice messages from the manager: audio only, max 5 MB, auto-deleted after 30 days.
+    match /voice/{allPaths=**} {
+      allow create: if request.auth != null
+                    && request.resource.size < 5 * 1024 * 1024
+                    && request.resource.contentType.matches('audio/.*');
+      allow get: if request.auth != null;
+      allow list, update, delete: if false;
+    }
     match /{allPaths=**} {
       allow read, write: if false;
     }
