@@ -736,7 +736,7 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
              on every deploy, purely so a build mismatch (stale cache / an
              app that hasn't actually picked up the latest deploy) can be
              told apart from an actual code bug just by reading this. -->
-        <span id="appBuild" style="display:block; font-size:10px; opacity:0.5; margin-top:2px;">build v36</span>
+        <span id="appBuild" style="display:block; font-size:10px; opacity:0.5; margin-top:2px;">build v37</span>
       </div>
     </div>
     <div class="header-controls">
@@ -852,7 +852,7 @@ en:{
   voiceBranch:"Branch", voicePerson:"A person", voiceRecord:"Tap to record", voiceStop:"Tap to stop", voiceRerecord:"Record again", voiceSend:"Send",
   voiceSending:"Sending...", voiceSent:"Voice message sent.", voiceNoMic:"The microphone is not available. Allow it for this app in the phone settings.",
   voiceNoRec:"This phone can't record audio here.", voicePickPerson:"Pick who to send it to.", voiceNobody:"No one matches that selection.",
-  voiceSentList:"Sent", voiceHeard:"heard", voiceDelete:"Delete", voiceDeleteConfirm:"Delete this voice message?", voiceInbox:"Voice messages",
+  voiceSentList:"Sent", voiceHeard:"heard", voiceHeardBy:"Heard", voiceNotYet:"Not yet", voiceDelete:"Delete", voiceDeleteConfirm:"Delete this voice message?", voiceInbox:"Voice messages",
   voiceNew:"new voice message", voiceFrom:"From", voiceNone:"No voice messages.", voiceFail:"Couldn't send the message. Try again.", voiceEmpty:"The recording came out empty. Try again.",
   counterEmployee:"Employee", counterOptional:"Optional", counterAdd:"Add another employee", counterRemove:"Remove",
   delReqBtn:"Request deletion", delReqTitle:"Request to delete this item", delReqSub:"Pick the reason. The manager will approve it and the item will then be removed.",
@@ -1225,7 +1225,7 @@ ar:{
   voiceBranch:"فرع", voicePerson:"شخص محدد", voiceRecord:"اضغط للتسجيل", voiceStop:"اضغط للإيقاف", voiceRerecord:"سجّل من جديد", voiceSend:"إرسال",
   voiceSending:"عم يرسل...", voiceSent:"انبعتت الرسالة الصوتية.", voiceNoMic:"الميكروفون مو متاح. اسمح له من إعدادات الجوال لهالتطبيق.",
   voiceNoRec:"هالجوال ما بيقدر يسجّل صوت هون.", voicePickPerson:"اختار لمين بدك تبعتها.", voiceNobody:"ما في حدا بيطابق هالاختيار.",
-  voiceSentList:"المرسَلة", voiceHeard:"سمعوا", voiceDelete:"حذف", voiceDeleteConfirm:"حذف هالرسالة الصوتية؟", voiceInbox:"الرسائل الصوتية",
+  voiceSentList:"المرسَلة", voiceHeard:"سمعوا", voiceHeardBy:"سمعوا", voiceNotYet:"لسا ما سمعوا", voiceDelete:"حذف", voiceDeleteConfirm:"حذف هالرسالة الصوتية؟", voiceInbox:"الرسائل الصوتية",
   voiceNew:"رسالة صوتية جديدة", voiceFrom:"من", voiceNone:"ما في رسائل صوتية.", voiceFail:"ما قدرت أبعت الرسالة. جرّب مرة تانية.", voiceEmpty:"التسجيل طلع فاضي. جرّب مرة تانية.",
   counterEmployee:"الموظف", counterOptional:"اختياري", counterAdd:"إضافة موظف آخر", counterRemove:"حذف",
   delReqBtn:"طلب حذف", delReqTitle:"طلب حذف هالصنف", delReqSub:"اختار السبب. المدير بيوافق وبعدها بينحذف الصنف.",
@@ -5977,6 +5977,7 @@ function renderVoiceUi(){
         var ids = m.recipientIds || [], heard = ids.filter(function(i){ return m.listened && m.listened[i]; }).length;
         return '<div class="voice-item"><div style="display:flex; justify-content:space-between; gap:8px;"><span><b>'+esc(m.audienceLabel||"")+'</b><br><span class="hint">'+fmtDateTime(m.createdAt)+' · '+heard+'/'+ids.length+' '+t("voiceHeard")+'</span></span>' +
           '<button type="button" class="link-btn" data-voice-del="'+m.id+'">'+t("voiceDelete")+'</button></div>' +
+          voiceWhoHtml(m) +
           '<audio controls preload="none" src="'+esc(m.url)+'"></audio></div>';
       }).join("");
     }
@@ -5989,6 +5990,17 @@ function renderVoiceUi(){
   }
   host.innerHTML = html + '</div></div>';
   wireVoiceUi();
+}
+// Names of who heard a message (and when) and who has not yet.
+function voiceWhoHtml(m){
+  var ids = m.recipientIds || [], L = m.listened || {};
+  function nm(id){ var u = S.users.filter(function(x){ return x.id === id; })[0]; return u ? u.fullName : "—"; }
+  var heard = ids.filter(function(i){ return L[i]; }).sort(function(a,b){ return String(L[a]).localeCompare(String(L[b])); });
+  var wait = ids.filter(function(i){ return !L[i]; });
+  var h = '<details style="margin-top:6px;"><summary class="hint" style="cursor:pointer;">'+t("voiceHeardBy")+' '+heard.length+' / '+ids.length+'</summary><div style="font-size:12.5px; margin-top:4px;">';
+  h += heard.map(function(i){ return '<div>✅ <b>'+esc(nm(i))+'</b> <span class="hint">'+fmtDateTime(L[i])+'</span></div>'; }).join("");
+  if(wait.length) h += '<div class="hint" style="margin-top:4px;">'+t("voiceNotYet")+':</div>' + wait.map(function(i){ return '<div>⏳ '+esc(nm(i))+'</div>'; }).join("");
+  return h + '</div></details>';
 }
 function voiceClose(){
   if(S.voice.rec){ try{ S.voice.rec.rec.stop(); }catch(e){} S.voice.rec = null; }
