@@ -1,10 +1,6 @@
 name: Notify — merchandiser reminder
 
 on:
-  schedule:
-    # 08:00 UTC ≈ 11:00 AM Beirut in summer (UTC+3).
-    # Same UTC/daylight-saving note as the other workflows — adjust as needed.
-    - cron: "0 8 * * *"
   workflow_dispatch: {}
 
 jobs:
