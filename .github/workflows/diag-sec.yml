@@ -1,7 +1,11 @@
 name: Diag — security facts (manual)
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      what:
+        description: "rules-test | storage-test | move-emails-dry | move-emails"
+        default: "rules-test"
 
 permissions:
   contents: write
@@ -11,20 +15,35 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: security-hold
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-      - name: Install dependencies
-        working-directory: scripts
-        run: npm install firebase-admin
-      - name: Inspect
-        working-directory: scripts
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Install
+        run: |
+          npm install
+          npm install -g firebase-tools
+          cd scripts && npm install firebase-admin firebase
+      - name: Run
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-        run: node diag-sec.js
+          WHAT: ${{ github.event.inputs.what }}
+        run: |
+          mkdir -p diag
+          case "$WHAT" in
+            rules-test) firebase emulators:exec --only firestore --project floor-link-test "node test/rules.test.js" 2>&1 | tee diag/sec.txt ;;
+            storage-test) (cd scripts && node storage-test.js) 2>&1 | tee diag/sec.txt; cat diag/storagetest.txt >> diag/sec.txt ;;
+            move-emails-dry) (cd scripts && DRY=1 node move-emails.js) 2>&1 | tee diag/sec.txt ;;
+            move-emails) (cd scripts && DRY=0 node move-emails.js) 2>&1 | tee diag/sec.txt ;;
+          esac
       - name: Save result
         if: always()
         run: |
           git config user.name "rules-bot"; git config user.email "rules@users.noreply.github.com"
           git checkout -B sec-result
-          git add -f diag/sec.txt && git commit -qm "Voice result" && git push -f origin sec-result
+          git add -f diag/sec.txt && git commit -qm "Security result" && git push -f origin sec-result
