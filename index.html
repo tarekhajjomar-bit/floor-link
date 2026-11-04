@@ -45,7 +45,7 @@
   // immediately on the next key instead of waiting. One key still works
   // exactly as before — this is purely additive.
   var YOUR_IMGBB_CONFIG = {
-    apiKeys: ["65f47cfbdd68220add021626940dd010", "65889477016756c13a167bb8606690cd"]
+    apiKeys: []
   };
 </script>
 <script>
@@ -736,7 +736,7 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
              on every deploy, purely so a build mismatch (stale cache / an
              app that hasn't actually picked up the latest deploy) can be
              told apart from an actual code bug just by reading this. -->
-        <span id="appBuild" style="display:block; font-size:10px; opacity:0.5; margin-top:2px;">build v37</span>
+        <span id="appBuild" style="display:block; font-size:10px; opacity:0.5; margin-top:2px;">build v38</span>
       </div>
     </div>
     <div class="header-controls">
@@ -890,7 +890,7 @@ en:{
   oldUsernamePh:"The username you used to log in with",
   migratingNote:"We'll copy your name, role, branch and department from your old account automatically — you just need a new login.",
   forgotPasswordLink:"Forgot password?",
-  resetEmailSentToast:"Password reset email sent — check your inbox.", acctResetBtn:"Send password reset link", acctResetConfirm:"Send a password reset link to this email?", acctResetSent:"Reset link sent.", acctNoEmail:"No email saved yet",
+  resetEmailSentToast:"Password reset email sent — check your inbox.", pendingTitle:"Waiting for approval", pendingSub:"Your account was created. The manager has to approve it before you can use the app. This page updates by itself.", pendingCheck:"Check now", pendingStill:"Not approved yet.", acctPendingBadge:"Waiting for approval", acctApprove:"Approve", acctReject:"Reject", acctPendingNote:"account(s) waiting for your approval", acctApproved:"Account approved.", acctResetBtn:"Send password reset link", acctResetConfirm:"Send a password reset link to this email?", acctResetSent:"Reset link sent.", acctNoEmail:"No email saved yet",
   accountModalTitle:"Your account",
   changePasswordTitle:"Change password",
   currentPasswordLabel:"Current password",
@@ -1250,7 +1250,7 @@ ar:{
   merchDeptLabel:"القسم", merchDeptPh:"اختر القسم",
   authErrDeptRequired:"يرجى اختيار قسم لهذا المارشندايزر.",
   authErrCompanyRequired:"يرجى اختيار الفرع يلي بيشتغل فيه هذا الحساب.",
-  emailLabel:"الإيميل", emailPh:"you@example.com", acctResetBtn:"إرسال رابط تغيير الباسورد", acctResetConfirm:"إرسال رابط تغيير الباسورد لهالإيميل؟", acctResetSent:"انبعت الرابط.", acctNoEmail:"الإيميل غير محفوظ بعد",
+  emailLabel:"الإيميل", emailPh:"you@example.com", pendingTitle:"بانتظار الموافقة", pendingSub:"انعمل حسابك. لازم المدير يوافق عليه قبل ما تقدر تستعمل التطبيق. هالصفحة بتتحدّث لحالها.", pendingCheck:"تحقّق هلق", pendingStill:"لسا ما انوافق عليه.", acctPendingBadge:"بانتظار الموافقة", acctApprove:"موافقة", acctReject:"رفض", acctPendingNote:"حساب بانتظار موافقتك", acctApproved:"انوافق على الحساب.", acctResetBtn:"إرسال رابط تغيير الباسورد", acctResetConfirm:"إرسال رابط تغيير الباسورد لهالإيميل؟", acctResetSent:"انبعت الرابط.", acctNoEmail:"الإيميل غير محفوظ بعد",
   authErrEmailTaken:"في حساب مسجّل بهذا الإيميل أصلاً — جرّب تسجّل دخول بدل حساب جديد.",
   authErrInvalidEmail:"هذا مش إيميل صحيح.",
   authErrTooManyAttempts:"كتير محاولات — استنى شوي وجرب مرة تانية.",
@@ -1972,6 +1972,7 @@ function handoverSessionDeadline(session){
    starts the first time the screen that needs it is shown, and a role that never sees
    a screen never pays for it. subRetry() lets a failed one be tried again after a minute. */
 S.subs = {};
+S.userPrivate = {}; S.allUsers = [];
 function startSub(name, fn){
   if(S.subs[name] || !S.db) return;
   S.subs[name] = 1;
@@ -1982,6 +1983,7 @@ function ensureSubs(){
   if(!S.db || !S.currentUser || isViewerUser()) return;   // viewers use subscribeViewerData()
   var mgr = isManagerUser(), mode = S.appMode, dash = S.view === "dashboard";
   startSub("voice", subscribeVoice);
+  if(isManagerUser() && mode === "accounts") startSub("userPrivate", subscribeUserPrivate);
   if(mode === "handover"){
     startSub("sessions", subscribeOpenHandoverSessions);
     if(dash){ startSub("logs", subscribeLogs); if(mgr) startSub("shortages", subscribeQuickShortages); }
@@ -4681,13 +4683,14 @@ function createAuthAccountAndProfile(email, password, profile, oldDocRef){
   S.auth.createUserWithEmailAndPassword(email, password).then(function(cred){
     var uid = cred.user.uid;
     var doc = Object.assign({}, profile, {
-      email: String(email).trim().toLowerCase(), disabled:false, createdAt: new Date().toISOString(), lastLoginAt: new Date().toISOString()
+      approved:false, disabled:false, createdAt: new Date().toISOString(), lastLoginAt: new Date().toISOString()
     });
-    var tasks = [S.db.doc("users/"+uid).set(doc)];
+    var tasks = [S.db.doc("users/"+uid).set(doc), S.db.doc("user_private/"+uid).set({email: String(email).trim().toLowerCase()})];
     if(oldDocRef){ tasks.push(oldDocRef.update({migratedToUid: uid})); }
     Promise.all(tasks).then(function(){
       S.authBusy = false;
       S.authError = "";
+      if(!S.currentUser) S.currentUser = Object.assign({id:uid}, doc);   // new accounts always wait for approval
       render();
       cred.user.sendEmailVerification().catch(function(){});
       // onAuthStateChanged fires automatically and routes into the app.
@@ -4750,7 +4753,9 @@ function watchAuthState(){
         S.auth.signOut();
         return;
       }
-      if(snap.exists && !snap.data().disabled){
+      if(snap.exists && !snap.data().disabled && snap.data().approved === false){
+        S.currentUser = Object.assign({id:user.uid}, snap.data());   // waiting for the manager
+      } else if(snap.exists && !snap.data().disabled){
         S.currentUser = Object.assign({id:user.uid}, snap.data());
         S.db.doc("users/"+user.uid).update({lastLoginAt:new Date().toISOString()}).catch(function(){});
         subscribePulls();   // re-attach now that we're signed in (a listener started before sign-in can have been refused)
@@ -4767,10 +4772,44 @@ function watchAuthState(){
   });
 }
 
+function subscribeUserPrivate(){
+  if(!S.db) return;
+  S.db.collection("user_private").onSnapshot(function(snap){
+    S.userPrivate = {};
+    snap.docs.forEach(function(d){ S.userPrivate[d.id] = d.data() || {}; });
+    if(S.appMode === "accounts" && S.currentUser) renderAccounts();
+  }, function(){ subRetry("userPrivate"); });
+}
+
+// A new self-registered account waits here until the manager approves it.
+function startPendingPoll(){
+  if(S.pendingTimer) return;
+  S.pendingTimer = setInterval(checkPendingNow, 15000);
+}
+function checkPendingNow(){
+  if(!S.db || !S.currentUser) return;
+  S.db.doc("users/"+S.currentUser.id).get().then(function(snap){
+    var d = snap.exists ? snap.data() : null;
+    if(d && d.approved !== false){ clearInterval(S.pendingTimer); S.pendingTimer = null; location.reload(); }
+    else if(d && d.disabled && S.auth){ S.auth.signOut(); }
+    else if(S.pendingManual){ S.pendingManual = false; toast(t("pendingStill")); }
+  }).catch(function(){ S.pendingManual = false; });
+}
+function renderPending(){
+  document.getElementById("main").innerHTML = '<div class="auth-wrap"><div class="card" style="text-align:center;">' +
+    '<div class="section-title">'+t("pendingTitle")+'</div>' +
+    '<p class="section-sub">'+t("pendingSub")+'</p>' +
+    '<button type="button" class="btn btn-secondary" id="pendingCheckBtn" style="width:auto; padding-inline:18px;">'+t("pendingCheck")+'</button></div></div>';
+  document.getElementById("pendingCheckBtn").onclick = function(){ S.pendingManual = true; checkPendingNow(); };
+  startPendingPoll();
+}
+
 function subscribeUsers(){
   if(!S.db) return;
   S.db.collection("users").orderBy("createdAt","asc").limit(500).onSnapshot(function(snap){
-    S.users = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data() || {}); });
+    S.allUsers = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data() || {}); });
+    // Accounts still waiting for approval are not people you can pick anywhere in the app.
+    S.users = S.allUsers.filter(function(u){ return u.approved !== false; });
     S.usersLoaded = true;
     var forcedSignOut = false;
     if(S.currentUser){
@@ -5130,10 +5169,13 @@ function renderAccounts(){
   html += '<div class="card">';
   if(!S.usersLoaded){
     html += '<div class="empty">'+t("loading")+'</div>';
-  } else if(!S.users.length){
+  } else if(!S.allUsers.length){
     html += '<div class="empty">'+t("accountsEmpty")+'</div>';
   } else {
-    html += S.users.map(acctRow).join("");
+    var list = S.allUsers.slice().sort(function(a,b){ return (b.approved === false ? 1 : 0) - (a.approved === false ? 1 : 0); });
+    var npend = list.filter(function(u){ return u.approved === false; }).length;
+    if(npend) html += '<p class="form-error" style="font-weight:700;">⏳ '+npend+' '+t("acctPendingNote")+'</p>';
+    html += list.map(acctRow).join("");
   }
   html += '</div>';
 
@@ -5160,7 +5202,8 @@ function acctRow(u){
     '<div class="acct-info">' +
       '<b>'+esc(u.fullName)+'</b>' +
       (u.username ? '<span>@'+esc(u.username)+'</span>' : '') +
-      '<span dir="ltr" style="user-select:text;">'+(u.email ? esc(u.email) : '<i>'+t("acctNoEmail")+'</i>')+'</span>' +
+      '<span dir="ltr" style="user-select:text;">'+((S.userPrivate[u.id]||{}).email ? esc(S.userPrivate[u.id].email) : '<i>'+t("acctNoEmail")+'</i>')+'</span>' +
+      (u.approved === false ? '<span class="badge badge-issues" style="align-self:flex-start;">⏳ '+t("acctPendingBadge")+'</span>' : '') +
       (u.role === "merchandiser" && u.department ? '<span>'+t("colDepartment")+': '+esc(deptLabel(u.department))+'</span>' : '') +
       ((u.role === "merchandiser" || u.role === "supervisor") && u.company ? '<span>'+t("company")+': '+esc(companyName(u.company))+'</span>' : '') +
       '<span>'+t("colLastLogin")+': '+lastLogin+'</span>' +
@@ -5172,7 +5215,8 @@ function acctRow(u){
         '<span class="badge badge-issues">'+t("statusDisabled")+'</span><button type="button" class="link-btn" data-toggle-disable="'+u.id+'" data-next="false">'+t("enableBtn")+'</button>' :
         '<span class="badge badge-approved">'+t("statusActive")+'</span>'+(isSelf?'':'<button type="button" class="link-btn" data-toggle-disable="'+u.id+'" data-next="true">'+t("disableBtn")+'</button>')
       ) +
-      (u.email ? '<button type="button" class="link-btn" data-reset-acct="'+u.id+'">'+t("acctResetBtn")+'</button>' : '') +
+      (u.approved === false ? '<button type="button" class="btn btn-primary" style="width:auto; padding:6px 14px;" data-approve-acct="'+u.id+'">'+t("acctApprove")+'</button>' : '') +
+      ((S.userPrivate[u.id]||{}).email && u.approved !== false ? '<button type="button" class="link-btn" data-reset-acct="'+u.id+'">'+t("acctResetBtn")+'</button>' : '') +
       (isSelf?'':'<button type="button" class="link-btn" style="color:var(--red);" data-delete-acct="'+u.id+'">'+ICONS.trash+' '+t("deleteAccountBtn")+'</button>') +
     '</div>' +
   '</div>';
@@ -5258,11 +5302,16 @@ function wireAccounts(){
       S.db.doc("users/"+id).update({disabled: next}).then(function(){ toast(t("accountUpdated")); }).catch(function(){ toast(t("connError")); });
     };
   });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-approve-acct]"), function(btn){
+    btn.onclick = function(){
+      S.db.doc("users/"+btn.getAttribute("data-approve-acct")).update({approved:true}).then(function(){ toast(t("acctApproved")); }).catch(function(){ toast(t("connError")); });
+    };
+  });
   Array.prototype.forEach.call(document.querySelectorAll("[data-reset-acct]"), function(btn){
     btn.onclick = function(){
-      var u = S.users.filter(function(x){ return x.id === btn.getAttribute("data-reset-acct"); })[0];
-      if(!u || !u.email || !confirm(t("acctResetConfirm") + "\n" + u.email)) return;
-      S.auth.sendPasswordResetEmail(u.email).then(function(){ toast(t("acctResetSent")); }).catch(function(err){ toast(describeAuthError(err)); });
+      var mail = (S.userPrivate[btn.getAttribute("data-reset-acct")] || {}).email;
+      if(!mail || !confirm(t("acctResetConfirm") + "\n" + mail)) return;
+      S.auth.sendPasswordResetEmail(mail).then(function(){ toast(t("acctResetSent")); }).catch(function(err){ toast(describeAuthError(err)); });
     };
   });
   Array.prototype.forEach.call(document.querySelectorAll("[data-delete-acct]"), function(btn){
@@ -5286,8 +5335,9 @@ function createAccount(){
   // new account it just created.
   S.secondaryAuth.createUserWithEmailAndPassword(email, nf.password).then(function(cred){
     var uid = cred.user.uid;
+    S.db.doc("user_private/"+uid).set({email: String(email).trim().toLowerCase()}).catch(function(){});
     S.db.doc("users/"+uid).set({
-      fullName: nf.fullName.trim(), email: String(email).trim().toLowerCase(), role: nf.role,
+      fullName: nf.fullName.trim(), role: nf.role,
       department: nf.role === "merchandiser" ? nf.department : "",
       company: (nf.role === "merchandiser" || nf.role === "supervisor") ? nf.company : "",
       companies: nf.role === "viewer" ? nf.companies : [],
@@ -7733,6 +7783,7 @@ function renderMerchJobDesc(){
 }
 
 function render(){
+  if(S.currentUser && S.currentUser.approved === false){ updateAuthChrome(); updateUserChip(); renderPending(); return; }
   syncPullLock();
   ensureSubs();
   renderVoiceUi();
