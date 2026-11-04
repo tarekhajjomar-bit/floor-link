@@ -1,0 +1,4 @@
+OK   approved-staff: upload allowed
+FAIL unknown-uid: upload allowed  <-- should have been refused
+FAIL pending-account: upload allowed  <-- should have been refused
+OK   anonymous: refused (storage/unauthorized)
