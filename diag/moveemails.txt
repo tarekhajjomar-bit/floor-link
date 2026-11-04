@@ -1,0 +1,2 @@
+users: 12, emails moved: 12, filled from Auth: 0, no email anywhere: 0
+users docs still holding an email field: 0
