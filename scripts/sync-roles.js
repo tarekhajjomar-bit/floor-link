@@ -50,7 +50,8 @@ async function main() {
   for (const doc of snap.docs) {
     const uid = doc.id;
     const data = doc.data();
-    const wantRole = data.role || "supervisor";
+    // An account still waiting for the manager's approval gets no real role claim.
+    const wantRole = data.approved === false ? "pending" : (data.role || "supervisor");
     const wantDisabled = !!data.disabled;
 
     let authUser;
