@@ -39,6 +39,15 @@ service cloud.firestore {
     function isViewer() {
       return isSignedIn() && myRole() == 'viewer';
     }
+    // New self-registered accounts start with approved == false and can do nothing but wait
+    // until the manager approves them (Nov 2026). Accounts without the field (all the
+    // existing ones, and the ones the manager creates) count as approved.
+    function isApproved() {
+      return exists(myDocPath()) && get(myDocPath()).data.get('approved', true) != false;
+    }
+    function isStaff() {
+      return isSignedIn() && isApproved();
+    }
     // Manager by claim, or by the users document (covers older "manager" accounts
     // and the minutes before the claim sync runs).
     function isManager() {
@@ -52,11 +61,11 @@ service cloud.firestore {
     }
     // Everyone signed in reads as before; a viewer only reads its own branches.
     function canReadCompany(company) {
-      return isSignedIn() && (!isViewer() || company in viewerCompanies());
+      return isStaff() && (!isViewer() || company in viewerCompanies());
     }
     // A viewer never writes anything.
     function canWriteBase() {
-      return isSignedIn() && !isViewer();
+      return isStaff() && !isViewer();
     }
 
     // ---- Expiry "pull requests" lock (Oct 2026) ----
@@ -83,14 +92,20 @@ service cloud.firestore {
       // below (supervisors pick the incoming supervisor from it). Writing is
       // only here (Oct 2026): before, the catch-all also let any employee
       // rewrite any account, including their own role.
-      allow read: if isOwner(userId) || isAdmin();
+      // Own account always (even while waiting for approval); everyone else's only for approved,
+      // non-viewer staff (names and roles are needed to pick people). Emails are NOT in this
+      // document any more: they live in user_private (manager only).
+      allow read: if isOwner(userId) || isAdmin() || (isStaff() && !isViewer());
       allow create: if isManager()
+                    // Self-registration: only as a supervisor/merchandiser, always waiting for approval.
                     || (isOwner(userId)
-                        && request.resource.data.role in ['supervisor', 'merchandiser']);
+                        && request.resource.data.role in ['supervisor', 'merchandiser']
+                        && request.resource.data.get('approved', true) == false
+                        && !('email' in request.resource.data));
       allow update: if isManager()
                     || (isOwner(userId)
                         && !request.resource.data.diff(resource.data).affectedKeys()
-                              .hasAny(['role', 'disabled', 'companies', 'deliveryBranches', 'company', 'department']))
+                              .hasAny(['role', 'disabled', 'companies', 'deliveryBranches', 'company', 'department', 'approved', 'email']))
                     // Old username accounts: on first sign-in the new account marks
                     // its old profile as migrated, and nothing else.
                     || (isSignedIn()
@@ -100,10 +115,35 @@ service cloud.firestore {
       allow delete: if isManager();
     }
 
+    // ---------------- user_private (Nov 2026) ----------------
+    // Each account's email, kept apart from users/{uid} so ordinary staff can't read it.
+    match /user_private/{uid} {
+      allow read: if isManager() || isOwner(uid);
+      allow create: if isManager()
+                    || (isOwner(uid)
+                        && request.resource.data.keys().hasOnly(['email'])
+                        && request.resource.data.email is string
+                        && request.resource.data.email.lower() == request.auth.token.email.lower());
+      allow update, delete: if isManager();
+    }
+
+    // ---------------- fcm_tokens (Nov 2026) ----------------
+    // A phone's notification address. Staff can only register it under their OWN id and real role,
+    // so nobody can sign a device up for the manager's alerts. Only the manager reads the list.
+    match /fcm_tokens/{id} {
+      allow read: if isManager();
+      allow create, update: if canWriteBase()
+                            && request.resource.data.userId == request.auth.uid
+                            && request.resource.data.role == myRole();
+      allow delete: if isManager() || (isSignedIn() && resource.data.userId == request.auth.uid);
+    }
+
     // ---------------- handovers / merch_visits / quick_shortages ----------------
     match /handovers/{docId} {
       allow read: if canReadCompany(resource.data.company);
-      allow write: if canWrite();
+      // Staff add handovers; only the manager reviews (edits) or deletes them.
+      allow create: if canWrite();
+      allow update, delete: if isManager();
     }
     match /merch_visits/{docId} {
       allow read: if canReadCompany(resource.data.company);
@@ -122,12 +162,12 @@ service cloud.firestore {
     // real instead of just a client-side courtesy — a tampered client
     // cannot fake either side of it.
     match /handover_sessions/{id} {
-      allow read: if isSignedIn();
+      allow read: if isStaff() && !isViewer();
 
       // Starting a session: the creator can only name THEMSELVES as the
       // outgoing supervisor (no starting one "as" a colleague), and the
       // incoming side must start empty.
-      allow create: if isSignedIn()
+      allow create: if isStaff()
                     && request.resource.data.outgoing.userId == request.auth.uid
                     && request.resource.data.incoming == null
                     && request.resource.data.status == 'awaiting_incoming';
@@ -137,7 +177,7 @@ service cloud.firestore {
       // session is still awaiting_incoming. The outgoing side can never be
       // edited after creation, so a session can't be quietly reassigned to
       // a different "outgoing" person after the fact either.
-      allow update: if isSignedIn()
+      allow update: if isStaff()
                     && resource.data.status == 'awaiting_incoming'
                     && request.resource.data.outgoing == resource.data.outgoing
                     && request.resource.data.incoming.userId == request.auth.uid
@@ -146,7 +186,7 @@ service cloud.firestore {
 
       // Either participant can delete: covers both the 15-minute expiry
       // wipe and the normal cleanup once a handover is actually submitted.
-      allow delete: if isSignedIn()
+      allow delete: if isStaff()
                     && (resource.data.outgoing.userId == request.auth.uid
                         || (resource.data.incoming != null && resource.data.incoming.userId == request.auth.uid));
     }
@@ -169,13 +209,13 @@ service cloud.firestore {
     // tampered client still can't let one side quietly fill in the other's
     // checkpoints or signature.
     match /handover_drafts/{sessionId} {
-      allow read: if isSignedIn();
+      allow read: if isStaff() && !isViewer();
 
       // Created empty (no "draft" field yet) by whichever of the two
       // participants' devices gets there first — both send the identical
       // company/outgoingUserId/incomingUserId, so it doesn't matter which
       // one actually wins the race.
-      allow create: if isSignedIn()
+      allow create: if isStaff()
                     && request.resource.data.keys().hasOnly(['company','outgoingUserId','incomingUserId'])
                     && request.resource.data.outgoingUserId is string
                     && request.resource.data.incomingUserId is string
@@ -191,7 +231,7 @@ service cloud.firestore {
       //    not evidence of either person's presence, so either participant
       //    may write these (last write wins, same as a shared notes field
       //    always behaved before this device ever had its own copy).
-      allow update: if isSignedIn()
+      allow update: if isStaff()
                     && (request.auth.uid == resource.data.outgoingUserId || request.auth.uid == resource.data.incomingUserId)
                     // The identity fields are permanent — only "draft" ever changes.
                     && request.resource.data.company == resource.data.company
@@ -210,7 +250,7 @@ service cloud.firestore {
 
       // Either participant can delete — cleanup once the handover is
       // actually submitted, or if it's abandoned before that.
-      allow delete: if isSignedIn()
+      allow delete: if isStaff()
                     && (resource.data.outgoingUserId == request.auth.uid || resource.data.incomingUserId == request.auth.uid);
     }
 
@@ -314,12 +354,12 @@ service cloud.firestore {
     // sent; each recipient may only mark their OWN entry in `listened` (heard receipt).
     match /voice_messages/{id} {
       allow read: if isManager()
-                  || (isSignedIn() && request.auth.uid in resource.data.recipientIds);
+                  || (isStaff() && request.auth.uid in resource.data.recipientIds);
       allow create: if isManager()
                     && request.resource.data.from.userId == request.auth.uid
                     && request.resource.data.recipientIds is list
                     && request.resource.data.recipientIds.size() <= 200;
-      allow update: if isSignedIn()
+      allow update: if isStaff()
                     && request.auth.uid in resource.data.recipientIds
                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['listened'])
                     && request.resource.data.listened.diff(resource.data.listened).affectedKeys().hasOnly([request.auth.uid]);
@@ -328,9 +368,10 @@ service cloud.firestore {
 
     match /delivery_shifts/{docId} {
       allow read: if isManager()
-                  || (isSignedIn() && myRole() == 'delivery')
+                  || (isStaff() && myRole() == 'delivery')
                   || (isViewer() && resource.data.branch in viewerDeliveryBranches());
-      allow write: if canWrite();
+      // Written by the delivery book's account (role delivery); the manager can fix entries.
+      allow write: if isManager() || (canWrite() && myRole() == 'delivery');
     }
 
     // ---------------- attendance (Oct 2026) ----------------
@@ -352,7 +393,7 @@ service cloud.firestore {
     // ---------------- activity_log ----------------
     // Unchanged. Append-only; only admins read it.
     match /activity_log/{logId} {
-      allow create: if isSignedIn()
+      allow create: if isStaff()
                     && request.resource.data.userId == request.auth.uid;
       allow read: if isAdmin();
       allow update: if false;
@@ -464,6 +505,17 @@ service cloud.firestore {
               && request.resource.data.n == 1));
     }
 
+    // ---------------- catalog / settings (Nov 2026) ----------------
+    // Reading stays with the catch-all below. Any staff adds or fixes a catalog product
+    // (scanning), but only the manager deletes one or changes the settings.
+    match /catalog/{id} {
+      allow create, update: if canWrite();
+      allow delete: if isManager();
+    }
+    match /settings/{id} {
+      allow write: if isManager();
+    }
+
     // ---------------- everything else ----------------
     // Same open-to-signed-in behavior as before for every other collection
     // (catalog, settings, fcm_tokens, users, activity_log, ...), EXCEPT:
@@ -474,13 +526,13 @@ service cloud.firestore {
     //    too, so only managers read feedback (not supervisors).
     //  - account documents (users) are only written through their own rules (Oct 2026).
     match /{collection}/{document=**} {
-      allow read: if isSignedIn()
-                  && !(collection in ['handovers', 'handover_sessions', 'handover_drafts', 'attendance_days', 'attendance_reports', 'merch_visits', 'quick_shortages', 'expiry_items', 'expiry_pulls', 'pull_locks', 'delivery_shifts', 'feedback', 'feedback_codes', 'feedback_rate', 'voice_messages', 'account_deletions'])
+      allow read: if isStaff()
+                  && !(collection in ['handovers', 'handover_sessions', 'handover_drafts', 'attendance_days', 'attendance_reports', 'merch_visits', 'quick_shortages', 'expiry_items', 'expiry_pulls', 'pull_locks', 'delivery_shifts', 'feedback', 'feedback_codes', 'feedback_rate', 'voice_messages', 'account_deletions', 'users', 'user_private', 'fcm_tokens'])
                   && (!isViewer() || collection in ['catalog', 'settings']);
       // fcm_tokens stays writable while someone is locked: a locked person
       // still has to keep receiving the reminder notifications.
-      allow write: if (canWrite() || (collection == 'fcm_tokens' && canWriteBase()))
-                   && !(collection in ['handovers', 'handover_sessions', 'handover_drafts', 'attendance_days', 'attendance_reports', 'merch_visits', 'quick_shortages', 'expiry_items', 'expiry_pulls', 'pull_locks', 'delivery_shifts', 'feedback', 'feedback_codes', 'feedback_rate', 'voice_messages', 'account_deletions', 'users']);
+      allow write: if canWrite()
+                   && !(collection in ['handovers', 'handover_sessions', 'handover_drafts', 'attendance_days', 'attendance_reports', 'merch_visits', 'quick_shortages', 'expiry_items', 'expiry_pulls', 'pull_locks', 'delivery_shifts', 'feedback', 'feedback_codes', 'feedback_rate', 'voice_messages', 'account_deletions', 'users', 'user_private', 'fcm_tokens', 'catalog', 'settings']);
     }
   }
 }
