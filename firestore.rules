@@ -527,12 +527,12 @@ service cloud.firestore {
     //  - account documents (users) are only written through their own rules (Oct 2026).
     match /{collection}/{document=**} {
       allow read: if isStaff()
-                  && !(collection in ['handovers', 'handover_sessions', 'handover_drafts', 'attendance_days', 'attendance_reports', 'merch_visits', 'quick_shortages', 'expiry_items', 'expiry_pulls', 'pull_locks', 'delivery_shifts', 'feedback', 'feedback_codes', 'feedback_rate', 'voice_messages', 'account_deletions', 'users', 'user_private', 'fcm_tokens'])
+                  && !(collection in ['handovers', 'handover_sessions', 'handover_drafts', 'attendance_days', 'attendance_reports', 'merch_visits', 'quick_shortages', 'expiry_items', 'expiry_pulls', 'pull_locks', 'delivery_shifts', 'feedback', 'feedback_codes', 'feedback_rate', 'voice_messages', 'account_deletions', 'users', 'user_private', 'fcm_tokens', 'activity_log'])
                   && (!isViewer() || collection in ['catalog', 'settings']);
       // fcm_tokens stays writable while someone is locked: a locked person
       // still has to keep receiving the reminder notifications.
       allow write: if canWrite()
-                   && !(collection in ['handovers', 'handover_sessions', 'handover_drafts', 'attendance_days', 'attendance_reports', 'merch_visits', 'quick_shortages', 'expiry_items', 'expiry_pulls', 'pull_locks', 'delivery_shifts', 'feedback', 'feedback_codes', 'feedback_rate', 'voice_messages', 'account_deletions', 'users', 'user_private', 'fcm_tokens', 'catalog', 'settings']);
+                   && !(collection in ['handovers', 'handover_sessions', 'handover_drafts', 'attendance_days', 'attendance_reports', 'merch_visits', 'quick_shortages', 'expiry_items', 'expiry_pulls', 'pull_locks', 'delivery_shifts', 'feedback', 'feedback_codes', 'feedback_rate', 'voice_messages', 'account_deletions', 'users', 'user_private', 'fcm_tokens', 'activity_log', 'catalog', 'settings']);
     }
   }
 }
