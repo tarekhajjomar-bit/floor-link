@@ -1,0 +1,135 @@
+[33m[1m⚠  emulators:[22m[39m You are not currently authenticated so some features may not work correctly. Please run [1mfirebase login[22m to authenticate the CLI.
+[36m[1mi  emulators:[22m[39m Starting emulators: firestore
+[33m[1m⚠ [22m[39m It appears you are running in a CI environment. You can avoid downloading the Firestore Emulator repeatedly by caching the /home/runner/.cache/firebase/emulators directory.
+[36m[1mi  firestore:[22m[39m downloading cloud-firestore-emulator-v1.22.0.jar...
+
+[36m[1mi  firestore:[22m[39m Firestore Emulator logging to [1mfirestore-debug.log[22m
+[32m[1m✔  firestore:[22m[39m Firestore Emulator was started in standard edition.
+[32m[1m✔  firestore:[22m[39m Firestore Emulator UI websocket is running on 9150.
+[36m[1mi [22m[39m Running script: [1mnode test/rules.test.js[22m
+
+expiry_items
+  PASS  employee can read an item
+  PASS  signed-out user cannot read
+  PASS  anonymous (feedback page) user cannot read
+  PASS  employee can create their own item
+[2026-11-04T16:37:28.690Z]  @firebase/firestore: Firestore (10.14.1): GrpcConnection RPC 'Write' stream 0x69306a9c error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L265, false for 'create' @ L534, evaluation error at L269:24 for 'update' @ L269, false for 'update' @ L534, false for 'create' @ L265, false for 'create' @ L534
+  PASS  employee CANNOT create an item claiming to be someone else
+  PASS  employee can update quantity
+[2026-11-04T16:37:28.786Z]  @firebase/firestore: Firestore (10.14.1): GrpcConnection RPC 'Write' stream 0x69306a9d error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L269:24 for 'update' @ L269, false for 'update' @ L534, false for 'update' @ L269, false for 'update' @ L534
+  PASS  employee CANNOT soft-delete
+[2026-11-04T16:37:28.812Z]  @firebase/firestore: Firestore (10.14.1): GrpcConnection RPC 'Write' stream 0x69306a9e error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L285:24 for 'delete' @ L285, false for 'delete' @ L534, false for 'delete' @ L285, false for 'delete' @ L534
+  PASS  employee CANNOT hard-delete
+  PASS  admin CAN hard-delete
+
+activity_log
+  PASS  employee can log their own activity
+[2026-11-04T16:37:28.939Z]  @firebase/firestore: Firestore (10.14.1): GrpcConnection RPC 'Write' stream 0x69306aa1 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L396, false for 'create' @ L534
+  PASS  employee CANNOT log activity as someone else
+  PASS  employee CANNOT read the activity log
+  PASS  admin CAN read the activity log
+
+users: self-registration waits for approval
+  PASS  new user CAN self-register as supervisor with approved:false
+[2026-11-04T16:37:29.151Z]  @firebase/firestore: Firestore (10.14.1): GrpcConnection RPC 'Write' stream 0x69306aa4 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+Property role is undefined on object. for 'create' @ L99, false for 'create' @ L534, Property role is undefined on object. for 'update' @ L105, false for 'update' @ L534, Property role is undefined on object. for 'create' @ L99, false for 'create' @ L534
+  PASS  new user CANNOT self-register without approved:false
+[2026-11-04T16:37:29.198Z]  @firebase/firestore: Firestore (10.14.1): GrpcConnection RPC 'Write' stream 0x69306aa5 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+Property role is undefined on object. for 'create' @ L99, false for 'create' @ L534, Property role is undefined on object. for 'update' @ L105, false for 'update' @ L534, Property role is undefined on object. for 'create' @ L99, false for 'create' @ L534
+  PASS  new user CANNOT self-register as already approved
+[2026-11-04T16:37:29.247Z]  @firebase/firestore: Firestore (10.14.1): GrpcConnection RPC 'Write' stream 0x69306aa6 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+Property role is undefined on object. for 'create' @ L99, false for 'create' @ L534, Property role is undefined on object. for 'update' @ L105, false for 'update' @ L534, Property role is undefined on object. for 'create' @ L99, false for 'create' @ L534
+[2026-11-04T16:37:29.303Z]  @firebase/firestore: Firestore (10.14.1): GrpcConnection RPC 'Write' stream 0x69306aa7 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+Property role is undefined on object. for 'create' @ L99, false for 'create' @ L534, Property role is undefined on object. for 'update' @ L105, false for 'update' @ L534, Property role is undefined on object. for 'create' @ L99, false for 'create' @ L534
+  PASS  new user CANNOT self-assign admin/manager
+[2026-11-04T16:37:29.343Z]  @firebase/firestore: Firestore (10.14.1): GrpcConnection RPC 'Write' stream 0x69306aa8 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+Property role is undefined on object. for 'create' @ L99, false for 'create' @ L534, Property role is undefined on object. for 'update' @ L105, false for 'update' @ L534, Property role is undefined on object. for 'create' @ L99, false for 'create' @ L534
+  PASS  new user CANNOT put an email into the public profile
+  PASS  pending user can read their own profile
+[2026-11-04T16:37:29.399Z]  @firebase/firestore: Firestore (10.14.1): GrpcConnection RPC 'Write' stream 0x69306aaa error. Code: 7 Message: 7 PERMISSION_DENIED: 
+Property role is undefined on object. for 'update' @ L105, false for 'update' @ L534, Property role is undefined on object. for 'update' @ L105, false for 'update' @ L534
+  PASS  pending user CANNOT approve themselves
+[2026-11-04T16:37:29.414Z]  @firebase/firestore: Firestore (10.14.1): GrpcConnection RPC 'Write' stream 0x69306aa0 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L105:24 for 'update' @ L105, false for 'update' @ L534, false for 'update' @ L105, false for 'update' @ L534
+[2026-11-04T16:37:29.435Z]  @firebase/firestore: Firestore (10.14.1): GrpcConnection RPC 'Write' stream 0x69306aab error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L105:24 for 'update' @ L105, false for 'update' @ L534, false for 'update' @ L105, false for 'update' @ L534
+  PASS  employee CANNOT change their own role / approval
+  PASS  manager CAN approve a pending account
+  PASS  employee can read colleagues' profiles (names), viewer cannot
+
+pending (not yet approved) account
+  PASS  pending CANNOT read other profiles
+  PASS  pending CANNOT read handovers / expiry / catalog / settings
+[2026-11-04T16:37:29.627Z]  @firebase/firestore: Firestore (10.14.1): GrpcConnection RPC 'Write' stream 0x69306aaf error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L145:24 for 'create' @ L145, false for 'create' @ L534, Property role is undefined on object. for 'update' @ L146, false for 'update' @ L534, false for 'create' @ L145, false for 'create' @ L534
+[2026-11-04T16:37:29.647Z]  @firebase/firestore: Firestore (10.14.1): GrpcConnection RPC 'Write' stream 0x69306ab0 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L512:32 for 'create' @ L512, false for 'create' @ L534, evaluation error at L512:32 for 'update' @ L512, false for 'update' @ L534, false for 'create' @ L512, false for 'create' @ L534
+[2026-11-04T16:37:29.666Z]  @firebase/firestore: Firestore (10.14.1): GrpcConnection RPC 'Write' stream 0x69306ab1 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L135:32 for 'create' @ L135, false for 'create' @ L534, evaluation error at L135:32 for 'update' @ L135, false for 'update' @ L534, false for 'create' @ L135, false for 'create' @ L534
+  PASS  pending CANNOT write anything
+
+user_private (emails)
+  PASS  employee CANNOT read another account's email
+  PASS  owner reads own, manager reads all
+[2026-11-04T16:37:29.774Z]  @firebase/firestore: Firestore (10.14.1): GrpcConnection RPC 'Write' stream 0x69306ab5 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+Property role is undefined on object. for 'create' @ L122, false for 'create' @ L534, Property role is undefined on object. for 'update' @ L127, false for 'update' @ L534, Property role is undefined on object. for 'create' @ L122, false for 'create' @ L534
+  PASS  self-registration can store its OWN email only
+[2026-11-04T16:37:29.791Z]  @firebase/firestore: Firestore (10.14.1): GrpcConnection RPC 'Write' stream 0x69306ab6 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L127:32 for 'update' @ L127, false for 'update' @ L534, false for 'update' @ L127, false for 'update' @ L534
+  PASS  employee CANNOT change an email afterwards
+
+fcm_tokens (notification addresses)
+  PASS  staff can register a token under own id and real role
+[2026-11-04T16:37:29.825Z]  @firebase/firestore: Firestore (10.14.1): GrpcConnection RPC 'Write' stream 0x69306ab7 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L135:32 for 'create' @ L135, false for 'create' @ L534, evaluation error at L135:32 for 'update' @ L135, false for 'update' @ L534, false for 'create' @ L135, false for 'create' @ L534
+[2026-11-04T16:37:29.837Z]  @firebase/firestore: Firestore (10.14.1): GrpcConnection RPC 'Write' stream 0x69306ab8 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L135, false for 'create' @ L534, false for 'update' @ L135, false for 'update' @ L534
+  PASS  staff CANNOT register as a manager / as someone else
+  PASS  staff CANNOT read tokens; manager can
+[2026-11-04T16:37:29.875Z]  @firebase/firestore: Firestore (10.14.1): GrpcConnection RPC 'Write' stream 0x69306ab9 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L138:24 for 'delete' @ L138, false for 'delete' @ L534, false for 'delete' @ L138, false for 'delete' @ L534
+  PASS  staff CANNOT delete someone else's token, can delete own
+
+handovers
+  PASS  staff can add a handover
+[2026-11-04T16:37:29.914Z]  @firebase/firestore: Firestore (10.14.1): GrpcConnection RPC 'Write' stream 0x69306aba error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L146:32 for 'update' @ L146, false for 'update' @ L534, false for 'update' @ L146, false for 'update' @ L534
+[2026-11-04T16:37:29.926Z]  @firebase/firestore: Firestore (10.14.1): GrpcConnection RPC 'Write' stream 0x69306abb error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L146:32 for 'delete' @ L146, false for 'delete' @ L534, false for 'delete' @ L146, false for 'delete' @ L534
+  PASS  staff CANNOT edit or delete a handover
+  PASS  manager can review/delete a handover
+[2026-11-04T16:37:29.977Z]  @firebase/firestore: Firestore (10.14.1): GrpcConnection RPC 'Write' stream 0x69306abc error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L145:24 for 'create' @ L145, false for 'create' @ L534, Property role is undefined on object. for 'update' @ L146, false for 'update' @ L534, false for 'create' @ L145, false for 'create' @ L534
+  PASS  viewer reads own branch only, never writes
+
+delivery_shifts / catalog / settings
+[2026-11-04T16:37:30.023Z]  @firebase/firestore: Firestore (10.14.1): GrpcConnection RPC 'Write' stream 0x69306abe error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L374:23 for 'create' @ L374, false for 'create' @ L534, evaluation error at L374:23 for 'update' @ L374, false for 'update' @ L534, false for 'create' @ L374, false for 'create' @ L534
+[2026-11-04T16:37:30.037Z]  @firebase/firestore: Firestore (10.14.1): GrpcConnection RPC 'Write' stream 0x69306abf error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L374:23 for 'delete' @ L374, false for 'delete' @ L534, false for 'delete' @ L374, false for 'delete' @ L534
+  PASS  delivery account writes shifts; supervisor and merchandiser cannot
+  PASS  manager can fix delivery shifts
+[2026-11-04T16:37:30.077Z]  @firebase/firestore: Firestore (10.14.1): GrpcConnection RPC 'Write' stream 0x69306ac0 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L513:24 for 'delete' @ L513, false for 'delete' @ L534, false for 'delete' @ L513, false for 'delete' @ L534
+  PASS  staff add catalog products but cannot delete them
+[2026-11-04T16:37:30.100Z]  @firebase/firestore: Firestore (10.14.1): GrpcConnection RPC 'Write' stream 0x69306ac1 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L516:23 for 'create' @ L516, false for 'create' @ L534, evaluation error at L516:23 for 'update' @ L516, false for 'update' @ L534, false for 'update' @ L516, false for 'update' @ L534
+  PASS  only the manager changes settings; staff and viewer still read
+  PASS  anonymous cannot read catalog
+
+voice_messages
+[2026-11-04T16:37:30.183Z]  @firebase/firestore: Firestore (10.14.1): GrpcConnection RPC 'Write' stream 0x69306ac2 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L362:24 for 'update' @ L362, false for 'update' @ L534, false for 'update' @ L362, false for 'update' @ L534
+  PASS  recipient can mark own listen, nobody else's
+
+44 passed, 0 failed
+
+[32m[1m✔ [22m[39m Script exited successfully (code 0)
+[36m[1mi  emulators:[22m[39m Shutting down emulators.
+[36m[1mi  firestore:[22m[39m Stopping Firestore Emulator
+[36m[1mi  hub:[22m[39m Stopping emulator hub
+[36m[1mi  logging:[22m[39m Stopping Logging Emulator
