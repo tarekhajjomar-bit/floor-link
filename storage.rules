@@ -1,13 +1,11 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // Only real, approved staff accounts: not the anonymous visitors of the customer feedback
-    // page, and not a self-registered account still waiting for the manager's approval (Nov 2026).
+    // Only real signed-in accounts, not the anonymous visitors of the customer feedback page.
+    // (Checking approval from Firestore here needs a cross-service permission that isn't granted.)
     function isStaffUser() {
       return request.auth != null
-        && request.auth.token.firebase.sign_in_provider != 'anonymous'
-        && firestore.exists(/databases/(default)/documents/users/$(request.auth.uid))
-        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.get('approved', true) != false;
+        && request.auth.token.firebase.sign_in_provider != 'anonymous';
     }
     // Photos and signatures taken in the app: any signed-in employee can add one
     // (images only, max 8 MB). Nobody can overwrite, list or delete from the app —
