@@ -89,3 +89,12 @@ exports.voiceCleanup = onSchedule("every 60 minutes", async () => {
     await doc.ref.delete();
   }
 });
+
+// ---- Scheduled notifications on Beirut time (Nov 2026) ----
+const N = require("./notify-lib");
+const TZ = "Asia/Beirut";
+const sched = (name, cron, fn) => { exports[name] = onSchedule({ schedule: cron, timeZone: TZ, timeoutSeconds: 300 }, async () => { await fn(); }); };
+sched("expiryCheck", "0 7,16 * * *", N.checkExpiry);
+sched("merchandiserReminder", "0 10 * * *", N.merchandiserReminder);
+sched("supervisorReminder", "0 20 * * *", N.checkSupervisorReminders);
+sched("expirySummary", "0 21 * * *", N.sendDailyExpirySummary);
