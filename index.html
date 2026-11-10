@@ -736,7 +736,7 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
              on every deploy, purely so a build mismatch (stale cache / an
              app that hasn't actually picked up the latest deploy) can be
              told apart from an actual code bug just by reading this. -->
-        <span id="appBuild" style="display:block; font-size:10px; opacity:0.5; margin-top:2px;">build v38</span>
+        <span id="appBuild" style="display:block; font-size:10px; opacity:0.5; margin-top:2px;">build v39</span>
       </div>
     </div>
     <div class="header-controls">
@@ -1128,6 +1128,8 @@ en:{
   expiryDateLabel:"Expiry date", expiryQtyLabel:"Quantity", expiryQtyPh:"Quantity",
   pullTitle:"Pull requests", pullRequestBtn:"Request pull from shelf",
   pullModalTitle:"Request pull", pullAssigneeLabel:"Who must pull it", pullNoteLabel:"Note for them", pullNotePh:"e.g. 2 days left — take it off the shelf and the display",
+  pullKindLabel:"Request type", pullKindPull:"Pull it off the shelf", pullKindHalf:"Put it on 50% off (half price)", pullProofKindLabel:"What must they photograph", pullProofSheet:"The \"Special Offer — Half Price\" sheet", pullProofShelf:"The item on the shelf at half price",
+  pullHalfBadge:"50% OFF", pullLockedTitleHalf:"Half-price action required now", pullLockedSubHalf:"The manager asked you to put the item below on 50% off. The rest of the app stays locked until you do it, take the photo and confirm.", pullProofTitleHalf:"Photo after the discount", pullProofHintSheet:"Print the Special Offer — Half Price sheet, put it with the item and photograph the sheet.", pullProofHintShelf:"Mark it half price and photograph the item on the shelf with its new price.", pullDoneBtnHalf:"Done — now at 50% off",
   pullSendBtn:"Send request", pullNoAssignee:"No merchandiser or supervisor is registered for this branch.",
   pullOpenBadge:"Open", pullDoneBadge:"Pulled", pullDeleteBtn:"OK — remove item", pullDeleteConfirm:"The item was pulled. Remove it from the expiry list completely?", pullClearAll:"OK all — remove all pulled items", pullClearConfirm:"Remove all pulled items from the expiry list completely?", pullCancelBtn:"Cancel request & unlock", pullCancelConfirm:"Cancel this request and unlock the app for them?",
   pullLockedTitle:"Action required now", pullLockedSub:"The manager asked you to pull the item below. The rest of the app stays locked until you photograph the shelf/display after removing it and confirm.",
@@ -1501,6 +1503,8 @@ ar:{
   expiryDateLabel:"تاريخ الصلاحية", expiryQtyLabel:"الكمية", expiryQtyPh:"الكمية",
   pullTitle:"طلبات السحب", pullRequestBtn:"طلب سحب من الرف",
   pullModalTitle:"طلب سحب", pullAssigneeLabel:"مين لازم يسحبه", pullNoteLabel:"ملاحظة إلو", pullNotePh:"مثلاً: باقي يومين — شيله عن الرف وعن الديسبلاي",
+  pullKindLabel:"نوع الطلب", pullKindPull:"سحب الصنف عن الرف", pullKindHalf:"تخفيضه 50% (هاف برايس)", pullProofKindLabel:"شو لازم يصوّر", pullProofSheet:"ورقة «Special Offer — Half Price»", pullProofShelf:"الصنف على الرف وهو بنص السعر",
+  pullHalfBadge:"خصم 50%", pullLockedTitleHalf:"مطلوب منك تخفيض هاف برايس الآن", pullLockedSubHalf:"المدير طلب منك تخفّض الصنف التحت 50%. باقي التطبيق مقفول لحد ما تخفّضه وتصوّر وتأكّد.", pullProofTitleHalf:"صورة بعد التخفيض", pullProofHintSheet:"اطبع ورقة Special Offer — Half Price، حطها مع الصنف وصوّر الورقة.", pullProofHintShelf:"حط عليه سعر النص وصوّر الصنف على الرف مع سعره الجديد.", pullDoneBtnHalf:"تم — صار بنص السعر",
   pullSendBtn:"إرسال الطلب", pullNoAssignee:"ما في مرشندايزر أو سوبرفايزر مسجّل لهذا الفرع.",
   pullOpenBadge:"مفتوح", pullDoneBadge:"تم السحب", pullDeleteBtn:"تمام — شيل الصنف", pullDeleteConfirm:"الصنف انسحب. تشيله من قائمة الاكسباير نهائياً؟", pullClearAll:"تمام للكل — شيل كل المسحوبات", pullClearConfirm:"تشيل كل الأصناف المسحوبة من قائمة الاكسباير نهائياً؟", pullCancelBtn:"إلغاء الطلب وفك القفل", pullCancelConfirm:"إلغاء هذا الطلب وفك القفل عنه؟",
   pullLockedTitle:"مطلوب منك إجراء الآن", pullLockedSub:"المدير طلب منك تسحب الصنف التحت. باقي التطبيق مقفول لحد ما تسحبه وتصوّر الرف/الديسبلاي بعد السحب وتأكّد.",
@@ -5703,14 +5707,16 @@ function syncPullLock(){
     host.id = "pullLock"; host.className = "pull-lock";
     document.body.appendChild(host);
   }
+  var allHalf = mine.every(function(p){ return p.kind === "half"; });
   var html = '<div class="pull-lock-inner">' +
-    '<div class="pull-lock-banner">'+ICONS.lock+'<span>'+t("pullLockedTitle")+'</span></div>' +
-    '<p class="section-sub" style="margin:10px 2px 14px;">'+t("pullLockedSub")+'</p>';
+    '<div class="pull-lock-banner">'+ICONS.lock+'<span>'+t(allHalf ? "pullLockedTitleHalf" : "pullLockedTitle")+'</span></div>' +
+    '<p class="section-sub" style="margin:10px 2px 14px;">'+t(allHalf ? "pullLockedSubHalf" : "pullLockedSub")+'</p>';
   mine.forEach(function(p){
     var proofs = S.pullProof[p.id] || [];
     var busy = !!S.pullBusy[p.id];
     var d = p.expiryDate ? computeDaysLeft(p.expiryDate) : null;
     var tag = d === null ? null : daysLeftTag(d);
+    var half = p.kind === "half";
     var photosHtml = proofs.map(function(x, i){
       return '<div class="photo-thumb'+(x.pending?" up":"")+'"><img src="'+esc(x.url)+'" alt="">' +
         (x.failed ? '<button class="retry" type="button" data-pull-retry="'+p.id+'|'+i+'" aria-label="retry">↻</button>' : '') +
@@ -5729,10 +5735,11 @@ function syncPullLock(){
       '</div>' +
       (p.note ? '<div class="pull-note">'+esc(p.note)+'</div>' : '') +
       '<p class="hint" style="margin-top:8px;">'+t("pullRequestedBy")+' '+esc((p.createdBy||{}).fullName||"—")+' · '+fmtDateTime(tsIso(p.createdAt))+'</p>' +
-      '<div class="section-title" style="margin-top:14px;">'+t("pullProofTitle")+'</div>' +
-      '<p class="hint" style="margin-bottom:8px;">'+t("pullProofHint")+'</p>' +
+      (half ? '<div style="margin-top:8px;"><span class="badge badge-pending">'+t("pullHalfBadge")+'</span></div>' : '') +
+      '<div class="section-title" style="margin-top:14px;">'+t(half ? "pullProofTitleHalf" : "pullProofTitle")+'</div>' +
+      '<p class="hint" style="margin-bottom:8px;">'+t(half ? (p.proofKind === "shelf" ? "pullProofHintShelf" : "pullProofHintSheet") : "pullProofHint")+'</p>' +
       '<div class="photo-row">'+photosHtml+addHtml+'</div>' +
-      '<button type="button" class="btn btn-primary" data-pull-done="'+p.id+'" style="margin-top:14px;"'+(busy?' disabled':'')+'>'+t("pullDoneBtn")+'</button>' +
+      '<button type="button" class="btn btn-primary" data-pull-done="'+p.id+'" style="margin-top:14px;"'+(busy?' disabled':'')+'>'+t(half ? "pullDoneBtnHalf" : "pullDoneBtn")+'</button>' +
     '</div>';
   });
   html += '</div>';
@@ -5811,7 +5818,7 @@ function openPullModal(itemId){
   var cands = pullCandidates(item.company);
   var scanner = (item.createdBy || {}).userId;
   var def = cands.filter(function(u){ return u.id === scanner; })[0] || cands[0] || null;
-  S.pullModal = {itemId:itemId, assigneeId: def ? def.id : "", note:"", busy:false};
+  S.pullModal = {itemId:itemId, assigneeId: def ? def.id : "", note:"", kind:"pull", proofKind:"sheet", busy:false};
   renderPullModal();
 }
 function closePullModal(){ S.pullModal = null; document.getElementById("modalHost").innerHTML = ""; }
@@ -5827,6 +5834,12 @@ function renderPullModal(){
     '<div class="modal-head"><h2>'+t("pullModalTitle")+'</h2><button type="button" class="modal-close" id="pullCloseBtn">'+ICONS.close+'</button></div>' +
     '<p class="hint" style="margin-bottom:12px;"><b>'+esc(item.productName)+'</b> · '+esc(companyName(item.company))+' · '+fmtDate(item.expiryDate)+'</p>' +
     (cands.length ?
+      '<div class="field"><label>'+t("pullKindLabel")+'</label><select id="pull_kind">' +
+        '<option value="pull"'+(m.kind!=="half"?" selected":"")+'>'+t("pullKindPull")+'</option>' +
+        '<option value="half"'+(m.kind==="half"?" selected":"")+'>'+t("pullKindHalf")+'</option></select></div>' +
+      (m.kind === "half" ? '<div class="field"><label>'+t("pullProofKindLabel")+'</label><select id="pull_proofkind">' +
+        '<option value="sheet"'+(m.proofKind!=="shelf"?" selected":"")+'>'+t("pullProofSheet")+'</option>' +
+        '<option value="shelf"'+(m.proofKind==="shelf"?" selected":"")+'>'+t("pullProofShelf")+'</option></select></div>' : '') +
       '<div class="field"><label>'+t("pullAssigneeLabel")+'</label><select id="pull_assignee">'+opts+'</select></div>' +
       '<div class="field"><label>'+t("pullNoteLabel")+'</label><textarea id="pull_note" placeholder="'+esc(t("pullNotePh"))+'">'+esc(m.note)+'</textarea></div>' +
       '<button type="button" class="btn btn-primary" id="pullSendBtn"'+(m.busy?' disabled':'')+'>'+t("pullSendBtn")+'</button>'
@@ -5836,6 +5849,8 @@ function renderPullModal(){
   document.getElementById("pullOverlay").onclick = function(e){ if(e.target.id === "pullOverlay") closePullModal(); };
   var sel = document.getElementById("pull_assignee"); if(sel) sel.onchange = function(){ m.assigneeId = this.value; };
   var nt = document.getElementById("pull_note"); if(nt) nt.oninput = function(){ m.note = this.value; };
+  var kd = document.getElementById("pull_kind"); if(kd) kd.onchange = function(){ m.kind = this.value; renderPullModal(); };
+  var pk = document.getElementById("pull_proofkind"); if(pk) pk.onchange = function(){ m.proofKind = this.value; };
   var send = document.getElementById("pullSendBtn"); if(send) send.onclick = submitPullRequest;
 }
 function submitPullRequest(){
@@ -5852,6 +5867,7 @@ function submitPullRequest(){
     itemId:item.id, productName:item.productName || "", image:item.image || "", company:item.company || "",
     expiryDate:item.expiryDate || "", qty:String(item.qty == null ? "" : item.qty),
     note:(m.note || "").trim(), assigneeId:assignee.id, assigneeName:assignee.fullName || "",
+    kind: m.kind === "half" ? "half" : "pull", proofKind: m.kind === "half" ? (m.proofKind === "shelf" ? "shelf" : "sheet") : "",
     status:"open", createdBy:{userId:u.id, fullName:u.fullName}, createdAt:F.serverTimestamp(),
     // Read and flipped only by the notification job (scripts/notify.js).
     notifiedCreate:false, notifiedDone:false, lastRemindAt:null
@@ -5891,7 +5907,9 @@ function deletePulls(ids, msg){
     var it = p && S.trackedItems.filter(function(x){ return x.id === p.itemId; })[0];
     if(it && !doneItems[it.id]){
       doneItems[it.id] = true;
-      b.delete(S.db.doc("expiry_items/"+it.id));
+      // A half-price item is still on the shelf: keep tracking it, just mark it.
+      if(p.kind === "half") b.update(S.db.doc("expiry_items/"+it.id), {halfPrice:true, halfPriceAt:new Date().toISOString()});
+      else b.delete(S.db.doc("expiry_items/"+it.id));
     }
   });
   b.commit().then(function(){ toast(t("deleted")); }).catch(function(err){ console.error("Delete pulls failed:", err); toast(t("pullErrToast")); });
@@ -5908,6 +5926,7 @@ function pullsCardHtml(){
       (p.image ? '<img class="item-thumb" src="'+esc(p.image)+'" data-img-zoom="'+esc(p.image)+'">' : '<div class="item-thumb"></div>') +
       '<div style="flex:1; min-width:0;"><b style="font-size:13px; display:block;">'+esc(p.productName)+'</b>' +
         '<span class="hint">'+esc(companyName(p.company))+' · '+t("pullAssignedTo")+': '+esc(p.assigneeName||"—")+'</span>' +
+        (p.kind === "half" ? '<span class="badge badge-pending" style="margin:4px 0;">'+t("pullHalfBadge")+' · '+t(p.proofKind === "shelf" ? "pullProofShelf" : "pullProofSheet")+'</span>' : '') +
         (p.note ? '<span class="hint" style="display:block;">'+esc(p.note)+'</span>' : '') +
         '<span class="hint" style="display:block;">'+t("pullRequestedBy")+' '+esc((p.createdBy||{}).fullName||"—")+' · '+fmtDateTime(tsIso(p.createdAt))+'</span>' +
         (isOpen ? '' : '<span class="hint" style="display:block;">'+t("pullPulledBy")+' '+esc((p.doneBy||{}).fullName||"—")+' · '+fmtDateTime(tsIso(p.doneAt))+'</span>') +

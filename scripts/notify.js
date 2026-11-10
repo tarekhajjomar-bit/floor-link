@@ -328,16 +328,17 @@ async function checkExpiryPulls() {
   for (const doc of open.docs) {
     const d = doc.data();
     const what = `${d.productName || "صنف"} — ${branchName(d.company)}`;
+    const half = d.kind === "half";
     if (!d.notifiedCreate) {
       const mine = await getTokens({ userId: d.assigneeId });
       const sups = await getTokens({ role: "supervisor", company: d.company });
       await sendToTokens(
-        mine, "🚨 مطلوب سحب صنف من الرف",
-        `${what}${d.note ? "\n" + d.note : ""}\nالتطبيق مقفول لحد ما تسحبه وتصوّر الرف.`,
+        mine, half ? "🏷️ مطلوب تخفيض 50% (هاف برايس)" : "🚨 مطلوب سحب صنف من الرف",
+        `${what}${d.note ? "\n" + d.note : ""}\n${half ? "التطبيق مقفول لحد ما تخفّضه وتصوّر " + (d.proofKind === "shelf" ? "الصنف على الرف بنص السعر." : "ورقة Special Offer هاف برايس.") : "التطبيق مقفول لحد ما تسحبه وتصوّر الرف."}`,
         { type: "expiry-pull", id: doc.id }
       );
       await sendToTokens(
-        sups.filter((t) => !mine.includes(t)), "📋 طلب سحب صنف (للعلم)",
+        sups.filter((t) => !mine.includes(t)), half ? "📋 طلب تخفيض 50% (للعلم)" : "📋 طلب سحب صنف (للعلم)",
         `${what}\nالمسؤول: ${d.assigneeName || "—"}${d.note ? "\n" + d.note : ""}`,
         { type: "expiry-pull", id: doc.id }
       );
@@ -347,8 +348,8 @@ async function checkExpiryPulls() {
       if (now - last >= PULL_REMIND_EVERY_MS) {
         const mine = await getTokens({ userId: d.assigneeId });
         await sendToTokens(
-          mine, "⏰ لسا ما سحبت الصنف",
-          `${what}\nالتطبيق مقفول لحد ما تسحبه وتصوّر الرف.`,
+          mine, half ? "⏰ لسا ما خفّضت الصنف" : "⏰ لسا ما سحبت الصنف",
+          `${what}\nالتطبيق مقفول لحد ما ${half ? "تخفّضه وتصوّر" : "تسحبه وتصوّر الرف"}.`,
           { type: "expiry-pull", id: doc.id }
         );
         await doc.ref.update({ lastRemindAt: admin.firestore.Timestamp.now() });
@@ -364,8 +365,8 @@ async function checkExpiryPulls() {
       ...(await getTokens({ role: "supervisor", company: d.company }))
     ])];
     await sendToTokens(
-      toks, "✅ تم سحب الصنف",
-      `${d.productName || "صنف"} — ${branchName(d.company)}\nسحبه: ${who}`,
+      toks, d.kind === "half" ? "✅ تم تخفيض الصنف 50%" : "✅ تم سحب الصنف",
+      `${d.productName || "صنف"} — ${branchName(d.company)}\n${d.kind === "half" ? "خفّضه" : "سحبه"}: ${who}`,
       { type: "expiry-pull-done", id: doc.id }
     );
     await doc.ref.update({ notifiedDone: true });
