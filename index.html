@@ -736,7 +736,7 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
              on every deploy, purely so a build mismatch (stale cache / an
              app that hasn't actually picked up the latest deploy) can be
              told apart from an actual code bug just by reading this. -->
-        <span id="appBuild" style="display:block; font-size:10px; opacity:0.5; margin-top:2px;">build v40</span>
+        <span id="appBuild" style="display:block; font-size:10px; opacity:0.5; margin-top:2px;">build v41</span>
       </div>
     </div>
     <div class="header-controls">
@@ -3235,6 +3235,18 @@ function startPhotoUpload(item, rerender, onDone){
   }).catch(function(err){
     item.pending = false; item.failed = true;
     rerender();
+    // Retry by itself: 6 more tries (10 s, 20 s ... 60 s apart) while the photo is still on screen,
+    // and again the moment the phone is back online. The toast only shows once it gives up.
+    item._auto = (item._auto || 0) + 1;
+    if(item._file && item._auto <= 6){
+      var again = function(){
+        if(!item._file || item.id || item.pending || !item.failed) return;
+        if(navigator.onLine === false){ window.addEventListener("online", function once(){ window.removeEventListener("online", once); again(); }); return; }
+        startPhotoUpload(item, rerender, onDone);
+      };
+      setTimeout(again, 10000 * item._auto);
+      return;
+    }
     if(err && err.rateLimited){
       // A clear, plain-language explanation beats a raw "Rate limit reached"
       // string — this isn't a broken photo or a broken phone, it's several
