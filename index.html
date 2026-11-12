@@ -736,7 +736,7 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
              on every deploy, purely so a build mismatch (stale cache / an
              app that hasn't actually picked up the latest deploy) can be
              told apart from an actual code bug just by reading this. -->
-        <span id="appBuild" style="display:block; font-size:10px; opacity:0.5; margin-top:2px;">build v39</span>
+        <span id="appBuild" style="display:block; font-size:10px; opacity:0.5; margin-top:2px;">build v40</span>
       </div>
     </div>
     <div class="header-controls">
@@ -8067,7 +8067,20 @@ function boot(){
     if(db && firebase.storage) storageApi = firebase.app().storage();
   }catch(e){ console.error("Firebase Storage init failed", e); }
   var imgbbUpload = assetsApi ? assetsApi.upload : null;
+  // Only a few photos go up at once: 30 at a time on mobile data all hit the timeout.
+  var stActive = 0, stWaiting = [];
   var uploadToStorage = function(blob, opts){
+    return new Promise(function(resolve, reject){
+      var go = function(){
+        stActive++;
+        uploadToStorageNow(blob, opts).then(resolve, reject).then(function(){
+          stActive--; var nx = stWaiting.shift(); if(nx) nx();
+        });
+      };
+      if(stActive < 3) go(); else stWaiting.push(go);
+    });
+  };
+  var uploadToStorageNow = function(blob, opts){
     var keep = !(opts && opts.expiresInSeconds);          // no expiry asked = catalog/reference photo
     var uid = (S.auth && S.auth.currentUser && S.auth.currentUser.uid) || "anon";
     var d = new Date();
@@ -8102,7 +8115,10 @@ function boot(){
         };
         if(!storageApi || Date.now() < storageDownUntil) return viaImgbb();
         return uploadToStorage(blob, opts).catch(function(err){
-          console.error("Storage upload failed, falling back to ImgBB:", err);
+          console.error("Storage upload failed:", err);
+          // No ImgBB fallback configured: report the real Storage error and let the person
+          // tap ↻ to retry (never lock Storage out for minutes, that failed every photo).
+          if(!imgbbUpload) return Promise.reject(err);
           // If Storage itself is unavailable, don't make every photo wait for it again for a while.
           storageDownUntil = Date.now() + 5*60*1000;
           return viaImgbb();
