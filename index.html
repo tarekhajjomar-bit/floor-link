@@ -736,7 +736,7 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
              on every deploy, purely so a build mismatch (stale cache / an
              app that hasn't actually picked up the latest deploy) can be
              told apart from an actual code bug just by reading this. -->
-        <span id="appBuild" style="display:block; font-size:10px; opacity:0.5; margin-top:2px;">build v41</span>
+        <span id="appBuild" style="display:block; font-size:10px; opacity:0.5; margin-top:2px;">build v42</span>
       </div>
     </div>
     <div class="header-controls">
@@ -856,7 +856,12 @@ en:{
   voiceNew:"new voice message", voiceFrom:"From", voiceNone:"No voice messages.", voiceFail:"Couldn't send the message. Try again.", voiceEmpty:"The recording came out empty. Try again.",
   counterEmployee:"Employee", counterOptional:"Optional", counterAdd:"Add another employee", counterRemove:"Remove",
   delReqBtn:"Request deletion", delReqTitle:"Request to delete this item", delReqSub:"Pick the reason. The manager will approve it and the item will then be removed.",
-  delReqSold:"Sold out / finished", delReqGone:"No longer available / not sold anymore", delReqMistake:"Scanned by mistake / duplicate",
+  delReqSold:"Sold out / finished",
+  delReqSoldH:"Nothing of this item is left in the store, customers bought it all.",
+  delReqDiscount:"Sold on discount", delReqDiscountH:"We put it on offer or half price and it sold out.",
+  delReqDamaged:"Damaged / expired — thrown away", delReqDamagedH:"It spoiled, broke or passed its date and we threw it away.",
+  delReqReturned:"Returned to the supplier", delReqReturnedH:"The supplier took it back (return or exchange).",
+  delReqOther:"Other reason", delReqOtherH:"None of the above — tell the manager in person why.", delReqGone:"We no longer carry it", delReqGoneH:"We stopped selling this item (not available anymore).", delReqMistake:"Added by mistake / duplicate", delReqMistakeH:"The item was scanned wrong, or it is entered twice.",
   delReqSend:"Send request", delReqSent:"Request sent to the manager.", delReqPick:"Please pick a reason.",
   delReqPending:"Deletion requested", delReqBy:"by", delReqWaiting:"waiting for the manager's approval",
   delReqCardTitle:"Deletion requests", delReqApprove:"Approve & delete", delReqReject:"Reject", delReqRejectConfirm:"Reject this request? The item stays.",
@@ -1231,7 +1236,12 @@ ar:{
   voiceNew:"رسالة صوتية جديدة", voiceFrom:"من", voiceNone:"ما في رسائل صوتية.", voiceFail:"ما قدرت أبعت الرسالة. جرّب مرة تانية.", voiceEmpty:"التسجيل طلع فاضي. جرّب مرة تانية.",
   counterEmployee:"الموظف", counterOptional:"اختياري", counterAdd:"إضافة موظف آخر", counterRemove:"حذف",
   delReqBtn:"طلب حذف", delReqTitle:"طلب حذف هالصنف", delReqSub:"اختار السبب. المدير بيوافق وبعدها بينحذف الصنف.",
-  delReqSold:"انباع / خلص", delReqGone:"ما عاد موجود / ما عاد نبيعه", delReqMistake:"انعمل له سكان بالغلط / مكرر",
+  delReqSold:"انباع / خلص",
+  delReqSoldH:"ما بقي منه شي بالمحل، الزباين اشتروه كله.",
+  delReqDiscount:"انباع بخصم / عرض", delReqDiscountH:"حطيناه عرض أو نص السعر وخلص.",
+  delReqDamaged:"خربان / منتهي — انرمى", delReqDamagedH:"انتهت صلاحيته أو انكسر أو خرب ورميناه.",
+  delReqReturned:"رجع للمورّد", delReqReturnedH:"المورّد أخده مرتجع أو بدّله.",
+  delReqOther:"سبب تاني", delReqOtherH:"ولا وحد من الأسباب فوق — احكي للمدير شو السبب.", delReqGone:"ما عاد نبيعه", delReqGoneH:"وقفنا نبيع هالصنف (ما عاد موجود عنا).", delReqMistake:"انضاف بالغلط / مكرر", delReqMistakeH:"انعمل له سكان غلط، أو مسجّل مرتين.",
   delReqSend:"إرسال الطلب", delReqSent:"انبعت الطلب للمدير.", delReqPick:"يرجى اختيار السبب.",
   delReqPending:"مطلوب حذفه", delReqBy:"من", delReqWaiting:"بانتظار موافقة المدير",
   delReqCardTitle:"طلبات الحذف", delReqApprove:"موافقة وحذف", delReqReject:"رفض", delReqRejectConfirm:"رفض هالطلب؟ الصنف بيضل.",
@@ -6448,9 +6458,13 @@ function renderTrackedDashboard(){
 
 /* ---- Deletion requests: a supervisor asks, the manager approves ---- */
 var DEL_REASONS = [
-  {id:"sold", labelKey:"delReqSold"},
-  {id:"gone", labelKey:"delReqGone"},
-  {id:"mistake", labelKey:"delReqMistake"}
+  {id:"sold", labelKey:"delReqSold", hintKey:"delReqSoldH"},
+  {id:"discount", labelKey:"delReqDiscount", hintKey:"delReqDiscountH"},
+  {id:"damaged", labelKey:"delReqDamaged", hintKey:"delReqDamagedH"},
+  {id:"returned", labelKey:"delReqReturned", hintKey:"delReqReturnedH"},
+  {id:"gone", labelKey:"delReqGone", hintKey:"delReqGoneH"},
+  {id:"mistake", labelKey:"delReqMistake", hintKey:"delReqMistakeH"},
+  {id:"other", labelKey:"delReqOther", hintKey:"delReqOtherH"}
 ];
 function isSupervisorUser(){ return !!(S.currentUser && S.currentUser.role === "supervisor"); }
 function delReasonLabel(id){ var r = DEL_REASONS.filter(function(x){ return x.id === id; })[0]; return r ? t(r.labelKey) : (id || "—"); }
@@ -6467,7 +6481,7 @@ function renderDelReqModal(){
     '<div class="modal-head"><h2>'+t("delReqTitle")+'</h2><button type="button" class="modal-close" id="drClose">'+ICONS.close+'</button></div>' +
     '<p class="modal-sub"><b>'+esc(item ? item.productName : "")+'</b><br>'+t("delReqSub")+'</p>' +
     '<div class="check-list">' + DEL_REASONS.map(function(r){
-      return '<button type="button" class="chip'+(S.delReq.reason===r.id?" sel":"")+'" data-dr-reason="'+r.id+'" style="display:block; width:100%; text-align:start; margin-bottom:8px;">'+t(r.labelKey)+'</button>';
+      return '<button type="button" class="chip'+(S.delReq.reason===r.id?" sel":"")+'" data-dr-reason="'+r.id+'" style="display:block; width:100%; text-align:start; margin-bottom:8px;"><b style="display:block;">'+t(r.labelKey)+'</b><span style="display:block; font-size:12px; font-weight:400; opacity:.75; margin-top:2px; white-space:normal;">'+t(r.hintKey)+'</span></button>';
     }).join("") + '</div>' +
     '<button type="button" class="btn btn-primary" id="drSend" style="margin-top:6px;">'+t("delReqSend")+'</button>' +
   '</div></div>';

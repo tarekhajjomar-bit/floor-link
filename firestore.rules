@@ -278,7 +278,7 @@ service cloud.firestore {
                         && request.resource.data.diff(resource.data).affectedKeys()
                               .hasOnly(['deleteRequest', 'deleteRequestPending', 'history'])
                         && request.resource.data.deleteRequest.by.userId == request.auth.uid
-                        && request.resource.data.deleteRequest.reason in ['sold', 'gone', 'mistake']
+                        && request.resource.data.deleteRequest.reason in ['sold', 'gone', 'mistake', 'discount', 'damaged', 'returned', 'other']
                         && request.resource.data.deleteRequest.at is string
                         && request.resource.data.deleteRequestPending == true);
 
