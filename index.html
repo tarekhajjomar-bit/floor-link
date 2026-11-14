@@ -736,7 +736,7 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
              on every deploy, purely so a build mismatch (stale cache / an
              app that hasn't actually picked up the latest deploy) can be
              told apart from an actual code bug just by reading this. -->
-        <span id="appBuild" style="display:block; font-size:10px; opacity:0.5; margin-top:2px;">build v42</span>
+        <span id="appBuild" style="display:block; font-size:10px; opacity:0.5; margin-top:2px;">build v43</span>
       </div>
     </div>
     <div class="header-controls">
@@ -859,7 +859,6 @@ en:{
   delReqSold:"Sold out / finished",
   delReqSoldH:"Nothing of this item is left in the store, customers bought it all.",
   delReqDiscount:"Sold on discount", delReqDiscountH:"We put it on offer or half price and it sold out.",
-  delReqDamaged:"Damaged / expired — thrown away", delReqDamagedH:"It spoiled, broke or passed its date and we threw it away.",
   delReqReturned:"Returned to the supplier", delReqReturnedH:"The supplier took it back (return or exchange).",
   delReqOther:"Other reason", delReqOtherH:"None of the above — tell the manager in person why.", delReqGone:"We no longer carry it", delReqGoneH:"We stopped selling this item (not available anymore).", delReqMistake:"Added by mistake / duplicate", delReqMistakeH:"The item was scanned wrong, or it is entered twice.",
   delReqSend:"Send request", delReqSent:"Request sent to the manager.", delReqPick:"Please pick a reason.",
@@ -1239,7 +1238,6 @@ ar:{
   delReqSold:"انباع / خلص",
   delReqSoldH:"ما بقي منه شي بالمحل، الزباين اشتروه كله.",
   delReqDiscount:"انباع بخصم / عرض", delReqDiscountH:"حطيناه عرض أو نص السعر وخلص.",
-  delReqDamaged:"خربان / منتهي — انرمى", delReqDamagedH:"انتهت صلاحيته أو انكسر أو خرب ورميناه.",
   delReqReturned:"رجع للمورّد", delReqReturnedH:"المورّد أخده مرتجع أو بدّله.",
   delReqOther:"سبب تاني", delReqOtherH:"ولا وحد من الأسباب فوق — احكي للمدير شو السبب.", delReqGone:"ما عاد نبيعه", delReqGoneH:"وقفنا نبيع هالصنف (ما عاد موجود عنا).", delReqMistake:"انضاف بالغلط / مكرر", delReqMistakeH:"انعمل له سكان غلط، أو مسجّل مرتين.",
   delReqSend:"إرسال الطلب", delReqSent:"انبعت الطلب للمدير.", delReqPick:"يرجى اختيار السبب.",
@@ -6460,7 +6458,6 @@ function renderTrackedDashboard(){
 var DEL_REASONS = [
   {id:"sold", labelKey:"delReqSold", hintKey:"delReqSoldH"},
   {id:"discount", labelKey:"delReqDiscount", hintKey:"delReqDiscountH"},
-  {id:"damaged", labelKey:"delReqDamaged", hintKey:"delReqDamagedH"},
   {id:"returned", labelKey:"delReqReturned", hintKey:"delReqReturnedH"},
   {id:"gone", labelKey:"delReqGone", hintKey:"delReqGoneH"},
   {id:"mistake", labelKey:"delReqMistake", hintKey:"delReqMistakeH"},
