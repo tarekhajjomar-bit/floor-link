@@ -328,17 +328,17 @@ async function checkExpiryPulls() {
   for (const doc of open.docs) {
     const d = doc.data();
     const what = `${d.productName || "صنف"} — ${branchName(d.company)}`;
-    const half = d.kind === "half";
+    const half = d.kind === "half" || d.kind === "cost", cost = d.kind === "cost";
     if (!d.notifiedCreate) {
       const mine = await getTokens({ userId: d.assigneeId });
       const sups = await getTokens({ role: "supervisor", company: d.company });
       await sendToTokens(
-        mine, half ? "🏷️ مطلوب تخفيض 50% (هاف برايس)" : "🚨 مطلوب سحب صنف من الرف",
-        `${what}${d.note ? "\n" + d.note : ""}\n${half ? "التطبيق مقفول لحد ما تخفّضه وتصوّر " + (d.proofKind === "shelf" ? "الصنف على الرف بنص السعر." : "ورقة Special Offer هاف برايس.") : "التطبيق مقفول لحد ما تسحبه وتصوّر الرف."}`,
+        mine, half ? (cost ? "🏷️ مطلوب تنزيل الصنف على الكوست" : "🏷️ مطلوب تخفيض 50% (هاف برايس)") : "🚨 مطلوب سحب صنف من الرف",
+        `${what}${d.note ? "\n" + d.note : ""}\n${half ? "التطبيق مقفول لحد ما " + (cost ? "تنزّله على الكوست" : "تخفّضه") + " وتصوّر " + (d.proofKind === "shelf" ? (cost ? "الصنف على الرف بسعر الكوست." : "الصنف على الرف بنص السعر.") : (cost ? "ورقة Special Offer بسعر الكوست." : "ورقة Special Offer هاف برايس.")) : "التطبيق مقفول لحد ما تسحبه وتصوّر الرف."}`,
         { type: "expiry-pull", id: doc.id }
       );
       await sendToTokens(
-        sups.filter((t) => !mine.includes(t)), half ? "📋 طلب تخفيض 50% (للعلم)" : "📋 طلب سحب صنف (للعلم)",
+        sups.filter((t) => !mine.includes(t)), half ? (cost ? "📋 طلب تنزيل على الكوست (للعلم)" : "📋 طلب تخفيض 50% (للعلم)") : "📋 طلب سحب صنف (للعلم)",
         `${what}\nالمسؤول: ${d.assigneeName || "—"}${d.note ? "\n" + d.note : ""}`,
         { type: "expiry-pull", id: doc.id }
       );
@@ -348,7 +348,7 @@ async function checkExpiryPulls() {
       if (now - last >= PULL_REMIND_EVERY_MS) {
         const mine = await getTokens({ userId: d.assigneeId });
         await sendToTokens(
-          mine, half ? "⏰ لسا ما خفّضت الصنف" : "⏰ لسا ما سحبت الصنف",
+          mine, half ? "⏰ لسا ما نفّذت طلب تخفيض الصنف" : "⏰ لسا ما سحبت الصنف",
           `${what}\nالتطبيق مقفول لحد ما ${half ? "تخفّضه وتصوّر" : "تسحبه وتصوّر الرف"}.`,
           { type: "expiry-pull", id: doc.id }
         );
@@ -365,8 +365,8 @@ async function checkExpiryPulls() {
       ...(await getTokens({ role: "supervisor", company: d.company }))
     ])];
     await sendToTokens(
-      toks, d.kind === "half" ? "✅ تم تخفيض الصنف 50%" : "✅ تم سحب الصنف",
-      `${d.productName || "صنف"} — ${branchName(d.company)}\n${d.kind === "half" ? "خفّضه" : "سحبه"}: ${who}`,
+      toks, d.kind === "cost" ? "✅ تم تنزيل الصنف على الكوست" : d.kind === "half" ? "✅ تم تخفيض الصنف 50%" : "✅ تم سحب الصنف",
+      `${d.productName || "صنف"} — ${branchName(d.company)}\n${(d.kind === "half" || d.kind === "cost") ? "نفّذه" : "سحبه"}: ${who}`,
       { type: "expiry-pull-done", id: doc.id }
     );
     await doc.ref.update({ notifiedDone: true });
