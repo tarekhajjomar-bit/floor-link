@@ -736,7 +736,7 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
              on every deploy, purely so a build mismatch (stale cache / an
              app that hasn't actually picked up the latest deploy) can be
              told apart from an actual code bug just by reading this. -->
-        <span id="appBuild" style="display:block; font-size:10px; opacity:0.5; margin-top:2px;">build v45</span>
+        <span id="appBuild" style="display:block; font-size:10px; opacity:0.5; margin-top:2px;">build v46</span>
       </div>
     </div>
     <div class="header-controls">
@@ -1017,7 +1017,7 @@ en:{
   noAccountYet:"Don't have an account?", createOneLink:"Create one",
   haveAccountAlready:"Already have an account?", loginInstead:"Log in",
   authErrRequired:"Please fill in all fields.",
-  authErrPwShort:"Password must be at least 4 characters.",
+  authErrPwShort:"Password must be at least 8 characters.",
   authErrPwMismatch:"Passwords don't match.",
   authErrUserTaken:"That username is already taken.",
   authErrUserNotFound:"No account with that username.",
@@ -1397,7 +1397,7 @@ ar:{
   noAccountYet:"ما عندك حساب؟", createOneLink:"أنشئ واحد",
   haveAccountAlready:"عندك حساب أصلاً؟", loginInstead:"سجّل الدخول",
   authErrRequired:"يرجى تعبئة كل الخانات.",
-  authErrPwShort:"كلمة المرور لازم تكون ٤ أحرف على الأقل.",
+  authErrPwShort:"كلمة المرور لازم تكون ٨ أحرف على الأقل.",
   authErrPwMismatch:"كلمتا المرور غير متطابقتين.",
   authErrUserTaken:"اسم المستخدم هذا مستخدم من قبل.",
   authErrUserNotFound:"ما في حساب بهذا الاسم.",
@@ -4729,7 +4729,7 @@ function doSignup(){
   var f = S.signupForm;
   var email = f.email.trim();
   if(!email || !f.password || !f.confirmPassword){ S.authError = t("authErrRequired"); render(); return; }
-  if(f.password.length < 6){ S.authError = t("authErrPwShort"); render(); return; }
+  if(f.password.length < 8){ S.authError = t("authErrPwShort"); render(); return; }
   if(f.password !== f.confirmPassword){ S.authError = t("authErrPwMismatch"); render(); return; }
   if(!S.auth || !S.db){ S.authError = t("authErrGeneric"); render(); return; }
 
@@ -5351,7 +5351,7 @@ function createAccount(){
   if(!nf.fullName.trim() || !email || !nf.password){
     S.accountsError = t("authErrRequired"); renderAccounts(); return;
   }
-  if(nf.password.length < 6){ S.accountsError = t("authErrPwShort"); renderAccounts(); return; }
+  if(nf.password.length < 8){ S.accountsError = t("authErrPwShort"); renderAccounts(); return; }
   if(nf.role === "merchandiser" && !nf.department){ S.accountsError = t("authErrDeptRequired"); renderAccounts(); return; }
   if((nf.role === "merchandiser" || nf.role === "supervisor") && !nf.company){ S.accountsError = t("authErrCompanyRequired"); renderAccounts(); return; }
   if(nf.role === "viewer" && !(nf.companies && nf.companies.length)){ S.accountsError = t("viewerNeedBranch"); renderAccounts(); return; }
@@ -5448,7 +5448,7 @@ function renderAccountModal(){
 function submitPasswordChange(){
   var m = S.accountModal;
   if(!m.currentPassword || !m.newPassword || !m.confirmPassword){ m.error = t("authErrRequired"); renderAccountModal(); return; }
-  if(m.newPassword.length < 6){ m.error = t("authErrPwShort"); renderAccountModal(); return; }
+  if(m.newPassword.length < 8){ m.error = t("authErrPwShort"); renderAccountModal(); return; }
   if(m.newPassword !== m.confirmPassword){ m.error = t("authErrPwMismatch"); renderAccountModal(); return; }
   var authUser = S.auth.currentUser;
   if(!authUser || !authUser.email){ m.error = t("authErrGeneric"); renderAccountModal(); return; }
