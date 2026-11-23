@@ -1,0 +1,5 @@
+2026-11-23T21:35:53.109Z
+bucket floor-link.firebasestorage.app exists: true
+storage rules released
+lifecycle rule added
+lifecycle now: {"rule":[{"action":{"type":"Delete"},"condition":{"age":30,"matchesPrefix":["photos/"]}},{"action":{"type":"Delete"},"condition":{"age":30,"matchesPrefix":["voice/"]}}]}
