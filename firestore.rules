@@ -45,8 +45,10 @@ service cloud.firestore {
     function isApproved() {
       return exists(myDocPath()) && get(myDocPath()).data.get('approved', true) != false;
     }
+    // Kitchen-only accounts (role "kitchen", Kitchen OS, Nov 2026) are NOT Floor Link staff:
+    // they sign in with the same login but see only the kitchen (rules near the bottom).
     function isStaff() {
-      return isSignedIn() && isApproved();
+      return isSignedIn() && isApproved() && myRole() != 'kitchen';
     }
     // Manager by claim, or by the users document (covers older "manager" accounts
     // and the minutes before the claim sync runs).
@@ -516,6 +518,102 @@ service cloud.firestore {
       allow write: if isManager();
     }
 
+    // ---------------- Kitchen OS (Nov 2026) ----------------
+    // Shoppies central kitchen. Separate app (floorlink-app/kitchen-os), same login.
+    // Everything lives in collections named kitchen_*. Access comes ONLY from
+    // kitchen_members/{uid}.role — never from the Floor Link role — so Floor Link staff
+    // see nothing here unless the owner gives them a kitchen role.
+    //   owner      : everything; the only one who approves recipes (and later prices)
+    //   manager    : kitchen manager — like chef, plus manages ingredients/categories
+    //   chef       : proposes recipes, quality checks
+    //   cook       : reads approved recipes only
+    //   receiving  : (phase 2) deliveries
+    //   accountant : (phase 3) expenses
+    function kPath() {
+      return /databases/$(database)/documents/kitchen_members/$(request.auth.uid);
+    }
+    function kRole() {
+      return (request.auth != null && exists(kPath()) && get(kPath()).data.get('active', true) != false)
+        ? get(kPath()).data.get('role', '') : '';
+    }
+    function kIn(roles) {
+      return isSignedIn() && kRole() in roles;
+    }
+    function kOwner() { return kIn(['owner']); }
+    function kAny() { return kIn(['owner', 'manager', 'chef', 'cook', 'receiving', 'accountant']); }
+    function kAuthor() { return kIn(['owner', 'manager', 'chef']); }
+    function kRecipeReader() { return kIn(['owner', 'manager', 'chef', 'cook']); }
+
+    match /kitchen_members/{uid} {
+      // Floor Link admin bootstraps the first owner; after that the kitchen owner manages the team.
+      allow read: if isOwner(uid) || isAdmin() || kIn(['owner', 'manager']);
+      allow create, update: if isAdmin() || kOwner();
+      allow delete: if isAdmin() || kOwner();
+    }
+
+    // Categories, units, settings for the kitchen.
+    match /kitchen_settings/{id} {
+      allow read: if kAny();
+      allow write: if kIn(['owner', 'manager']);
+    }
+
+    match /kitchen_ingredients/{id} {
+      allow read: if kAny();
+      allow create, update: if kAuthor();
+      allow delete: if kOwner();
+    }
+
+    // A recipe card. officialVersion (the approved standard) is set by the owner only.
+    match /kitchen_recipes/{rid} {
+      allow read: if kRecipeReader();
+      allow create: if kAuthor()
+                    && request.resource.data.get('officialVersion', null) == null;
+      allow update: if kOwner()
+                    || (kAuthor()
+                        && !request.resource.data.diff(resource.data).affectedKeys()
+                              .hasAny(['officialVersion', 'approvedAt', 'approvedBy']));
+      allow delete: if kOwner();
+
+      // Every version is kept. Statuses: draft → proposed → approved | rejected; an approved
+      // version becomes archived when a newer one is approved. Only the owner approves/rejects,
+      // and the content of an approved/archived version can never change again.
+      match /versions/{vid} {
+        allow read: if kIn(['owner', 'manager', 'chef'])
+                    || (kRecipeReader() && resource.data.status in ['approved', 'archived']);
+        allow create: if kAuthor()
+                      && request.resource.data.status in ['draft', 'proposed']
+                      && request.resource.data.proposedBy == request.auth.uid;
+        allow update: if
+             // the author (or owner/manager) keeps editing a draft/proposal
+             (kAuthor()
+               && resource.data.status in ['draft', 'proposed']
+               && request.resource.data.status in ['draft', 'proposed']
+               && (resource.data.proposedBy == request.auth.uid || kIn(['owner', 'manager']))
+               && request.resource.data.proposedBy == resource.data.proposedBy)
+             // the owner decides on a proposal
+          || (kOwner()
+               && resource.data.status in ['draft', 'proposed']
+               && request.resource.data.status in ['approved', 'rejected'])
+             // the owner archives the previous official version — status fields only
+          || (kOwner()
+               && resource.data.status == 'approved'
+               && request.resource.data.status == 'archived'
+               && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'archivedAt', 'archivedBy']));
+        allow delete: if (kAuthor() && resource.data.status == 'draft'
+                          && resource.data.proposedBy == request.auth.uid)
+                      || (kOwner() && resource.data.status in ['draft', 'proposed', 'rejected']);
+      }
+    }
+
+    // Who did what and when. Append-only: nobody edits or deletes.
+    match /kitchen_audit/{id} {
+      allow read: if kOwner();
+      allow create: if kAny() && request.resource.data.by == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    // Any other kitchen_* collection stays closed: the catch-all below skips kitchen_*.
+
     // ---------------- everything else ----------------
     // Same open-to-signed-in behavior as before for every other collection
     // (catalog, settings, fcm_tokens, users, activity_log, ...), EXCEPT:
@@ -527,11 +625,13 @@ service cloud.firestore {
     //  - account documents (users) are only written through their own rules (Oct 2026).
     match /{collection}/{document=**} {
       allow read: if isStaff()
+                  && !collection.matches('kitchen_.*')
                   && !(collection in ['handovers', 'handover_sessions', 'handover_drafts', 'attendance_days', 'attendance_reports', 'merch_visits', 'quick_shortages', 'expiry_items', 'expiry_pulls', 'pull_locks', 'delivery_shifts', 'feedback', 'feedback_codes', 'feedback_rate', 'voice_messages', 'account_deletions', 'users', 'user_private', 'fcm_tokens', 'activity_log'])
                   && (!isViewer() || collection in ['catalog', 'settings']);
       // fcm_tokens stays writable while someone is locked: a locked person
       // still has to keep receiving the reminder notifications.
       allow write: if canWrite()
+                   && !collection.matches('kitchen_.*')
                    && !(collection in ['handovers', 'handover_sessions', 'handover_drafts', 'attendance_days', 'attendance_reports', 'merch_visits', 'quick_shortages', 'expiry_items', 'expiry_pulls', 'pull_locks', 'delivery_shifts', 'feedback', 'feedback_codes', 'feedback_rate', 'voice_messages', 'account_deletions', 'users', 'user_private', 'fcm_tokens', 'activity_log', 'catalog', 'settings']);
     }
   }

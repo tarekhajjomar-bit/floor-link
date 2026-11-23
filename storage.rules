@@ -36,6 +36,15 @@ service firebase.storage {
       allow get: if isStaffUser();
       allow list, update, delete: if false;
     }
+    // Kitchen OS photos (Nov 2026): recipe, step and quality reference photos.
+    // Kept (no auto-delete). Same limits as catalog photos.
+    match /kitchen/{allPaths=**} {
+      allow create: if isStaffUser()
+                    && request.resource.size < 8 * 1024 * 1024
+                    && request.resource.contentType.matches('image/.*');
+      allow get: if isStaffUser();
+      allow list, update, delete: if false;
+    }
     match /{allPaths=**} {
       allow read, write: if false;
     }
