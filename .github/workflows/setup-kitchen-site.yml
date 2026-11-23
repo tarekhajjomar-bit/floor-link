@@ -1,0 +1,24 @@
+name: Setup — Kitchen OS hosting site (one time)
+# Temporary: creates the Firebase Hosting site "shoppies-kitchen" in the floor-link project.
+# Runs only on this temporary branch; the branch is deleted afterwards.
+on:
+  push:
+    branches: [setup-kitchen-site]
+jobs:
+  site:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Create site
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/sa.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
+          npm install --no-save firebase-tools@13 >/dev/null 2>&1
+          npx firebase hosting:sites:list --project floor-link || true
+          npx firebase hosting:sites:create shoppies-kitchen --project floor-link --non-interactive || echo "CREATE_FAILED"
+          npx firebase hosting:sites:list --project floor-link || true
+          rm -f "$RUNNER_TEMP/sa.json"
