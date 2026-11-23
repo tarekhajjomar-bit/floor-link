@@ -1,0 +1,30 @@
+name: Test — Firestore rules (emulator only)
+
+# Runs the rules tests against the local Firebase emulator inside GitHub.
+# Never touches the real database. Runs by itself when the rules or tests change.
+on:
+  push:
+    paths:
+      - "firestore.rules"
+      - "test/**"
+      - ".github/workflows/test-rules.yml"
+  workflow_dispatch: {}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Install test tools
+        run: npm install && npm install --no-save firebase-tools@13
+      - name: Kitchen OS rules
+        run: npx firebase emulators:exec --only firestore --project floor-link-test "node test/kitchen.rules.test.js"
+      - name: Existing Floor Link rules
+        run: npx firebase emulators:exec --only firestore --project floor-link-test "node test/rules.test.js"
