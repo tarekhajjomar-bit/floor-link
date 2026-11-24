@@ -605,6 +605,30 @@ service cloud.firestore {
       }
     }
 
+    // Purchase price per kg / l / piece of an ingredient or supply. Chefs and cooks never see prices.
+    match /kitchen_costs/{id} {
+      allow read: if kIn(['owner', 'manager', 'accountant']);
+      allow write: if kIn(['owner', 'manager']);
+    }
+
+    // Cleaning log: weight before and after cleaning (chicken, meat…). Kitchen staff add
+    // entries in their own name; only the owner can correct or remove one.
+    match /kitchen_cleaning/{id} {
+      allow read: if kIn(['owner', 'manager', 'chef']);
+      allow create: if kIn(['owner', 'manager', 'chef', 'cook'])
+                    && request.resource.data.by == request.auth.uid
+                    && request.resource.data.before is number && request.resource.data.before > 0
+                    && request.resource.data.after is number && request.resource.data.after > 0
+                    && request.resource.data.after <= request.resource.data.before;
+      allow update, delete: if kOwner();
+    }
+
+    // Selling price and target margin of a product. Only the owner decides prices.
+    match /kitchen_pricing/{rid} {
+      allow read: if kIn(['owner', 'accountant']);
+      allow write: if kOwner();
+    }
+
     // Who did what and when. Append-only: nobody edits or deletes.
     match /kitchen_audit/{id} {
       allow read: if kOwner();

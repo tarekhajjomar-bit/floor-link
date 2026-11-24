@@ -104,6 +104,36 @@ async function main() {
   await check("approved version cannot go back to proposed", () =>
     assertFails(owner.doc("kitchen_recipes/r1/versions/2").update({ status: "proposed" })));
 
+  console.log("Prices, cleaning log, selling prices");
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await ctx.firestore().doc("kitchen_costs/thighs").set({ price: 4 });
+    await ctx.firestore().doc("kitchen_pricing/r1").set({ sellingPrice: 6 });
+    await ctx.firestore().doc("kitchen_members/acc1").set({ role: "accountant" });
+  });
+  const acc = as("acc1", {});
+  await check("owner reads purchase prices", () => assertSucceeds(owner.doc("kitchen_costs/thighs").get()));
+  await check("owner sets a purchase price", () => assertSucceeds(owner.doc("kitchen_costs/thighs").set({ price: 4.2 })));
+  await check("accountant reads purchase prices", () => assertSucceeds(acc.doc("kitchen_costs/thighs").get()));
+  await check("accountant cannot change purchase prices", () => assertFails(acc.doc("kitchen_costs/thighs").set({ price: 1 })));
+  await check("chef cannot see purchase prices", () => assertFails(chef.doc("kitchen_costs/thighs").get()));
+  await check("cook cannot see purchase prices", () => assertFails(cook.doc("kitchen_costs/thighs").get()));
+  await check("supervisor cannot see purchase prices", () => assertFails(sup.doc("kitchen_costs/thighs").get()));
+  await check("cook logs a cleaning in his name", () =>
+    assertSucceeds(cook.doc("kitchen_cleaning/c1").set({ by: "cook1", ingredientId: "thighs", before: 10000, after: 8900 })));
+  await check("cook cannot log in someone else's name", () =>
+    assertFails(cook.doc("kitchen_cleaning/c2").set({ by: "chef1", ingredientId: "thighs", before: 10000, after: 8900 })));
+  await check("after cannot be heavier than before", () =>
+    assertFails(cook.doc("kitchen_cleaning/c3").set({ by: "cook1", ingredientId: "thighs", before: 10000, after: 12000 })));
+  await check("weights must be numbers", () =>
+    assertFails(cook.doc("kitchen_cleaning/c4").set({ by: "cook1", ingredientId: "thighs", before: "10", after: 8 })));
+  await check("cook cannot edit a cleaning entry", () => assertFails(cook.doc("kitchen_cleaning/c1").update({ after: 9900 })));
+  await check("chef reads the cleaning log", () => assertSucceeds(chef.doc("kitchen_cleaning/c1").get()));
+  await check("owner corrects a cleaning entry", () => assertSucceeds(owner.doc("kitchen_cleaning/c1").update({ after: 8800 })));
+  await check("supervisor cannot read the cleaning log", () => assertFails(sup.doc("kitchen_cleaning/c1").get()));
+  await check("owner sets a selling price", () => assertSucceeds(owner.doc("kitchen_pricing/r1").set({ sellingPrice: 6.25 })));
+  await check("chef cannot read selling prices", () => assertFails(chef.doc("kitchen_pricing/r1").get()));
+  await check("accountant cannot change selling prices", () => assertFails(acc.doc("kitchen_pricing/r1").set({ sellingPrice: 1 })));
+
   console.log("Team and audit");
   await check("owner adds a team member", () => assertSucceeds(owner.doc("kitchen_members/new1").set({ role: "cook" })));
   await check("chef cannot change roles", () => assertFails(chef.doc("kitchen_members/cook1").update({ role: "owner" })));
