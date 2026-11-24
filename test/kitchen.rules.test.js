@@ -42,6 +42,9 @@ async function main() {
     await db.doc("kitchen_recipes/r1").set({ name: "كبة", officialVersion: 1, latestVersion: 2 });
     await db.doc("kitchen_recipes/r1/versions/1").set({ n: 1, status: "approved", proposedBy: "chef1", lines: [] });
     await db.doc("kitchen_recipes/r1/versions/2").set({ n: 2, status: "proposed", proposedBy: "chef1", lines: [] });
+    await db.doc("kitchen_costs/thighs").set({ price: 4 });
+    await db.doc("kitchen_pricing/r1").set({ sellingPrice: 6 });
+    await db.doc("kitchen_members/acc1").set({ role: "accountant" });
   });
 
   const as = (uid, claims) => env.authenticatedContext(uid, claims || {}).firestore();
@@ -50,6 +53,7 @@ async function main() {
   const chef = as("chef1", { role: "kitchen" });
   const cook = as("cook1", { role: "kitchen" });
   const old = as("oldchef", { role: "kitchen" });
+  const acc = as("acc1", {});
   const anon = env.authenticatedContext("anon1", { firebase: { sign_in_provider: "anonymous" } }).firestore();
 
   console.log("Floor Link staff and kitchen data");
@@ -105,12 +109,6 @@ async function main() {
     assertFails(owner.doc("kitchen_recipes/r1/versions/2").update({ status: "proposed" })));
 
   console.log("Prices, cleaning log, selling prices");
-  await env.withSecurityRulesDisabled(async (ctx) => {
-    await ctx.firestore().doc("kitchen_costs/thighs").set({ price: 4 });
-    await ctx.firestore().doc("kitchen_pricing/r1").set({ sellingPrice: 6 });
-    await ctx.firestore().doc("kitchen_members/acc1").set({ role: "accountant" });
-  });
-  const acc = as("acc1", {});
   await check("owner reads purchase prices", () => assertSucceeds(owner.doc("kitchen_costs/thighs").get()));
   await check("owner sets a purchase price", () => assertSucceeds(owner.doc("kitchen_costs/thighs").set({ price: 4.2 })));
   await check("accountant reads purchase prices", () => assertSucceeds(acc.doc("kitchen_costs/thighs").get()));
