@@ -45,6 +45,10 @@ async function main() {
     await db.doc("kitchen_costs/thighs").set({ price: 4 });
     await db.doc("kitchen_pricing/r1").set({ sellingPrice: 6 });
     await db.doc("kitchen_members/acc1").set({ role: "accountant" });
+    await db.doc("kitchen_members/rec1").set({ role: "receiving" });
+    await db.doc("kitchen_deliveries/d1").set({ status: "awaiting_qc", createdBy: "rec1", lines: [] });
+    await db.doc("kitchen_deliveries/d2").set({ status: "done", createdBy: "rec1", qcBy: "chef1", lines: [] });
+    await db.doc("kitchen_batches/b1").set({ status: "available", qty: 40000, remaining: 40000, ingredientId: "lamb" });
   });
 
   const as = (uid, claims) => env.authenticatedContext(uid, claims || {}).firestore();
@@ -54,6 +58,7 @@ async function main() {
   const cook = as("cook1", { role: "kitchen" });
   const old = as("oldchef", { role: "kitchen" });
   const acc = as("acc1", {});
+  const rec = as("rec1", {});
   const anon = env.authenticatedContext("anon1", { firebase: { sign_in_provider: "anonymous" } }).firestore();
 
   console.log("Floor Link staff and kitchen data");
@@ -131,6 +136,24 @@ async function main() {
   await check("owner sets a selling price", () => assertSucceeds(owner.doc("kitchen_pricing/r1").set({ sellingPrice: 6.25 })));
   await check("chef cannot read selling prices", () => assertFails(chef.doc("kitchen_pricing/r1").get()));
   await check("accountant cannot change selling prices", () => assertFails(acc.doc("kitchen_pricing/r1").set({ sellingPrice: 1 })));
+
+  console.log("Receiving, quality check, stock");
+  await check("receiving records a delivery", () => assertSucceeds(rec.doc("kitchen_deliveries/d3").set({ status: "awaiting_qc", createdBy: "rec1", lines: [] })));
+  await check("receiving cannot mark a delivery as checked", () => assertFails(rec.doc("kitchen_deliveries/d1").update({ status: "done", qcBy: "rec1" })));
+  await check("receiving fixes a line before the check", () => assertSucceeds(rec.doc("kitchen_deliveries/d1").update({ invoiceNo: "4471" })));
+  await check("cook cannot record deliveries", () => assertFails(cook.doc("kitchen_deliveries/d4").set({ status: "awaiting_qc", createdBy: "cook1", lines: [] })));
+  await check("chef closes the quality check", () => assertSucceeds(chef.doc("kitchen_deliveries/d1").update({ status: "done", qcBy: "chef1" })));
+  await check("a checked delivery cannot change", () => assertFails(owner.doc("kitchen_deliveries/d2").update({ invoiceNo: "x" })));
+  await check("chef creates the accepted batch", () => assertSucceeds(chef.doc("kitchen_batches/d1_0").set({ status: "available", qty: 40000, remaining: 40000, ingredientId: "lamb" })));
+  await check("the same line cannot be added twice", () => assertFails(chef.doc("kitchen_batches/d1_0").set({ status: "available", qty: 40000, remaining: 40000, ingredientId: "lamb" })));
+  await check("a batch cannot start with a different remaining", () => assertFails(chef.doc("kitchen_batches/d1_1").set({ status: "available", qty: 10, remaining: 50 })));
+  await check("receiving cannot create stock", () => assertFails(rec.doc("kitchen_batches/x1").set({ status: "available", qty: 10, remaining: 10 })));
+  await check("chef puts a batch on hold", () => assertSucceeds(chef.doc("kitchen_batches/b1").update({ status: "hold", holdReason: "رائحة", holdBy: "chef1" })));
+  await check("chef cannot release a hold", () => assertFails(chef.doc("kitchen_batches/b1").update({ status: "available" })));
+  await check("owner decides on a held batch", () => assertSucceeds(owner.doc("kitchen_batches/b1").update({ status: "discarded", remaining: 0 })));
+  await check("cook reads stock", () => assertSucceeds(cook.doc("kitchen_batches/b1").get()));
+  await check("supervisor cannot read stock", () => assertFails(sup.doc("kitchen_batches/b1").get()));
+  await check("nobody deletes a batch", () => assertFails(owner.doc("kitchen_batches/b1").delete()));
 
   console.log("Team and audit");
   await check("owner adds a team member", () => assertSucceeds(owner.doc("kitchen_members/new1").set({ role: "cook" })));

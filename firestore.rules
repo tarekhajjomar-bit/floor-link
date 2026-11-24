@@ -629,6 +629,52 @@ service cloud.firestore {
       allow write: if kOwner();
     }
 
+    // ---- Phase 2: receiving, quality control, stock (Nov 2026)
+    function kStock() { return kIn(['owner', 'manager', 'chef', 'receiving']); }
+
+    match /kitchen_suppliers/{id} {
+      allow read: if kStock();
+      allow write: if kIn(['owner', 'manager', 'receiving']);
+    }
+
+    // A delivery: the receiving employee records it (awaiting_qc); the chef checks quality
+    // and closes it (done). Once done it can no longer be changed.
+    match /kitchen_deliveries/{id} {
+      allow read: if kStock();
+      allow create: if kIn(['owner', 'manager', 'receiving'])
+                    && request.resource.data.status == 'awaiting_qc'
+                    && request.resource.data.createdBy == request.auth.uid;
+      allow update: if resource.data.status == 'awaiting_qc' && (
+             (kIn(['owner', 'manager', 'receiving']) && request.resource.data.status == 'awaiting_qc'
+               && request.resource.data.createdBy == resource.data.createdBy)
+          || (kIn(['owner', 'manager', 'chef']) && request.resource.data.status == 'done'
+               && request.resource.data.qcBy == request.auth.uid));
+      allow delete: if kOwner() && resource.data.status == 'awaiting_qc';
+    }
+
+    // A batch of stock. Created once by the quality check (accepted quantity only; the id is
+    // fixed per delivery line, so the same line can never be counted twice).
+    // The chef can put a batch on hold; only owner/manager release, discard or correct it.
+    match /kitchen_batches/{id} {
+      allow read: if kIn(['owner', 'manager', 'chef', 'cook', 'receiving']);
+      allow create: if kIn(['owner', 'manager', 'chef'])
+                    && request.resource.data.status == 'available'
+                    && request.resource.data.qty is number && request.resource.data.qty > 0
+                    && request.resource.data.remaining == request.resource.data.qty;
+      allow update: if kIn(['owner', 'manager'])
+                    || (kIn(['chef']) && resource.data.status == 'available'
+                        && request.resource.data.status == 'hold'
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'holdReason', 'holdBy', 'holdByName', 'holdAt']));
+      allow delete: if false;
+    }
+
+    // Stock movements log (receive, hold, release, discard, correction). Append-only.
+    match /kitchen_movements/{id} {
+      allow read: if kIn(['owner', 'manager']);
+      allow create: if kAny() && request.resource.data.by == request.auth.uid;
+      allow update, delete: if false;
+    }
+
     // Who did what and when. Append-only: nobody edits or deletes.
     match /kitchen_audit/{id} {
       allow read: if kOwner();
