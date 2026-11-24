@@ -1,0 +1,32 @@
+name: Check — kitchen roles (read only, one time)
+# Temporary diagnostic: lists who has a kitchen role and which Floor Link accounts have role "kitchen".
+# Reads only; changes nothing.
+on:
+  push:
+    branches: [check-kitchen-roles]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Read roles
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          npm install --no-save firebase-admin@12 >/dev/null 2>&1
+          cat > r.js <<'JS'
+          const admin = require('firebase-admin');
+          admin.initializeApp({ credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)) });
+          const db = admin.firestore();
+          (async () => {
+            const km = await db.collection('kitchen_members').get();
+            console.log('KITCHEN MEMBERS:', km.size);
+            for (const d of km.docs) { const u = await db.doc('users/' + d.id).get(); console.log(' -', d.data().role, '|', d.data().name, '| floor-link role:', u.exists ? u.data().role : '(no users doc)', '| active:', d.data().active); }
+            const ku = await db.collection('users').where('role', '==', 'kitchen').get();
+            console.log('FLOOR LINK ACCOUNTS WITH ROLE kitchen:', ku.size);
+            ku.forEach((d) => console.log(' -', d.data().fullName || d.data().username || d.id));
+          })().catch((e) => { console.error(e.message); process.exit(1); });
+          JS
+          node r.js
