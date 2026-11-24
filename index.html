@@ -736,7 +736,7 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
              on every deploy, purely so a build mismatch (stale cache / an
              app that hasn't actually picked up the latest deploy) can be
              told apart from an actual code bug just by reading this. -->
-        <span id="appBuild" style="display:block; font-size:10px; opacity:0.5; margin-top:2px;">build v46</span>
+        <span id="appBuild" style="display:block; font-size:10px; opacity:0.5; margin-top:2px;">build v47</span>
       </div>
     </div>
     <div class="header-controls">
@@ -766,6 +766,7 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
     <button class="tab-btn" id="deptFeedbackBtn" type="button" style="display:none;"></button>
     <button class="tab-btn" id="deptAttendanceBtn" type="button" style="display:none;"></button>
     <button class="tab-btn" id="deptJobBtn" type="button" style="display:none;"></button>
+    <button class="tab-btn" id="deptKitchenBtn" type="button" style="display:none;"></button>
   </div>
 </div>
 <div class="tabbar" id="subtabbar" style="max-width:640px; margin:10px auto 0; padding-inline:16px;">
@@ -1155,6 +1156,7 @@ en:{
   deptFeedbackLabel:"Feedback",
   deptAttendanceLabel:"Attendance",
   deptJobLabel:"Job Description",
+  deptKitchenLabel:"Kitchen",
   attToday:"Today", attBackToday:"Back to today", attMonthBtn:"Month report", attDayBtn:"Daily view",
   attOnTime:"On time", attLate:"Late", attAbsent:"Absent", attNoOut:"No clock-out", attOffLeave:"Off / leave", attNotYet:"Not started",
   attNeedsAttention:"Needs attention", attAllStaff:"All staff", attNoData:"No attendance data for this day yet. The shop computer sends it every 5 minutes.",
@@ -1535,6 +1537,7 @@ ar:{
   deptFeedbackLabel:"الفيدباك",
   deptAttendanceLabel:"الحضور",
   deptJobLabel:"الوصف الوظيفي",
+  deptKitchenLabel:"المطبخ",
   attToday:"اليوم", attBackToday:"رجوع لليوم", attMonthBtn:"تقرير الشهر", attDayBtn:"عرض اليوم",
   attOnTime:"عالوقت", attLate:"متأخرين", attAbsent:"غايبين", attNoOut:"ما بصمو طلعة", attOffLeave:"أوف / إجازة", attNotYet:"لسّا ما بلّشو",
   attNeedsAttention:"بدها انتباه", attAllStaff:"كل الموظفين", attNoData:"لسّا ما في داتا حضور لهاليوم. كمبيوتر المحل بيبعتها كل 5 دقايق.",
@@ -2267,6 +2270,14 @@ function updateDeptSwitch(){
   var atBtn = document.getElementById("deptAttendanceBtn");
   var jbBtn = document.getElementById("deptJobBtn");
   var canJob = canSeeJobDesc();
+  // Kitchen OS (Nov 2026): a separate app (shoppies-kitchen.web.app) with the same login.
+  // The button shows only for people the kitchen owner added in Kitchen OS.
+  var canKitchen = false;
+  try {
+    var kcBtn = document.getElementById("deptKitchenBtn");
+    canKitchen = !!S.kitchenAccess && !!kcBtn;
+    if(kcBtn){ kcBtn.style.display = canKitchen ? "" : "none"; kcBtn.textContent = t("deptKitchenLabel"); }
+  } catch(e){ canKitchen = false; }
   jbBtn.style.display = canJob ? "" : "none";
   jbBtn.textContent = t("deptJobLabel");
   jbBtn.classList.toggle("active", S.appMode === "job");
@@ -2293,7 +2304,7 @@ function updateDeptSwitch(){
   m.classList.toggle("active", S.appMode === "merch");
   a.classList.toggle("active", S.appMode === "accounts");
   x.classList.toggle("active", S.appMode === "expiry");
-  var visibleCount = (canHandover?1:0)+(canMerch?1:0)+(canAccounts?1:0)+(canExpiry?1:0)+(canDelivery?1:0)+(canFeedback?1:0)+(canAttendance?1:0)+(canJob?1:0);
+  var visibleCount = (canHandover?1:0)+(canMerch?1:0)+(canAccounts?1:0)+(canExpiry?1:0)+(canDelivery?1:0)+(canFeedback?1:0)+(canAttendance?1:0)+(canJob?1:0)+(canKitchen?1:0);
   document.getElementById("deptbar").style.display = visibleCount > 1 ? "" : "none";
   var tf = document.getElementById("tabForm");
   var td = document.getElementById("tabDash");
@@ -4764,6 +4775,8 @@ function doSignup(){
   }, null);
 }
 
+var KITCHEN_OS_URL = "https://shoppies-kitchen.web.app/";
+
 function watchAuthState(){
   S.auth.onAuthStateChanged(function(user){
     if(!user){
@@ -4774,6 +4787,11 @@ function watchAuthState(){
     }
     S.db.doc("users/"+user.uid).get().then(function(snap){
       S.authChecked = true;
+      if(snap.exists && snap.data().role === "kitchen" && !snap.data().disabled){
+        // Kitchen-only account (chef, cooks…): Floor Link sends it straight to Kitchen OS.
+        window.location.href = KITCHEN_OS_URL;
+        return;
+      }
       if(snap.exists && snap.data().role === "delivery"){
         S.authError = t("deliveryOnlyAccount");
         S.auth.signOut();
@@ -4785,6 +4803,12 @@ function watchAuthState(){
         S.currentUser = Object.assign({id:user.uid}, snap.data());
         S.db.doc("users/"+user.uid).update({lastLoginAt:new Date().toISOString()}).catch(function(){});
         subscribePulls();   // re-attach now that we're signed in (a listener started before sign-in can have been refused)
+        try {
+          S.db.doc("kitchen_members/"+user.uid).get().then(function(k){
+            S.kitchenAccess = k.exists && k.data().active !== false;
+            if(S.kitchenAccess){ try { updateDeptSwitch(); } catch(e){} }
+          }).catch(function(){ S.kitchenAccess = false; });
+        } catch(e){ S.kitchenAccess = false; }
         routeAfterAuth();
       } else if(snap.exists && snap.data().disabled){
         S.authError = t("authErrDisabled");
@@ -7904,6 +7928,7 @@ document.getElementById("deptDeliveryBtn").onclick = function(){ S.appMode = "de
 document.getElementById("deptFeedbackBtn").onclick = function(){ S.appMode = "feedback"; render(); playSectionTransition(); };
 document.getElementById("deptAttendanceBtn").onclick = function(){ S.appMode = "attendance"; render(); playSectionTransition(); };
 document.getElementById("deptJobBtn").onclick = function(){ S.appMode = "job"; render(); playSectionTransition(); };
+document.getElementById("deptKitchenBtn").onclick = function(){ window.location.href = KITCHEN_OS_URL; };
 document.getElementById("deptExpiryBtn").onclick = function(){ S.appMode = "expiry"; S.view = "form"; logActivity("view"); render(); playSectionTransition(); };
 
 function resolvePhotoUrls(doc){
