@@ -675,6 +675,53 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // Supplier claim: opened by the quality check (rejected part) or by returning a batch.
+    // Only owner/manager close it, and a closed claim never changes again.
+    match /kitchen_claims/{id} {
+      allow read: if kIn(['owner', 'manager', 'chef', 'receiving', 'accountant']);
+      allow create: if kIn(['owner', 'manager', 'chef'])
+                    && request.resource.data.status == 'open'
+                    && request.resource.data.createdBy == request.auth.uid;
+      allow update: if kIn(['owner', 'manager']) && resource.data.status == 'open'
+                    && request.resource.data.status in ['replaced', 'refunded', 'dropped']
+                    && request.resource.data.closedBy == request.auth.uid
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'closeNote', 'closedBy', 'closedByName', 'closedAt']);
+      allow delete: if false;
+    }
+
+    // Purchase request: the kitchen asks; owner/manager mark it ordered/arrived/cancelled.
+    // Receiving can mark an ordered request as arrived; the requester can cancel a new one.
+    // The items of a request never change after it is sent.
+    function kReqKeys(st) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', st + 'By', st + 'ByName', st + 'At']);
+    }
+    match /kitchen_requests/{id} {
+      allow read: if kIn(['owner', 'manager', 'chef', 'receiving']);
+      allow create: if kIn(['owner', 'manager', 'chef'])
+                    && request.resource.data.status == 'requested'
+                    && request.resource.data.createdBy == request.auth.uid;
+      allow update: if kReqKeys(request.resource.data.status) && (
+             (kIn(['owner', 'manager']) && resource.data.status in ['requested', 'ordered']
+               && request.resource.data.status in ['ordered', 'received', 'cancelled'])
+          || (kIn(['receiving']) && resource.data.status == 'ordered' && request.resource.data.status == 'received')
+          || (resource.data.createdBy == request.auth.uid && kIn(['chef'])
+               && resource.data.status == 'requested' && request.resource.data.status == 'cancelled'));
+      allow delete: if false;
+    }
+
+    // Stock count: chef/manager/owner send it; only owner/manager apply or reject it, once.
+    match /kitchen_counts/{id} {
+      allow read: if kIn(['owner', 'manager', 'chef']);
+      allow create: if kIn(['owner', 'manager', 'chef'])
+                    && request.resource.data.status == 'submitted'
+                    && request.resource.data.createdBy == request.auth.uid;
+      allow update: if kIn(['owner', 'manager']) && resource.data.status == 'submitted'
+                    && request.resource.data.status in ['applied', 'rejected']
+                    && request.resource.data.decidedBy == request.auth.uid
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'decidedBy', 'decidedByName', 'decidedAt']);
+      allow delete: if false;
+    }
+
     // Who did what and when. Append-only: nobody edits or deletes.
     match /kitchen_audit/{id} {
       allow read: if kOwner();

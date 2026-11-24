@@ -48,6 +48,11 @@ async function main() {
     await db.doc("kitchen_members/rec1").set({ role: "receiving" });
     await db.doc("kitchen_deliveries/d1").set({ status: "awaiting_qc", createdBy: "rec1", lines: [] });
     await db.doc("kitchen_deliveries/d2").set({ status: "done", createdBy: "rec1", qcBy: "chef1", lines: [] });
+    await db.doc("kitchen_claims/cl1").set({ status: "open", createdBy: "chef1", lines: [] });
+    await db.doc("kitchen_claims/cl2").set({ status: "replaced", createdBy: "chef1", lines: [] });
+    await db.doc("kitchen_requests/q1").set({ status: "requested", createdBy: "chef1", lines: [{ qty: 1 }] });
+    await db.doc("kitchen_requests/q2").set({ status: "ordered", createdBy: "chef1", lines: [] });
+    await db.doc("kitchen_counts/k1").set({ status: "submitted", createdBy: "chef1", lines: [] });
     await db.doc("kitchen_batches/b1").set({ status: "available", qty: 40000, remaining: 40000, ingredientId: "lamb" });
   });
 
@@ -154,6 +159,32 @@ async function main() {
   await check("cook reads stock", () => assertSucceeds(cook.doc("kitchen_batches/b1").get()));
   await check("supervisor cannot read stock", () => assertFails(sup.doc("kitchen_batches/b1").get()));
   await check("nobody deletes a batch", () => assertFails(owner.doc("kitchen_batches/b1").delete()));
+
+  console.log("Claims, purchase requests, stock counts");
+  await check("chef opens a claim at the quality check", () => assertSucceeds(chef.doc("kitchen_claims/d1").set({ status: "open", createdBy: "chef1", lines: [] })));
+  await check("a claim cannot start closed", () => assertFails(chef.doc("kitchen_claims/x9").set({ status: "refunded", createdBy: "chef1" })));
+  await check("receiving cannot open a claim", () => assertFails(rec.doc("kitchen_claims/x8").set({ status: "open", createdBy: "rec1" })));
+  await check("accountant reads claims", () => assertSucceeds(acc.doc("kitchen_claims/cl1").get()));
+  await check("cook cannot read claims", () => assertFails(cook.doc("kitchen_claims/cl1").get()));
+  await check("chef cannot close a claim", () => assertFails(chef.doc("kitchen_claims/cl1").update({ status: "dropped", closedBy: "chef1" })));
+  await check("owner cannot change claim items when closing", () => assertFails(owner.doc("kitchen_claims/cl1").update({ status: "replaced", closedBy: "tarek", lines: [{ qty: 9 }] })));
+  await check("owner closes a claim", () => assertSucceeds(owner.doc("kitchen_claims/cl1").update({ status: "replaced", closedBy: "tarek", closeNote: "" })));
+  await check("a closed claim never changes", () => assertFails(owner.doc("kitchen_claims/cl2").update({ status: "refunded", closedBy: "tarek" })));
+  await check("chef sends a purchase request", () => assertSucceeds(chef.doc("kitchen_requests/q3").set({ status: "requested", createdBy: "chef1", lines: [] })));
+  await check("cook cannot send a purchase request", () => assertFails(cook.doc("kitchen_requests/q4").set({ status: "requested", createdBy: "cook1", lines: [] })));
+  await check("receiving cannot mark a new request ordered", () => assertFails(rec.doc("kitchen_requests/q1").update({ status: "ordered", orderedBy: "rec1" })));
+  await check("nobody changes the items of a request", () => assertFails(owner.doc("kitchen_requests/q1").update({ status: "ordered", orderedBy: "tarek", lines: [] })));
+  await check("owner marks a request ordered", () => assertSucceeds(owner.doc("kitchen_requests/q1").update({ status: "ordered", orderedBy: "tarek", orderedAt: 1 })));
+  await check("receiving marks an ordered request arrived", () => assertSucceeds(rec.doc("kitchen_requests/q2").update({ status: "received", receivedBy: "rec1", receivedAt: 1 })));
+  await check("chef cancels his own new request", () => assertSucceeds(chef.doc("kitchen_requests/q3").update({ status: "cancelled", cancelledBy: "chef1" })));
+  await check("chef sends a stock count", () => assertSucceeds(chef.doc("kitchen_counts/k2").set({ status: "submitted", createdBy: "chef1", lines: [] })));
+  await check("chef cannot apply a count", () => assertFails(chef.doc("kitchen_counts/k1").update({ status: "applied", decidedBy: "chef1" })));
+  await check("owner cannot change the counted numbers", () => assertFails(owner.doc("kitchen_counts/k1").update({ status: "applied", decidedBy: "tarek", lines: [{ counted: 1 }] })));
+  await check("owner applies a count", () => assertSucceeds(owner.doc("kitchen_counts/k1").update({ status: "applied", decidedBy: "tarek", decidedAt: 1 })));
+  await check("an applied count cannot be applied again", () => assertFails(owner.doc("kitchen_counts/k1").update({ status: "rejected", decidedBy: "tarek" })));
+  await check("cook cannot read counts", () => assertFails(cook.doc("kitchen_counts/k1").get()));
+  await check("owner corrects a batch from a count", () => assertSucceeds(owner.doc("kitchen_batches/d1_0").update({ remaining: 38500, countId: "k1" })));
+  await check("chef cannot correct a batch quantity", () => assertFails(chef.doc("kitchen_batches/d1_0").update({ remaining: 1 })));
 
   console.log("Team and audit");
   await check("owner adds a team member", () => assertSucceeds(owner.doc("kitchen_members/new1").set({ role: "cook" })));
