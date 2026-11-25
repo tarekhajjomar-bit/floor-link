@@ -57,6 +57,14 @@ async function main() {
     await db.doc("kitchen_batches/b3").set({ status: "hold", qty: 5000, remaining: 5000, ingredientId: "onion" });
     await db.doc("kitchen_waste/w1").set({ by: "chef1", qty: 10, key: "onion" });
     await db.doc("kitchen_equipment/e1").set({ name_ar: "براد", tempMin: 0, tempMax: 4 });
+    await db.doc("kitchen_members/chk1").set({ role: "chef", section: "chicken" });
+    await db.doc("kitchen_members/ckc1").set({ role: "cook", section: "chicken" });
+    await db.doc("kitchen_recipes/rc").set({ name_ar: "طاووق", section: "chicken", officialVersion: 1 });
+    await db.doc("kitchen_recipes/rc/versions/1").set({ n: 1, status: "approved", proposedBy: "chk1", lines: [] });
+    await db.doc("kitchen_recipes/rk").set({ name_ar: "كبة", section: "cooking", officialVersion: 1 });
+    await db.doc("kitchen_recipes/rk/versions/1").set({ n: 1, status: "approved", proposedBy: "chef1", lines: [] });
+    await db.doc("kitchen_plans/2026-11-25_cooking").set({ section: "cooking", lines: [], updatedBy: "chef1" });
+    await db.doc("kitchen_production/pk").set({ section: "cooking", by: "chef1", sectionDate: "cooking_2026-11-25" });
     await db.doc("kitchen_temps/t1").set({ by: "cook1", temp: 3, equipmentId: "e1" });
     await db.doc("kitchen_issues/i1").set({ kind: "fault", status: "open", reportedBy: "cook1", text: "x" });
     await db.doc("kitchen_issues/i2").set({ kind: "fault", status: "fixed", reportedBy: "cook1", text: "y" });
@@ -229,6 +237,26 @@ async function main() {
   await check("chef cannot close a fault", () => assertFails(chef.doc("kitchen_issues/i1").update({ status: "fixed", fixedBy: "chef1" })));
   await check("owner closes a fault", () => assertSucceeds(owner.doc("kitchen_issues/i1").update({ status: "fixed", fixedBy: "tarek", fixNote: "ok" })));
   await check("a fixed fault cannot change", () => assertFails(owner.doc("kitchen_issues/i2").update({ status: "fixed", fixedBy: "tarek", fixNote: "again" })));
+
+  console.log("Kitchen sections");
+  const chk = as("chk1", {}); const ckc = as("ckc1", {});
+  await check("chicken chef reads a chicken recipe", () => assertSucceeds(chk.doc("kitchen_recipes/rc").get()));
+  await check("chicken chef cannot read a cooking recipe", () => assertFails(chk.doc("kitchen_recipes/rk").get()));
+  await check("chicken cook cannot read a cooking version", () => assertFails(ckc.doc("kitchen_recipes/rk/versions/1").get()));
+  await check("chicken cook reads a chicken version", () => assertSucceeds(ckc.doc("kitchen_recipes/rc/versions/1").get()));
+  await check("chicken chef lists only chicken recipes", () => assertSucceeds(chk.collection("kitchen_recipes").where("section", "==", "chicken").get()));
+  await check("chicken chef cannot list all recipes", () => assertFails(chk.collection("kitchen_recipes").get()));
+  await check("chicken chef cannot create a cooking recipe", () => assertFails(chk.doc("kitchen_recipes/new9").set({ name_ar: "x", section: "cooking" })));
+  await check("chicken chef cannot move a recipe to his section", () => assertFails(chk.doc("kitchen_recipes/rk").update({ section: "chicken" })));
+  await check("chef without a section still reads all", () => assertSucceeds(chef.doc("kitchen_recipes/rc").get()));
+  await check("manager reads all sections", () => assertSucceeds(owner.collection("kitchen_recipes").get()));
+  await check("chicken chef cannot read the cooking plan", () => assertFails(chk.doc("kitchen_plans/2026-11-25_cooking").get()));
+  await check("chicken chef writes the chicken plan", () => assertSucceeds(chk.doc("kitchen_plans/2026-11-25_chicken").set({ section: "chicken", lines: [], updatedBy: "chk1" })));
+  await check("chicken chef cannot write the cooking plan", () => assertFails(chk.doc("kitchen_plans/2026-11-26_cooking").set({ section: "cooking", lines: [], updatedBy: "chk1" })));
+  await check("chicken cook records chicken production", () => assertSucceeds(ckc.doc("kitchen_production/pc").set({ section: "chicken", by: "ckc1", sectionDate: "chicken_2026-11-25" })));
+  await check("chicken cook cannot record cooking production", () => assertFails(ckc.doc("kitchen_production/pc2").set({ section: "cooking", by: "ckc1" })));
+  await check("chicken cook cannot read cooking production", () => assertFails(ckc.doc("kitchen_production/pk").get()));
+  await check("chicken cook lists his section's production", () => assertSucceeds(ckc.collection("kitchen_production").where("section", "==", "chicken").where("sectionDate", "in", ["chicken_2026-11-25"]).get()));
 
   console.log("Team and audit");
   await check("owner adds a team member", () => assertSucceeds(owner.doc("kitchen_members/new1").set({ role: "cook" })));

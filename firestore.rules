@@ -543,6 +543,11 @@ service cloud.firestore {
     function kAny() { return kIn(['owner', 'manager', 'chef', 'cook', 'receiving', 'accountant']); }
     function kAuthor() { return kIn(['owner', 'manager', 'chef']); }
     function kRecipeReader() { return kIn(['owner', 'manager', 'chef', 'cook']); }
+    // Kitchen sections (chicken / cooking): a chef or cook with a section only reaches that section.
+    // Owner, manager and anyone without a section reach all sections.
+    function kSec() { return (request.auth != null && exists(kPath())) ? get(kPath()).data.get('section', null) : null; }
+    function kSecOk(s) { return kIn(['owner', 'manager']) || kSec() == null || s == kSec(); }
+    function kRecipeSec(rid) { return get(/databases/$(database)/documents/kitchen_recipes/$(rid)).data.get('section', null); }
 
     match /kitchen_members/{uid} {
       // Floor Link admin bootstraps the first owner; after that the kitchen owner manages the team.
@@ -565,11 +570,14 @@ service cloud.firestore {
 
     // A recipe card. officialVersion (the approved standard) is set by the owner only.
     match /kitchen_recipes/{rid} {
-      allow read: if kRecipeReader();
+      allow read: if kRecipeReader() && kSecOk(resource.data.get('section', null));
       allow create: if kAuthor()
-                    && request.resource.data.get('officialVersion', null) == null;
+                    && request.resource.data.get('officialVersion', null) == null
+                    && kSecOk(request.resource.data.get('section', null));
       allow update: if kOwner()
                     || (kAuthor()
+                        && kSecOk(resource.data.get('section', null))
+                        && kSecOk(request.resource.data.get('section', null))
                         && !request.resource.data.diff(resource.data).affectedKeys()
                               .hasAny(['officialVersion', 'approvedAt', 'approvedBy']));
       allow delete: if kOwner();
@@ -578,14 +586,15 @@ service cloud.firestore {
       // version becomes archived when a newer one is approved. Only the owner approves/rejects,
       // and the content of an approved/archived version can never change again.
       match /versions/{vid} {
-        allow read: if kIn(['owner', 'manager', 'chef'])
-                    || (kRecipeReader() && resource.data.status in ['approved', 'archived']);
-        allow create: if kAuthor()
+        allow read: if (kIn(['owner', 'manager', 'chef'])
+                    || (kRecipeReader() && resource.data.status in ['approved', 'archived']))
+                    && kSecOk(kRecipeSec(rid));
+        allow create: if kAuthor() && kSecOk(kRecipeSec(rid))
                       && request.resource.data.status in ['draft', 'proposed']
                       && request.resource.data.proposedBy == request.auth.uid;
         allow update: if
              // the author (or owner/manager) keeps editing a draft/proposal
-             (kAuthor()
+             (kAuthor() && kSecOk(kRecipeSec(rid))
                && resource.data.status in ['draft', 'proposed']
                && request.resource.data.status in ['draft', 'proposed']
                && (resource.data.proposedBy == request.auth.uid || kIn(['owner', 'manager']))
@@ -716,16 +725,21 @@ service cloud.firestore {
     }
 
     // Daily production plan (one document per day, id = YYYY-MM-DD).
+    // One plan per section per day (id <date>_<section>).
     match /kitchen_plans/{day} {
-      allow read: if kIn(['owner', 'manager', 'chef', 'cook']);
-      allow create, update: if kIn(['owner', 'manager', 'chef']) && request.resource.data.updatedBy == request.auth.uid;
+      allow read: if kIn(['owner', 'manager', 'chef', 'cook']) && kSecOk(resource.data.get('section', null));
+      allow create: if kIn(['owner', 'manager', 'chef']) && request.resource.data.updatedBy == request.auth.uid
+                    && kSecOk(request.resource.data.get('section', null));
+      allow update: if kIn(['owner', 'manager', 'chef']) && request.resource.data.updatedBy == request.auth.uid
+                    && kSecOk(resource.data.get('section', null)) && kSecOk(request.resource.data.get('section', null));
       allow delete: if false;
     }
 
     // What was produced and what it took from stock. Append-only.
     match /kitchen_production/{id} {
-      allow read: if kIn(['owner', 'manager', 'chef', 'cook']);
-      allow create: if kIn(['owner', 'manager', 'chef', 'cook']) && request.resource.data.by == request.auth.uid;
+      allow read: if kIn(['owner', 'manager', 'chef', 'cook']) && kSecOk(resource.data.get('section', null));
+      allow create: if kIn(['owner', 'manager', 'chef', 'cook']) && request.resource.data.by == request.auth.uid
+                    && kSecOk(request.resource.data.get('section', null));
       allow update, delete: if false;
     }
 

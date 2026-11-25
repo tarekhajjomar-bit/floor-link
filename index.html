@@ -736,7 +736,7 @@ main{max-width:640px; margin:0 auto; padding:16px; padding-bottom:64px;}
              on every deploy, purely so a build mismatch (stale cache / an
              app that hasn't actually picked up the latest deploy) can be
              told apart from an actual code bug just by reading this. -->
-        <span id="appBuild" style="display:block; font-size:10px; opacity:0.5; margin-top:2px;">build v48</span>
+        <span id="appBuild" style="display:block; font-size:10px; opacity:0.5; margin-top:2px;">build v49</span>
       </div>
     </div>
     <div class="header-controls">
@@ -4804,7 +4804,7 @@ function loadKitchenSummary(force){
   var db = S.db, today = kcToday(), now = Date.now();
   var soon = new Date(now + 2*864e5); var soonStr = soon.getFullYear()+"-"+String(soon.getMonth()+1).padStart(2,"0")+"-"+String(soon.getDate()).padStart(2,"0");
   Promise.all([
-    kcGet(db.doc("kitchen_plans/"+today)),
+    kcGet(db.collection("kitchen_plans").where("date","==",today)),
     kcGet(db.collection("kitchen_production").where("date","==",today)),
     kcGet(db.collection("kitchen_deliveries").where("status","==","awaiting_qc")),
     kcGet(db.collection("kitchen_batches").where("remaining",">",0)),
@@ -4818,7 +4818,7 @@ function loadKitchenSummary(force){
   ]).then(function(r){
     var D = { alerts: [] };
     var docs = function(x){ return x && x.docs ? x.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); }) : null; };
-    var plan = r[0] && r[0].exists ? r[0].data() : null, prods = docs(r[1]);
+    var plans = docs(r[0]), plan = plans && plans.length ? { lines: [].concat.apply([], plans.map(function(x){ return x.lines || []; })) } : null, prods = docs(r[1]);
     if(prods){
       var made = {}; prods.forEach(function(p){ made[p.recipeId] = (made[p.recipeId]||0) + (+p.qty||0); });
       var lines = (plan && plan.lines) || [];
