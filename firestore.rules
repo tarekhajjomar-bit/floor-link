@@ -657,14 +657,21 @@ service cloud.firestore {
     // The chef can put a batch on hold; only owner/manager release, discard or correct it.
     match /kitchen_batches/{id} {
       allow read: if kIn(['owner', 'manager', 'chef', 'cook', 'receiving']);
-      allow create: if kIn(['owner', 'manager', 'chef'])
+      // Cooks may only create the batch that comes out of a production.
+      allow create: if (kIn(['owner', 'manager', 'chef']) || (kIn(['cook']) && request.resource.data.productionId is string))
                     && request.resource.data.status == 'available'
                     && request.resource.data.qty is number && request.resource.data.qty > 0
                     && request.resource.data.remaining == request.resource.data.qty;
+      // Chef/cook may only LOWER what is left of an available batch (used in production or wasted).
       allow update: if kIn(['owner', 'manager'])
                     || (kIn(['chef']) && resource.data.status == 'available'
                         && request.resource.data.status == 'hold'
-                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'holdReason', 'holdBy', 'holdByName', 'holdAt']));
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'holdReason', 'holdBy', 'holdByName', 'holdAt']))
+                    || (kIn(['chef', 'cook']) && resource.data.status == 'available'
+                        && request.resource.data.remaining is number
+                        && request.resource.data.remaining >= 0 && request.resource.data.remaining < resource.data.remaining
+                        && request.resource.data.lastUsedBy == request.auth.uid
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['remaining', 'lastUsedAt', 'lastUsedBy']));
       allow delete: if false;
     }
 
@@ -672,6 +679,28 @@ service cloud.firestore {
     match /kitchen_movements/{id} {
       allow read: if kIn(['owner', 'manager']);
       allow create: if kAny() && request.resource.data.by == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    // Daily production plan (one document per day, id = YYYY-MM-DD).
+    match /kitchen_plans/{day} {
+      allow read: if kIn(['owner', 'manager', 'chef', 'cook']);
+      allow create, update: if kIn(['owner', 'manager', 'chef']) && request.resource.data.updatedBy == request.auth.uid;
+      allow delete: if false;
+    }
+
+    // What was produced and what it took from stock. Append-only.
+    match /kitchen_production/{id} {
+      allow read: if kIn(['owner', 'manager', 'chef', 'cook']);
+      allow create: if kIn(['owner', 'manager', 'chef', 'cook']) && request.resource.data.by == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    // Waste log. Cooks can log waste but not read the report. Append-only.
+    match /kitchen_waste/{id} {
+      allow read: if kIn(['owner', 'manager', 'chef', 'accountant']);
+      allow create: if kIn(['owner', 'manager', 'chef', 'cook']) && request.resource.data.by == request.auth.uid
+                    && request.resource.data.qty is number && request.resource.data.qty >= 0;
       allow update, delete: if false;
     }
 

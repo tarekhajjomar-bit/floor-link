@@ -53,6 +53,9 @@ async function main() {
     await db.doc("kitchen_requests/q1").set({ status: "requested", createdBy: "chef1", lines: [{ qty: 1 }] });
     await db.doc("kitchen_requests/q2").set({ status: "ordered", createdBy: "chef1", lines: [] });
     await db.doc("kitchen_counts/k1").set({ status: "submitted", createdBy: "chef1", lines: [] });
+    await db.doc("kitchen_batches/b2").set({ status: "available", qty: 5000, remaining: 5000, ingredientId: "onion" });
+    await db.doc("kitchen_batches/b3").set({ status: "hold", qty: 5000, remaining: 5000, ingredientId: "onion" });
+    await db.doc("kitchen_waste/w1").set({ by: "chef1", qty: 10, key: "onion" });
     await db.doc("kitchen_batches/b1").set({ status: "available", qty: 40000, remaining: 40000, ingredientId: "lamb" });
   });
 
@@ -185,6 +188,24 @@ async function main() {
   await check("cook cannot read counts", () => assertFails(cook.doc("kitchen_counts/k1").get()));
   await check("owner corrects a batch from a count", () => assertSucceeds(owner.doc("kitchen_batches/d1_0").update({ remaining: 38500, countId: "k1" })));
   await check("chef cannot correct a batch quantity", () => assertFails(chef.doc("kitchen_batches/d1_0").update({ remaining: 1 })));
+
+  console.log("Production plan, production, waste");
+  await check("chef saves the day's plan", () => assertSucceeds(chef.doc("kitchen_plans/2026-11-26").set({ lines: [], updatedBy: "chef1" })));
+  await check("cook cannot change the plan", () => assertFails(cook.doc("kitchen_plans/2026-11-26").set({ lines: [], updatedBy: "cook1" })));
+  await check("cook reads the plan", () => assertSucceeds(cook.doc("kitchen_plans/2026-11-26").get()));
+  await check("cook takes from an available batch", () => assertSucceeds(cook.doc("kitchen_batches/b2").update({ remaining: 4200, lastUsedBy: "cook1", lastUsedAt: 1 })));
+  await check("cook cannot add to a batch", () => assertFails(cook.doc("kitchen_batches/b2").update({ remaining: 9000, lastUsedBy: "cook1" })));
+  await check("cook cannot use a held batch", () => assertFails(cook.doc("kitchen_batches/b3").update({ remaining: 100, lastUsedBy: "cook1" })));
+  await check("cook cannot change other batch fields", () => assertFails(cook.doc("kitchen_batches/b2").update({ remaining: 4000, lastUsedBy: "cook1", expiry: "2030-01-01" })));
+  await check("cook records a production", () => assertSucceeds(cook.doc("kitchen_production/p1").set({ by: "cook1", recipeId: "r1", qty: 10 })));
+  await check("nobody edits a production", () => assertFails(owner.doc("kitchen_production/p1").update({ qty: 1 })));
+  await check("cook creates the production output batch", () => assertSucceeds(cook.doc("kitchen_batches/p1_out").set({ status: "available", qty: 10, remaining: 10, productionId: "p1", ingredientId: "rcp_r1" })));
+  await check("cook cannot create other stock", () => assertFails(cook.doc("kitchen_batches/x7").set({ status: "available", qty: 10, remaining: 10 })));
+  await check("cook logs waste", () => assertSucceeds(cook.doc("kitchen_waste/w2").set({ by: "cook1", qty: 500, key: "onion" })));
+  await check("cook cannot read the waste report", () => assertFails(cook.doc("kitchen_waste/w1").get()));
+  await check("accountant reads waste", () => assertSucceeds(acc.doc("kitchen_waste/w1").get()));
+  await check("nobody edits waste", () => assertFails(owner.doc("kitchen_waste/w1").update({ qty: 0 })));
+  await check("supervisor cannot read production", () => assertFails(sup.doc("kitchen_production/p1").get()));
 
   console.log("Team and audit");
   await check("owner adds a team member", () => assertSucceeds(owner.doc("kitchen_members/new1").set({ role: "cook" })));
