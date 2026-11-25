@@ -66,6 +66,17 @@ exports.kitchenProposal = onDocumentWritten("kitchen_recipes/{rid}/versions/{n}"
   await push(["owner"], "📖 وصفة بانتظار اعتمادك", `${(r.exists && r.data().name_ar) || ""} — نسخة ${e.params.n}`, "proposal");
 });
 
+// New customer order → the chefs/cooks of the sections it needs (and those without a section), plus the manager.
+exports.kitchenOrder = onDocumentCreated("kitchen_orders/{id}", async (e) => {
+  const d = e.data.data(); const secs = d.sections || [];
+  const q = await db.collection("kitchen_members").get();
+  const ids = q.docs.filter((m) => { const x = m.data(); return x.active !== false && (x.role === "manager" || (["chef", "cook"].includes(x.role) && (!x.section || secs.includes(x.section)))); }).map((m) => m.id);
+  if (!ids.length) return;
+  const tokens = await tokensFor(ids); if (!tokens.length) return;
+  const when = `${d.dueDate || ""} ${d.dueTime || ""}`.trim();
+  await admin.messaging().sendEachForMulticast({ notification: { title: "🧾 طلبية زبون جديدة", body: `${d.customer || ""} — ${when}: ${(d.lines || []).map((l) => `${l.name} ${l.qty}`).join("، ")}` }, data: { type: "kitchen", tag: "order", url: URL }, webpush: { fcmOptions: { link: URL } }, tokens });
+});
+
 function dayStr(ms) { const d = new Date(new Date(ms).toLocaleString("en-US", { timeZone: TZ })); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
 // Every morning: expired / expiring stock, hygiene tasks missed yesterday, equipment service overdue.
 exports.kitchenMorning = onSchedule({ schedule: "30 7 * * *", timeZone: TZ, timeoutSeconds: 120 }, async () => {
@@ -86,5 +97,8 @@ exports.kitchenMorning = onSchedule({ schedule: "30 7 * * *", timeZone: TZ, time
   const eq = await db.collection("kitchen_equipment").get();
   const late = eq.docs.map((d) => d.data()).filter((e) => e.active !== false && Number(e.serviceEveryDays) > 0 && (Number(e.lastServiceAt) || Number(e.createdAt) || 0) + Number(e.serviceEveryDays) * 864e5 < now).length;
   if (late) parts.push(`${late} أجهزة صيانتها متأخرة`);
+  const os = await db.collection("kitchen_orders").where("dueDate", "==", today).get();
+  const ords = os.docs.map((d) => d.data()).filter((o) => !["cancelled", "handed"].includes(o.status));
+  if (ords.length) parts.unshift(`${ords.length} طلبيات زباين اليوم (${ords.map((o) => o.dueTime).sort().join("، ")})`);
   if (parts.length) await push(BOSSES, "☀️ المطبخ اليوم", parts.join(" · "), "morning");
 });

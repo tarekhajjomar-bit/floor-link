@@ -691,6 +691,21 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // Customer pre-orders (e.g. 200 kibbeh tomorrow 12:00). Owner/manager/chef take them; owner/manager edit or cancel;
+    // chef/cook can only mark one ready or handed over. Never deleted.
+    match /kitchen_orders/{id} {
+      allow read: if kIn(['owner', 'manager', 'chef', 'cook']);
+      allow create: if kIn(['owner', 'manager', 'chef']) && request.resource.data.createdBy == request.auth.uid
+                    && request.resource.data.status == 'new';
+      allow update: if (kIn(['owner', 'manager'])
+                        && request.resource.data.createdBy == resource.data.createdBy)
+                    || (kIn(['chef', 'cook'])
+                        && resource.data.status in ['new', 'ready']
+                        && request.resource.data.status in ['ready', 'handed']
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'readyBy', 'readyByName', 'readyAt', 'handedBy', 'handedByName', 'handedAt']));
+      allow delete: if false;
+    }
+
     // ---- Food safety & equipment
     // Equipment and its temperature limits: only owner/manager. Units are switched off, never deleted.
     match /kitchen_equipment/{id} {

@@ -58,6 +58,8 @@ async function main() {
     await db.doc("kitchen_waste/w1").set({ by: "chef1", qty: 10, key: "onion" });
     await db.doc("kitchen_equipment/e1").set({ name_ar: "براد", tempMin: 0, tempMax: 4 });
     await db.doc("kitchen_members/chk1").set({ role: "chef", section: "chicken" });
+    await db.doc("kitchen_orders/o1").set({ status: "new", createdBy: "tarek", customer: "x", lines: [] });
+    await db.doc("kitchen_orders/o2").set({ status: "handed", createdBy: "tarek", customer: "y", lines: [] });
     await db.doc("kitchen_members/ckc1").set({ role: "cook", section: "chicken" });
     await db.doc("kitchen_recipes/rc").set({ name_ar: "طاووق", section: "chicken", officialVersion: 1 });
     await db.doc("kitchen_recipes/rc/versions/1").set({ n: 1, status: "approved", proposedBy: "chk1", lines: [] });
@@ -257,6 +259,18 @@ async function main() {
   await check("chicken cook cannot record cooking production", () => assertFails(ckc.doc("kitchen_production/pc2").set({ section: "cooking", by: "ckc1" })));
   await check("chicken cook cannot read cooking production", () => assertFails(ckc.doc("kitchen_production/pk").get()));
   await check("chicken cook lists his section's production", () => assertSucceeds(ckc.collection("kitchen_production").where("section", "==", "chicken").where("sectionDate", "in", ["chicken_2026-11-25"]).get()));
+
+  console.log("Customer orders");
+  await check("chef takes a customer order", () => assertSucceeds(chef.doc("kitchen_orders/o3").set({ status: "new", createdBy: "chef1", customer: "z", lines: [] })));
+  await check("cook cannot take a customer order", () => assertFails(cook.doc("kitchen_orders/o4").set({ status: "new", createdBy: "cook1", customer: "z", lines: [] })));
+  await check("cook reads orders", () => assertSucceeds(cook.doc("kitchen_orders/o1").get()));
+  await check("receiving cannot read orders", () => assertFails(rec.doc("kitchen_orders/o1").get()));
+  await check("cook marks an order ready", () => assertSucceeds(cook.doc("kitchen_orders/o1").update({ status: "ready", readyBy: "cook1", readyAt: 1 })));
+  await check("cook cannot change what was ordered", () => assertFails(cook.doc("kitchen_orders/o1").update({ status: "handed", handedBy: "cook1", lines: [{ qty: 1 }] })));
+  await check("cook cannot cancel an order", () => assertFails(cook.doc("kitchen_orders/o1").update({ status: "cancelled" })));
+  await check("cook cannot reopen a handed order", () => assertFails(cook.doc("kitchen_orders/o2").update({ status: "ready", readyBy: "cook1" })));
+  await check("owner edits an order", () => assertSucceeds(owner.doc("kitchen_orders/o1").update({ dueTime: "13:00" })));
+  await check("nobody deletes an order", () => assertFails(owner.doc("kitchen_orders/o1").delete()));
 
   console.log("Team and audit");
   await check("owner adds a team member", () => assertSucceeds(owner.doc("kitchen_members/new1").set({ role: "cook" })));
