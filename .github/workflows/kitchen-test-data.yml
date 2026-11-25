@@ -1,0 +1,29 @@
+name: Kitchen OS — test data (manual only)
+
+# load: fills every Kitchen OS section with sample data marked "(تست)".
+# clear: deletes ALL Kitchen OS test data (ids starting with test_, or pointing to them). Real data is never touched.
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "load or clear"
+        required: true
+        type: choice
+        options: [load, clear]
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install dependencies
+        working-directory: scripts
+        run: npm install
+      - name: Kitchen test data
+        working-directory: scripts
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node kitchen-test-data.js ${{ inputs.action }}
