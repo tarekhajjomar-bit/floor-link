@@ -11,8 +11,16 @@
       "port": 4000
     }
   },
-  "functions": {
-    "source": "functions",
-    "runtime": "nodejs22"
-  }
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "runtime": "nodejs22"
+    },
+    {
+      "source": "functions-kitchen",
+      "codebase": "kitchen",
+      "runtime": "nodejs22"
+    }
+  ]
 }
