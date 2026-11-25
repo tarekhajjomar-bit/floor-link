@@ -682,6 +682,39 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // ---- Food safety & equipment
+    // Equipment and its temperature limits: only owner/manager. Units are switched off, never deleted.
+    match /kitchen_equipment/{id} {
+      allow read: if kIn(['owner', 'manager', 'chef', 'cook', 'receiving']);
+      allow create, update: if kIn(['owner', 'manager']);
+      allow delete: if false;
+    }
+    // Temperature readings. Append-only: a reading is never changed afterwards.
+    match /kitchen_temps/{id} {
+      allow read: if kIn(['owner', 'manager', 'chef', 'cook']);
+      allow create: if kIn(['owner', 'manager', 'chef', 'cook']) && request.resource.data.by == request.auth.uid
+                    && request.resource.data.temp is number;
+      allow update, delete: if false;
+    }
+    // Hygiene checklist ticks: one document per task per day (id date_task) — ticked once, never un-ticked.
+    match /kitchen_checks/{id} {
+      allow read: if kIn(['owner', 'manager', 'chef', 'cook']);
+      allow create: if kIn(['owner', 'manager', 'chef', 'cook']) && request.resource.data.by == request.auth.uid
+                    && id == request.resource.data.date + '_' + request.resource.data.taskId;
+      allow update, delete: if false;
+    }
+    // Equipment faults (anyone in the kitchen reports) and service records (owner/manager). Only owner/manager close a fault.
+    match /kitchen_issues/{id} {
+      allow read: if kIn(['owner', 'manager', 'chef', 'cook', 'receiving']);
+      allow create: if request.resource.data.reportedBy == request.auth.uid && (
+             (kIn(['owner', 'manager', 'chef', 'cook', 'receiving']) && request.resource.data.kind == 'fault' && request.resource.data.status == 'open')
+          || (kIn(['owner', 'manager']) && request.resource.data.kind == 'service' && request.resource.data.status == 'fixed'));
+      allow update: if kIn(['owner', 'manager']) && resource.data.status == 'open'
+                    && request.resource.data.status == 'fixed' && request.resource.data.fixedBy == request.auth.uid
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'fixNote', 'fixedBy', 'fixedByName', 'fixedAt']);
+      allow delete: if false;
+    }
+
     // Daily production plan (one document per day, id = YYYY-MM-DD).
     match /kitchen_plans/{day} {
       allow read: if kIn(['owner', 'manager', 'chef', 'cook']);

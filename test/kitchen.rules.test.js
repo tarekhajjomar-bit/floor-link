@@ -56,6 +56,10 @@ async function main() {
     await db.doc("kitchen_batches/b2").set({ status: "available", qty: 5000, remaining: 5000, ingredientId: "onion" });
     await db.doc("kitchen_batches/b3").set({ status: "hold", qty: 5000, remaining: 5000, ingredientId: "onion" });
     await db.doc("kitchen_waste/w1").set({ by: "chef1", qty: 10, key: "onion" });
+    await db.doc("kitchen_equipment/e1").set({ name_ar: "براد", tempMin: 0, tempMax: 4 });
+    await db.doc("kitchen_temps/t1").set({ by: "cook1", temp: 3, equipmentId: "e1" });
+    await db.doc("kitchen_issues/i1").set({ kind: "fault", status: "open", reportedBy: "cook1", text: "x" });
+    await db.doc("kitchen_issues/i2").set({ kind: "fault", status: "fixed", reportedBy: "cook1", text: "y" });
     await db.doc("kitchen_batches/b1").set({ status: "available", qty: 40000, remaining: 40000, ingredientId: "lamb" });
   });
 
@@ -206,6 +210,25 @@ async function main() {
   await check("accountant reads waste", () => assertSucceeds(acc.doc("kitchen_waste/w1").get()));
   await check("nobody edits waste", () => assertFails(owner.doc("kitchen_waste/w1").update({ qty: 0 })));
   await check("supervisor cannot read production", () => assertFails(sup.doc("kitchen_production/p1").get()));
+
+  console.log("Food safety and equipment");
+  await check("owner sets temperature limits", () => assertSucceeds(owner.doc("kitchen_equipment/e1").update({ tempMax: 5 })));
+  await check("chef cannot change temperature limits", () => assertFails(chef.doc("kitchen_equipment/e1").update({ tempMax: 10 })));
+  await check("nobody deletes equipment", () => assertFails(owner.doc("kitchen_equipment/e1").delete()));
+  await check("cook records a temperature", () => assertSucceeds(cook.doc("kitchen_temps/t2").set({ by: "cook1", temp: 3.5, equipmentId: "e1" })));
+  await check("a temperature must be a number", () => assertFails(cook.doc("kitchen_temps/t3").set({ by: "cook1", temp: "ok", equipmentId: "e1" })));
+  await check("cook cannot record as someone else", () => assertFails(cook.doc("kitchen_temps/t4").set({ by: "chef1", temp: 3 })));
+  await check("nobody edits a temperature", () => assertFails(owner.doc("kitchen_temps/t1").update({ temp: 2 })));
+  await check("receiving cannot read temperatures", () => assertFails(rec.doc("kitchen_temps/t1").get()));
+  await check("cook ticks a hygiene task", () => assertSucceeds(cook.doc("kitchen_checks/2026-11-25_k1").set({ by: "cook1", date: "2026-11-25", taskId: "k1" })));
+  await check("a task cannot be ticked twice", () => assertFails(chef.doc("kitchen_checks/2026-11-25_k1").set({ by: "chef1", date: "2026-11-25", taskId: "k1" })));
+  await check("a tick must use its own id", () => assertFails(cook.doc("kitchen_checks/other").set({ by: "cook1", date: "2026-11-25", taskId: "k2" })));
+  await check("nobody un-ticks a task", () => assertFails(owner.doc("kitchen_checks/2026-11-25_k1").delete()));
+  await check("receiving reports a fault", () => assertSucceeds(rec.doc("kitchen_issues/i3").set({ kind: "fault", status: "open", reportedBy: "rec1", text: "door" })));
+  await check("cook cannot record a service", () => assertFails(cook.doc("kitchen_issues/i4").set({ kind: "service", status: "fixed", reportedBy: "cook1" })));
+  await check("chef cannot close a fault", () => assertFails(chef.doc("kitchen_issues/i1").update({ status: "fixed", fixedBy: "chef1" })));
+  await check("owner closes a fault", () => assertSucceeds(owner.doc("kitchen_issues/i1").update({ status: "fixed", fixedBy: "tarek", fixNote: "ok" })));
+  await check("a fixed fault cannot change", () => assertFails(owner.doc("kitchen_issues/i2").update({ status: "fixed", fixedBy: "tarek", fixNote: "again" })));
 
   console.log("Team and audit");
   await check("owner adds a team member", () => assertSucceeds(owner.doc("kitchen_members/new1").set({ role: "cook" })));
